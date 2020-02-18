@@ -174,7 +174,7 @@ class EgoVehicle:
                     )
                     # print("Unseen cost: ", cost)
                     total_risk += cost
-                    total_eventRate += proUn
+                    # total_eventRate += proUn
 
         self._p_eventRate.update({timestamp_s: total_eventRate})
         return total_risk

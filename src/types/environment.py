@@ -161,7 +161,7 @@ class Environment(object):
             pedes.start(startPose=startPose3, u_in=0)
             pedes.predict(l_u_in={param._SIMULATION_TIME: 0})
             pedes.update(param._SIMULATION_TIME)
-            self.addVehicle(pedes)
+            # self.addVehicle(pedes)
             # static object
             obs1 = StaticObject(
                 idx=1,
