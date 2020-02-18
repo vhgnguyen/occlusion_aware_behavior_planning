@@ -148,7 +148,6 @@ class EgoVehicle:
         total_eventRate = 0
         for obj in l_obj:
             if type(obj).__name__ == 'OtherVehicle':
-                # print(" VEHICLE FOUND !!!")
                 objPose = obj.getPoseAt(timestamp_s)
                 objPoly = obj.getPoly(timestamp_s)
                 col_risk, col_rate, col_ind = rfnc.collisionRisk(
@@ -175,7 +174,7 @@ class EgoVehicle:
                     )
                     # print("Unseen cost: ", cost)
                     total_risk += cost
-                    # total_eventRate += proUn
+                    total_eventRate += proUn
 
         self._p_eventRate.update({timestamp_s: total_eventRate})
         return total_risk
@@ -198,6 +197,7 @@ class EgoVehicle:
         utCost = 0
         utCost += param._C_CRUISE * ((p_pose.vdy.vx_ms - param._C_V_CRUISE)**2)
         utCost += param._C_COMFORT * (u_in**2)
+        utCost += param._C_JERK * ((u_in - self._u)**2)
         return utCost
 
     def _computeCost(self, timestamp_s, u_in):
@@ -219,6 +219,8 @@ class EgoVehicle:
         for k in self._p_pose:
             dCost = self._computeCost(k, u_in)
             s = self._survivalRate(k)
+            if k % 2 == 0:
+                print("Time:", k, " Survival rate: ", s)
             cost += dCost * s
         cost = cost * s * dT
         return cost
@@ -245,14 +247,13 @@ class EgoVehicle:
     def optimize(self):
         # start = time.time()
         val = 0
-        lowBound = max(self._u - 1, param._A_MIN)
-        upBound = min(self._u + 1, param._A_MAX)
+        lowBound = max(self._u - 0.5, param._A_MIN)
+        upBound = min(self._u + 0.5, param._A_MAX)
         val = optimize.minimize_scalar(
             lambda x: self._computeTotalCost(u_in=x, dT=param._dT),
             bounds=(lowBound, upBound), method='bounded', options={"maxiter": 5}
             ).x
         self._p_u = val
-        print("Total event rate:", np.sum(self._p_eventRate))
         self._move()
         # print(time.time() - start)
 

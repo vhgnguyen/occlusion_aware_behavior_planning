@@ -39,7 +39,7 @@ while vehicle1.getCurrentTimestamp() < param._SIMULATION_TIME:
 
 # %%
 test = True
-plotTimes = [2, 4, 6]
+plotTimes = [2, 4, 6, 8, 10]
 if test:
     for plotTime in plotTimes:
         fig1 = plt.figure()
@@ -59,15 +59,4 @@ vehicle1.plotPassedCost()
 vehicle1._unseenObjectCost()
 
 # %%
-import risk_functions as rfnc
-dToMerges = np.linspace(10, 0, 101)
-fig = plt.figure()
-for d in dToMerges:
-    prob = rfnc.unseenObjectEventRate(
-        dToMergePoint=d,
-        ego_vx=5,
-        ego_acc=0.3,
-        visibleD=7)
-    plt.scatter(d, prob)
 
-# %%

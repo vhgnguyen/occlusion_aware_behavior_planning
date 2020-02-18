@@ -155,7 +155,7 @@ class Environment(object):
             # pedestrian
             pedes = OtherVehicle(idx=3, length=1, width=1)
             startPose3 = Pose(
-                x_m=-3, y_m=-7, yaw_rad=np.pi/2 - 0.5,
+                x_m=0, y_m=-7, yaw_rad=np.pi/2 - 0.5,
                 covLatLong=np.array([[1, 0.0], [0.0, 0.5]]),
                 vdy=VehicleDynamic(3, 0), timestamp_s=4)
             pedes.start(startPose=startPose3, u_in=0)
@@ -170,13 +170,13 @@ class Environment(object):
 
             obs2 = StaticObject(
                 idx=2,
-                poly=np.array([[0, 3], [7, 3], [7, 7], [0, 7]]))
+                poly=np.array([[5, 3], [10, 3], [10, 7], [5, 7]]))
             # self.addStaticObject(obs2)
 
             obs3 = StaticObject(
                 idx=3,
-                poly=np.array([[0, -7], [0, -5], [7, -5], [7, -8]]))
-            # self.addStaticObject(obs3)
+                poly=np.array([[5, -10], [5, -3], [10, -3], [10, -10]]))
+            self.addStaticObject(obs3)
 
             # road boundary
             road1 = RoadBoundary(scenario=2)

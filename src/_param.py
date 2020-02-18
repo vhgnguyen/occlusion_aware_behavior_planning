@@ -2,7 +2,7 @@
 # Discreted time interval
 # ------------------------------
 _dT = 0.2
-_PREDICT_TIME = 2.
+_PREDICT_TIME = 3
 _SIMULATION_TIME = 20.
 
 # ------------------------------
@@ -55,5 +55,5 @@ _ESCAPE_RATE = 3.
 # utility weight
 _C_CRUISE = 0.001
 _C_V_CRUISE = 8
-_C_COMFORT = 0.0005
-
+_C_COMFORT = 0.001
+_C_JERK = 0.001
