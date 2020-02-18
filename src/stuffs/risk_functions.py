@@ -85,8 +85,7 @@ def collisionIndicatorCompute(poly, bound, dMean, dCov):
     if (abs(dMean) > (abs(bound['max']) + np.diag(dCov))).all():
         return 0
     else:
-        # return gaussian.polyIntegratePdf(poly, dMean, dCov)
-        return gaussian.polyIntegratePdf(poly, dMean, dCov, method='simulation')
+        return gaussian.polyIntegratePdf(poly, dMean, dCov)
 
 
 def collisionRisk(egoPose, egoPoly, objPose, objPoly):
@@ -148,72 +147,50 @@ def collisionEventRate(collisionIndicator,
         / (1.0 - np.exp(-eventRate_beta))
 
 
-def unseenObjectEventRate(dToMergePoint, ego_vx, ego_acc, visibleD, brakeD=2):
-    """
-    Event rate of unseen obstacles appears from limited view
-    Args:
-    Return:
-    """
-    # some fix constants:
-    _MAX_UNSEEN_OBJECT = 2
-    _MAX_UNSEEN_EVENT_RATE = 3
-    _OBJECT_APPEAR_WEIGHT = 0.01
-    _UNSEEN_SEVERITY_MAX = 0.1
-
-    # probability of object appear until reaching the merge point
-    time2MergePoint = min(abs(np.roots([0.5*ego_acc, ego_vx, -dToMergePoint])))
-    probUnseen = 1 - np.exp(-_MAX_UNSEEN_OBJECT * time2MergePoint)
-    safeD = time2MergePoint * param._V_MAX_OBJECT
-    probObj = np.exp(-_OBJECT_APPEAR_WEIGHT*min(visibleD/safeD, 1))
-    probUnseen *= probObj
-
-    # event rate
-    tau_unseen = _MAX_UNSEEN_EVENT_RATE * probUnseen
-
-    # severity model for collision with an unseen object
-    sBrake_max = 0.5 * ego_vx**2 / param._A_MAX_BRAKE + brakeD
-    unseenSeverity = (1 - min(dToMergePoint / sBrake_max, 1)) * _UNSEEN_SEVERITY_MAX
-
-    # risk
-    unseenRisk = tau_unseen * unseenSeverity
-
-    return tau_unseen, unseenSeverity, unseenRisk
-
-def testUnseen(dToMergePoint, ego_vx, ego_acc, visibleD, brakeD=2):
+def testUnseen(d2MP, ego_vx, ego_acc, dVis, brakeD=2):
 
     _MAX_UNSEEN_OBJECT = 2
     _OBJECT_APPEAR_WEIGHT = 5
 
-    time2MergePoint = min(abs(np.roots([0.5*ego_acc, ego_vx, -dToMergePoint])))
+    time2MergePoint = min(abs(np.roots([0.5*ego_acc, ego_vx, -d2MP])))
     probUnseen = 1 - np.exp(-_MAX_UNSEEN_OBJECT * time2MergePoint)
 
     sBrake_max = abs(0.5 * ego_vx**2 / param._A_MAX_BRAKE) + brakeD
 
-    tObjectMP = visibleD / param._V_MAX_OBJECT
+    tObjectMP = dVis / param._V_MAX_OBJECT
 
-    unseenCost = np.exp(-0.5 * time2MergePoint/tObjectMP) * 0.1
+    unseenCost = np.exp(-0.5 * time2MergePoint/tObjectMP) * 0.05
     return probUnseen, unseenCost
 
 
-def testUnseen1(dToMergePoint, ego_vx, ego_acc, visibleD, brakeD=1):
+def unseenObjectEventRate(d2MP, ego_vx, ego_acc, dVis, brakeD=1):
 
-    _MAX_UNSEEN_OBJECT = 2
-    _SEVERITY_CONST = 10
-    t_ego2MP = min(abs(np.roots([0.5*ego_acc, ego_vx, -dToMergePoint])))
-    print(t_ego2MP)
-    t_obj2MP = visibleD / param._V_MAX_OBJECT
-    s_obj2MP_assume = t_ego2MP * param._V_MAX_OBJECT
+    # object 
+    t_obj2MP = dVis / param._V_MAX_OBJECT
+    sBrake_obj_max = abs(0.5 * param._V_MAX_OBJECT / param._A_MAX_BRAKE) - 1 # offset
 
-    sBrake_max = abs(0.5 * ego_vx**2 / param._A_MAX_BRAKE) + brakeD
-    d_ego_objMP = 0.5*t_obj2MP**2*ego_acc + ego_vx*t_obj2MP
-
-    if s_obj2MP_assume < visibleD:
-        unseenSeverity = 0
+    # ego vehicle
+    t_ego2MP = min(abs(np.roots([0.5*ego_acc, ego_vx, -d2MP])))
+    s_obj2MP = t_ego2MP * param._V_MAX_OBJECT #  assume object travel
+    sBrake_max = abs(0.5 * ego_vx**2 / param._A_MAX_BRAKE) + brakeD # safe distance for brake
+    v_ego_max = np.sqrt(d2MP * abs(param._A_MAX_BRAKE))
+    
+    # print("T_MP:{:.2f}, Vmax:{:.2f}".format(t_ego2MP, v_ego_max))
+    # print("T_OBJ_MP", t_obj2MP)
+    # probability of unseen object move close to vehicle at MP
+    _UNSEEN_WEIGHT = 0.5
+    if dVis > t_ego2MP*param._V_MAX_OBJECT + sBrake_obj_max:
+        probUnseen = 0
     else:
-        unseenSeverity = 0.1 * (sBrake_max + d_ego_objMP) / dToMergePoint
+        probUnseen = np.exp(-_UNSEEN_WEIGHT * abs(t_ego2MP - t_obj2MP))
+        # TODO: for this case acc should be non increased
 
-    _UNSEEN_WEIGHT = 5
-    probUnseen = np.exp(-_UNSEEN_WEIGHT * visibleD / s_obj2MP_assume)
+    # probability of collision if object appear
+
+    # severity of collision
+
+    unseenSeverity = 0.05 * abs(v_ego_max - ego_vx)
+
     unseenRisk = probUnseen * unseenSeverity
 
     return probUnseen, unseenRisk

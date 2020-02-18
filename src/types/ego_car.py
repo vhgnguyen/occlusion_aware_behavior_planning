@@ -104,9 +104,12 @@ class EgoVehicle:
         Scan environment at given predict timestamp
         """
         p_pose = self._p_pose[timestamp_s]
-        l_obj = self._env.update(x_m=p_pose.x_m,
-                                 y_m=p_pose.y_m,
-                                 timestamp_s=p_pose.timestamp_s)
+        l_obj = self._env.update(
+            x_m=p_pose.x_m,
+            y_m=p_pose.y_m,
+            timestamp_s=p_pose.timestamp_s,
+            from_timestamp=self.getCurrentTimestamp()
+            )
         return l_obj
 
     def _predict(self, u_in, predictTime=param._PREDICT_TIME):
@@ -145,6 +148,7 @@ class EgoVehicle:
         total_eventRate = 0
         for obj in l_obj:
             if type(obj).__name__ == 'OtherVehicle':
+                # print(" VEHICLE FOUND !!!")
                 objPose = obj.getPoseAt(timestamp_s)
                 objPoly = obj.getPoly(timestamp_s)
                 col_risk, col_rate, col_ind = rfnc.collisionRisk(
@@ -158,22 +162,16 @@ class EgoVehicle:
             if type(obj).__name__ == 'StaticObject':
                 objPoly = obj._poly
                 # define unexpected risk here and add rate and risk
-                dMerge, MP, visibleD, randVertex = pfnc.distanceToMergePoint(
+                dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
                     pose=egoPose,
                     poly=objPoly
                     )
                 if MP is not None:
-                    p, s, r = rfnc.unseenObjectEventRate(
-                        dToMergePoint=dMerge,
+                    proUn, cost = rfnc.unseenObjectEventRate(
+                        d2MP=dMerge,
                         ego_vx=egoPose.vdy.vx_ms,
                         ego_acc=self._p_u,
-                        visibleD=visibleD
-                    )
-                    proUn, cost = rfnc.testUnseen(
-                        dToMergePoint=dMerge,
-                        ego_vx=egoPose.vdy.vx_ms,
-                        ego_acc=self._p_u,
-                        visibleD=visibleD
+                        dVis=dVis
                     )
                     # print("Unseen cost: ", cost)
                     total_risk += cost
@@ -254,6 +252,7 @@ class EgoVehicle:
             bounds=(lowBound, upBound), method='bounded', options={"maxiter": 5}
             ).x
         self._p_u = val
+        print("Total event rate:", np.sum(self._p_eventRate))
         self._move()
         # print(time.time() - start)
 
@@ -289,12 +288,13 @@ class EgoVehicle:
                     l_obj = self._env.update(
                                 x_m=pose.x_m,
                                 y_m=pose.y_m,
-                                timestamp_s=pose.timestamp_s
+                                timestamp_s=pose.timestamp_s,
+                                from_timestamp=pose.timestamp_s
                                 )
                     for obj in l_obj:
                         if type(obj).__name__ == 'StaticObject':
                             objPoly = obj._poly
-                            dMerge, MP, visibleD, randVertex = pfnc.distanceToMergePoint(
+                            dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
                                 pose=pose,
                                 poly=objPoly
                                 )
@@ -302,13 +302,15 @@ class EgoVehicle:
                                 plt.scatter(randVertex[0], randVertex[1], color='r')
                                 plt.scatter(MP[0], MP[1])
                                 print("____OBJECT: ", obj._idx)
-                                print("Visible D: ", visibleD, "D Merge: ", dMerge)
-                                proUn, cost = rfnc.testUnseen(
-                                    dToMergePoint=dMerge,
+                                proUn, cost = rfnc.unseenObjectEventRate(
+                                    d2MP=dMerge,
                                     ego_vx=pose.vdy.vx_ms,
                                     ego_acc=self._l_u[timestamp_s],
-                                    visibleD=visibleD
+                                    dVis=dVis
                                 )
+                                print("___")
+                                print("Time:", timestamp_s)
+                                print("D2MP:{:.2f},dVis:{:.2f}".format(dMerge,dVis))
                                 print("Cost", cost)
             elif timestamp_s < maxTimestamp_s + 5 * param._dT:
                 plt.scatter(pose.x_m, pose.y_m, s=1, color='m')
@@ -390,24 +392,18 @@ class EgoVehicle:
                 if type(obj).__name__ == 'StaticObject':
                     objPoly = obj._poly
                     # define unexpected risk here and add rate and risk
-                    dMerge, MP, visibleD, randVertex = pfnc.distanceToMergePoint(
+                    dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
                         pose=egoPose,
                         poly=objPoly
                         )
                     if MP is not None:
-                        p, s, r = rfnc.unseenObjectEventRate(
-                            dToMergePoint=dMerge,
+                        proUn, cost = rfnc.unseenObjectEventRate(
+                            d2MP=dMerge,
                             ego_vx=egoPose.vdy.vx_ms,
                             ego_acc=self._p_u,
-                            visibleD=visibleD
+                            dVis=dVis
                         )
-                        proUn, cost = rfnc.testUnseen(
-                            dToMergePoint=dMerge,
-                            ego_vx=egoPose.vdy.vx_ms,
-                            ego_acc=self._p_u,
-                            visibleD=visibleD
-                        )
-                        # col_rate += proUn
+                       
             l_cost = np.append(
                 l_cost, np.array([[k, col_risk, col_rate]]), axis=0)
         return l_cost
@@ -421,28 +417,25 @@ class EgoVehicle:
                                y_m=egoPose.y_m,
                                timestamp_s=egoPose.timestamp_s)
             
-            probObject = 1
-            probObjectCost = 0
             for obj in self._env._l_updateObject:
+                proUn = 0
+                cost = 0
                 if type(obj).__name__ == 'StaticObject':
                     objPoly = obj._poly
                     # define unexpected risk here and add rate and risk
-                    dMerge, MP, visibleD, randVertex = pfnc.distanceToMergePoint(
+                    dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
                         pose=egoPose,
                         poly=objPoly
                         )
                     if MP is not None:
-                        proUn, cost = rfnc.testUnseen(
-                            dToMergePoint=dMerge,
+                        proUn, cost = rfnc.unseenObjectEventRate(
+                            d2MP=dMerge,
                             ego_vx=egoPose.vdy.vx_ms,
                             ego_acc=self._p_u,
-                            visibleD=visibleD
+                            dVis=dVis
                         )
-                        probObject *= 1-proUn
-                        probObjectCost += cost
-            probObject = 1-probObject
-            l_cost = np.append(
-                l_cost, np.array([[k, probObject, probObjectCost]]), axis=0)
+                l_cost = np.append(
+                    l_cost, np.array([[k, proUn, cost]]), axis=0)
 
         fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(21, 6))
         ax[0].plot(l_cost[:, 0], l_cost[:, 1], 'k-', label='probability of unseen object')

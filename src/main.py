@@ -26,7 +26,7 @@ env.setupScenario(scenario=SCENARIO_NR)
 vehicle1 = EgoVehicle(idx=1, env=env)
 init_VDY1 = VehicleDynamic(10, 0.0)
 startPose1 = Pose(
-    x_m=-35, y_m=-2, yaw_rad=0,
+    x_m=-35, y_m=-1, yaw_rad=0,
     covLatLong=np.array([[0.3, 0.0], [0.0, 0.1]]),
     vdy=VehicleDynamic(6, 0),
     timestamp_s=0)
@@ -39,7 +39,7 @@ while vehicle1.getCurrentTimestamp() < param._SIMULATION_TIME:
 
 # %%
 test = True
-plotTimes = [3, 4, 5.4, 6, 7, 8]
+plotTimes = [2, 4, 6]
 if test:
     for plotTime in plotTimes:
         fig1 = plt.figure()

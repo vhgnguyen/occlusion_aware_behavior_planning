@@ -48,7 +48,7 @@ class Environment(object):
                 if np.linalg.norm(vehPos - currentPos) < radius:
                     self._l_updateObject.append(veh)
 
-    def update(self, x_m, y_m, timestamp_s, radius=param._SCAN_RADIUS):
+    def update(self, x_m, y_m, timestamp_s, from_timestamp, radius=param._SCAN_RADIUS):
         """
         Get environment around a given position
         """
@@ -63,6 +63,9 @@ class Environment(object):
 
         # find vehicle
         for veh in self._l_vehicle:
+            # if object doesn't appear at current time
+            if veh.getPoseAt(from_timestamp) is None:
+                continue
             vehPose = veh.getPoseAt(timestamp_s)
             if vehPose is not None:
                 vehPos = np.array([vehPose.x_m, vehPose.y_m])
@@ -154,11 +157,11 @@ class Environment(object):
             startPose3 = Pose(
                 x_m=-3, y_m=-7, yaw_rad=np.pi/2 - 0.5,
                 covLatLong=np.array([[1, 0.0], [0.0, 0.5]]),
-                vdy=VehicleDynamic(3, 0), timestamp_s=5)
+                vdy=VehicleDynamic(3, 0), timestamp_s=4)
             pedes.start(startPose=startPose3, u_in=0)
             pedes.predict(l_u_in={param._SIMULATION_TIME: 0})
             pedes.update(param._SIMULATION_TIME)
-            # self.addVehicle(pedes)
+            self.addVehicle(pedes)
             # static object
             obs1 = StaticObject(
                 idx=1,
@@ -168,7 +171,7 @@ class Environment(object):
             obs2 = StaticObject(
                 idx=2,
                 poly=np.array([[0, 3], [7, 3], [7, 7], [0, 7]]))
-            self.addStaticObject(obs2)
+            # self.addStaticObject(obs2)
 
             obs3 = StaticObject(
                 idx=3,

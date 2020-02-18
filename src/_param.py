@@ -2,7 +2,7 @@
 # Discreted time interval
 # ------------------------------
 _dT = 0.2
-_PREDICT_TIME = 3
+_PREDICT_TIME = 2.
 _SIMULATION_TIME = 20.
 
 # ------------------------------

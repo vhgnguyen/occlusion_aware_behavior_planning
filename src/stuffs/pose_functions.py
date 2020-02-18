@@ -196,7 +196,7 @@ def minFOVAngle(x_m, y_m, yaw_rad, poly):
     return poly[min_vertex], min_angle
 
 
-def distanceToMergePoint(pose, poly, dThres=1):
+def distanceToMergePoint(pose, poly, dThres=2):
     """
         EGO ------------------------ MP
              `  alpha/               ^

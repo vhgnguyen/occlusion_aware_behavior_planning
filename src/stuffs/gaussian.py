@@ -106,12 +106,12 @@ def polyIntegratePdf(poly, mean, cov, eps=1.0e-2, method=None):
     else:
         areaSum = 0.0
         triangles = np.asarray(tripy.earclip(poly))
-        # for triangle in triangles:
-        sol, _ = quadpy.triangle.integrate_adaptive(
-            lambda x: pdfExplicit(x, mean, cov),
-            triangles,
-            eps)
-        areaSum = sol
+        for triangle in triangles:
+            sol, _ = quadpy.triangle.integrate_adaptive(
+                lambda x: pdfExplicit(x, mean, cov),
+                triangle,
+                eps)
+            areaSum += sol
 
         assert np.isscalar(areaSum)
 
