@@ -9,6 +9,7 @@ def updatePose(lastPose, u_in, dT=param._dT):
     nextTimestamp_s = round(lastPose.timestamp_s + dT, 3)
     vx = lastPose.vdy.vx_ms
     dP = vx * dT + 0.5 * u_in * (dT**2)
+    dP = max(dP, 0)
     dX = dP * np.cos(lastPose.yaw_rad)
     dY = dP * np.sin(lastPose.yaw_rad)
     nextVDY = VehicleDynamic(vx + u_in * dT, 0)
@@ -47,6 +48,7 @@ def updatePoseList(lastPose, u_in, nextTimestamp_s, dT=param._dT, straight=True)
             dTime = k * dT
             nextT = round(lastPose.timestamp_s + dTime, 3)
             dP = vx * dTime + 0.5 * u_in * (dTime**2)
+            dP = max(dP, 0)
             dX = dP * np.cos(lastPose.yaw_rad)
             dY = dP * np.sin(lastPose.yaw_rad)
             next_vdy = VehicleDynamic(vx + u_in * dTime, dyaw)

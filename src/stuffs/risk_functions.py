@@ -190,7 +190,7 @@ def unseenObjectEventRate(d2MP, ego_vx, ego_acc, dVis, brakeD=0.3):
 
     # severity of collision
 
-    unseenSeverity = 0.05 * abs(5 - ego_vx)
+    unseenSeverity = 0.01 * abs(2 - ego_vx)
 
     unseenRisk = probUnseen * unseenSeverity
 
