@@ -88,6 +88,25 @@ def collisionIndicatorCompute(poly, bound, dMean, dCov):
         return gaussian.polyIntegratePdf(poly, dMean, dCov)
 
 
+def collisionEventRate(collisionIndicator,
+                       eventRate_max=param._COLLISION_RATE_MAX,
+                       eventRate_beta=param._COLLISION_RATE_BETA):
+    """
+    Function to calculate event rate
+    Args:
+        eventRate_max: maximal event rate
+        eventRate_beta: slope weight
+        collisionIndicator: indicator factor between [0,1]
+    Return: (float) collision event rate
+    """
+    assert np.isscalar(eventRate_max) and eventRate_max >= 1.0
+    assert np.isscalar(eventRate_beta) and eventRate_beta > 0.0
+    assert np.isscalar(collisionIndicator) and 0.0 <= collisionIndicator <= 1.0
+    return eventRate_max \
+        * (1.0 - np.exp(-eventRate_beta*collisionIndicator)) \
+        / (1.0 - np.exp(-eventRate_beta))
+
+
 def collisionRisk(egoPose, egoPoly, objPose, objPoly):
     """
     Risk function for collision between ego vehicle and moving object
@@ -126,25 +145,6 @@ def collisionRisk(egoPose, egoPoly, objPose, objPoly):
     col_risk = col_rate*col_severity
 
     return col_risk, col_rate, col_indicator
-
-
-def collisionEventRate(collisionIndicator,
-                       tau_inv_max=param._COLLISION_RATE_MAX,
-                       eventRate_beta=param._COLLISION_RATE_BETA):
-    """
-    Function to calculate event rate
-    Args:
-        tau_inv_max: maximal event rate
-        eventRate_beta: slope weight
-        collisionIndicator: indicator factor between [0,1]
-    Return: (float) collision event rate
-    """
-    assert np.isscalar(tau_inv_max) and tau_inv_max >= 1.0
-    assert np.isscalar(eventRate_beta) and eventRate_beta > 0.0
-    assert np.isscalar(collisionIndicator) and 0.0 <= collisionIndicator <= 1.0
-    return tau_inv_max \
-        * (1.0 - np.exp(-eventRate_beta*collisionIndicator)) \
-        / (1.0 - np.exp(-eventRate_beta))
 
 
 def testUnseen(d2MP, ego_vx, ego_acc, dVis, brakeD=2):
@@ -195,4 +195,35 @@ def unseenObjectEventRate(d2MP, ego_vx, ego_acc, dVis, brakeD=0.3):
     unseenRisk = probUnseen * unseenSeverity
 
     return probUnseen, unseenRisk
+
+
+def unseenEventRate(unseenEventIndicator,
+                    eventRate_max=param._UNSEENEVENT_RATE_MAX,
+                    eventRate_beta=param._UNSEENEVENT_RATE_BETA):
+    assert np.isscalar(eventRate_max) and eventRate_max >= 1.0
+    assert np.isscalar(eventRate_beta) and eventRate_beta > 0.0
+    assert 0.0 <= unseenEventIndicator <= 1.0
+    return eventRate_max \
+        * (1.0 - np.exp(-eventRate_beta*unseenEventIndicator)) \
+        / (1.0 - np.exp(-eventRate_beta))
+
+
+def unseenEventRisk(d2MP, ego_vx, ego_acc, dVis,
+                    obj_vx=param._V_MAX_OBJECT, dBrakeThresh=0.3):
+    # ego vehicle brake distance
+    sBrake_max = abs(0.5 * ego_vx**2 / param._A_MAX_BRAKE)
+
+    col_indicator = 0
+    if d2MP <= sBrake_max + dBrakeThresh:
+        t_obj2MP = dVis / obj_vx
+        t_ego2Brake = - ego_vx / param._A_MAX_BRAKE
+        col_indicator = min(t_ego2Brake / t_obj2MP, 1)
+        col_event = unseenEventRate(col_indicator)
+        t_ego2MP = min(abs(np.roots([0.5*param._A_MAX_BRAKE, ego_vx, -d2MP])))
+        v_egoMP = ego_vx - t_ego2MP * param._A_MAX_BRAKE
+        col_severity = 0.001 * abs(v_egoMP - obj_vx)**2
+        col_risk = col_event * col_severity
+        return col_event, col_risk
+    else:
+        return 0, 0
 

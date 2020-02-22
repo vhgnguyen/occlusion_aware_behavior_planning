@@ -174,7 +174,7 @@ class EgoVehicle:
                     )
                     # print("Unseen cost: ", cost)
                     total_risk += cost
-                    # total_eventRate += proUn
+                    total_eventRate += proUn
 
         self._p_eventRate.update({timestamp_s: total_eventRate})
         return total_risk
@@ -303,7 +303,13 @@ class EgoVehicle:
                                 plt.scatter(randVertex[0], randVertex[1], color='r')
                                 plt.scatter(MP[0], MP[1])
                                 print("____OBJECT: ", obj._idx)
-                                proUn, cost = rfnc.unseenObjectEventRate(
+                                # proUn, cost = rfnc.unseenObjectEventRate(
+                                #     d2MP=dMerge,
+                                #     ego_vx=pose.vdy.vx_ms,
+                                #     ego_acc=self._l_u[timestamp_s],
+                                #     dVis=dVis
+                                # )
+                                rate, risk = rfnc.unseenEventRisk(
                                     d2MP=dMerge,
                                     ego_vx=pose.vdy.vx_ms,
                                     ego_acc=self._l_u[timestamp_s],
@@ -312,7 +318,7 @@ class EgoVehicle:
                                 print("___")
                                 print("Time:", timestamp_s)
                                 print("D2MP:{:.2f},dVis:{:.2f}".format(dMerge,dVis))
-                                print("Cost", cost)
+                                print("Risk cost", risk)
             elif timestamp_s < maxTimestamp_s + 5 * param._dT:
                 plt.scatter(pose.x_m, pose.y_m, s=1, color='m')
                 cov = pose.covLatLong
@@ -398,13 +404,13 @@ class EgoVehicle:
                         poly=objPoly
                         )
                     if MP is not None:
-                        proUn, cost = rfnc.unseenObjectEventRate(
+                        rate, risk = rfnc.unseenEventRisk(
                             d2MP=dMerge,
                             ego_vx=egoPose.vdy.vx_ms,
                             ego_acc=self._p_u,
                             dVis=dVis
                         )
-                       
+
             l_cost = np.append(
                 l_cost, np.array([[k, col_risk, col_rate]]), axis=0)
         return l_cost
@@ -417,10 +423,8 @@ class EgoVehicle:
             self._env.updateAt(x_m=egoPose.x_m,
                                y_m=egoPose.y_m,
                                timestamp_s=egoPose.timestamp_s)
-            
+
             for obj in self._env._l_updateObject:
-                proUn = 0
-                cost = 0
                 if type(obj).__name__ == 'StaticObject':
                     objPoly = obj._poly
                     # define unexpected risk here and add rate and risk
@@ -429,14 +433,14 @@ class EgoVehicle:
                         poly=objPoly
                         )
                     if MP is not None:
-                        proUn, cost = rfnc.unseenObjectEventRate(
+                        rate, risk = rfnc.unseenEventRisk(
                             d2MP=dMerge,
                             ego_vx=egoPose.vdy.vx_ms,
                             ego_acc=self._p_u,
                             dVis=dVis
                         )
                 l_cost = np.append(
-                    l_cost, np.array([[k, proUn, cost]]), axis=0)
+                    l_cost, np.array([[k, rate, risk]]), axis=0)
 
         fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(21, 6))
         ax[0].plot(l_cost[:, 0], l_cost[:, 1], 'k-', label='probability of unseen object')
