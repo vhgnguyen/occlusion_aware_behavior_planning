@@ -34,7 +34,7 @@ _STD_V_LONG = 1.
 # ------------------------------
 
 # static obstacle risk model
-_V_MAX_OBJECT = 10
+_V_MAX_OBJECT = 4
 _A_MAX_BRAKE = -5
 
 # collision orthogonal threshold
@@ -56,8 +56,8 @@ _ESCAPE_RATE = 3.
 _C_CRUISE = 0.001
 _C_V_CRUISE = 8
 _C_COMFORT = 0.001
-_C_JERK = 0.001
+_C_JERK = 0.0005
 
 # unseen event rate
-_UNSEENEVENT_RATE_MAX = 3
-_UNSEENEVENT_RATE_BETA = 1
+_UNSEENEVENT_RATE_MAX = 1
+_UNSEENEVENT_RATE_BETA = 0.1

@@ -81,7 +81,7 @@ def pdf(point2D, mean, cov):
     return prob
 
 
-def polyIntegratePdf(poly, mean, cov, eps=1.0e-2, method=None):
+def polyIntegratePdf(poly, mean, cov, eps=1.0e-1, method=None):
     """
         Integrate a PDF with given mean and covariance over a convex polygon
         Args:

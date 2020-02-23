@@ -212,18 +212,28 @@ def unseenEventRisk(d2MP, ego_vx, ego_acc, dVis,
                     obj_vx=param._V_MAX_OBJECT, dBrakeThresh=0.3):
     # ego vehicle brake distance
     sBrake_max = abs(0.5 * ego_vx**2 / param._A_MAX_BRAKE)
-
+    print("MAx brake distance:", sBrake_max)
+    print("D2MP:", d2MP)
     col_indicator = 0
     if d2MP <= sBrake_max + dBrakeThresh:
         t_obj2MP = dVis / obj_vx
         t_ego2Brake = - ego_vx / param._A_MAX_BRAKE
         col_indicator = min(t_ego2Brake / t_obj2MP, 1)
         col_event = unseenEventRate(col_indicator)
+
+        print("Obj2MP:{:.2f}, Ego2MP:{:.2f}".format(t_obj2MP, t_ego2Brake))
+        print("Unseen indicator:{:.2f}".format(col_indicator))
+        print("Unseen event rate:{:.2f}".format(col_event))
+
         t_ego2MP = min(abs(np.roots([0.5*param._A_MAX_BRAKE, ego_vx, -d2MP])))
-        v_egoMP = ego_vx - t_ego2MP * param._A_MAX_BRAKE
-        col_severity = 0.001 * abs(v_egoMP - obj_vx)**2
+        v_egoMP = max(ego_vx + t_ego2MP * param._A_MAX_BRAKE, 0)
+
+        print("V brake at MP:", v_egoMP)
+
+        col_severity = 0.02 * abs(v_egoMP)**2
         col_risk = col_event * col_severity
         return col_event, col_risk
     else:
-        return 0, 0
-
+        v_ref = min(np.sqrt(2 * d2MP * 0.5), ego_vx)
+        col_risk = 0.02 * abs(ego_vx - v_ref)**2 * sBrake_max / d2MP
+        return 0, col_risk

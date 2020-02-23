@@ -166,13 +166,12 @@ class EgoVehicle:
                     poly=objPoly
                     )
                 if MP is not None:
-                    proUn, cost = rfnc.unseenObjectEventRate(
+                    proUn, cost = rfnc.unseenEventRisk(
                         d2MP=dMerge,
                         ego_vx=egoPose.vdy.vx_ms,
                         ego_acc=self._p_u,
                         dVis=dVis
                     )
-                    # print("Unseen cost: ", cost)
                     total_risk += cost
                     total_eventRate += proUn
 
@@ -303,6 +302,7 @@ class EgoVehicle:
                                 plt.scatter(randVertex[0], randVertex[1], color='r')
                                 plt.scatter(MP[0], MP[1])
                                 print("____OBJECT: ", obj._idx)
+                                print("Time:", timestamp_s)
                                 # proUn, cost = rfnc.unseenObjectEventRate(
                                 #     d2MP=dMerge,
                                 #     ego_vx=pose.vdy.vx_ms,
@@ -315,10 +315,6 @@ class EgoVehicle:
                                     ego_acc=self._l_u[timestamp_s],
                                     dVis=dVis
                                 )
-                                print("___")
-                                print("Time:", timestamp_s)
-                                print("D2MP:{:.2f},dVis:{:.2f}".format(dMerge,dVis))
-                                print("Risk cost", risk)
             elif timestamp_s < maxTimestamp_s + 5 * param._dT:
                 plt.scatter(pose.x_m, pose.y_m, s=1, color='m')
                 cov = pose.covLatLong
@@ -410,6 +406,10 @@ class EgoVehicle:
                             ego_acc=self._p_u,
                             dVis=dVis
                         )
+                        print("TImestamp:", k)
+                        print("Rate:{:.2f}, Risk:{:.2f}".format(rate, risk))
+                        col_risk += risk
+                        col_rate += rate
 
             l_cost = np.append(
                 l_cost, np.array([[k, col_risk, col_rate]]), axis=0)

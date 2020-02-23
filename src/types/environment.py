@@ -136,7 +136,7 @@ class Environment(object):
             startPose3 = Pose(
                 x_m=-3, y_m=-7, yaw_rad=np.pi/2 - 0.5,
                 covLatLong=np.array([[1, 0.0], [0.0, 0.5]]),
-                vdy=VehicleDynamic(3, 0), timestamp_s=2)
+                vdy=VehicleDynamic(3, 0), timestamp_s=4)
             pedes.start(startPose=startPose3, u_in=0)
             pedes.predict(l_u_in={param._SIMULATION_TIME: 0})
             pedes.update(param._SIMULATION_TIME)
@@ -147,6 +147,16 @@ class Environment(object):
                 poly=np.array([[-20, -10], [-20, -6], [-15, -4],
                                [-5, -4], [-5, -15], [-15, -15]]))
             self.addStaticObject(obs1)
+
+            obs2 = StaticObject(
+                idx=2,
+                poly=np.array([[0, 4], [10, 7], [10, 10], [0, 10]]))
+            self.addStaticObject(obs2)
+
+            obs3 = StaticObject(
+                idx=3,
+                poly=np.array([[5, -10], [5, -3], [10, -3], [8, -10]]))
+            self.addStaticObject(obs3)
             # road boundary
             road1 = RoadBoundary(scenario=2)
             self.addRoadBoundary(road1)
@@ -161,7 +171,7 @@ class Environment(object):
             pedes.start(startPose=startPose3, u_in=0)
             pedes.predict(l_u_in={param._SIMULATION_TIME: 0})
             pedes.update(param._SIMULATION_TIME)
-            # self.addVehicle(pedes)
+            self.addVehicle(pedes)
             # static object
             obs1 = StaticObject(
                 idx=1,
@@ -176,7 +186,7 @@ class Environment(object):
             obs3 = StaticObject(
                 idx=3,
                 poly=np.array([[5, -10], [5, -3], [10, -3], [10, -10]]))
-            # self.addStaticObject(obs3)
+            self.addStaticObject(obs3)
 
             # road boundary
             road1 = RoadBoundary(scenario=2)

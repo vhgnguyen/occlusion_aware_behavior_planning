@@ -15,7 +15,7 @@ from objects import OtherVehicle, StaticObject
 import _param as param
 
 # %%
-SCENARIO_NR = 3
+SCENARIO_NR = 2
 
 # -------- ENV -----------
 env = Environment()
@@ -30,16 +30,15 @@ startPose1 = Pose(
     covLatLong=np.array([[0.3, 0.0], [0.0, 0.1]]),
     vdy=VehicleDynamic(6, 0),
     timestamp_s=0)
-vehicle1.start(startPose=startPose1, u_in=1)
+vehicle1.start(startPose=startPose1, u_in=0)
 
 # %%
 while vehicle1.getCurrentTimestamp() < param._SIMULATION_TIME:
     vehicle1.optimize()
-    vehicle1._move()
 
 # %%
 test = True
-plotTimes = [2, 4, 6, 8, 10]
+plotTimes = [2, 4, 5, 6, 8, 10]
 if test:
     for plotTime in plotTimes:
         fig1 = plt.figure()
