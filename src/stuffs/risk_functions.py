@@ -147,20 +147,40 @@ def collisionRisk(egoPose, egoPoly, objPose, objPoly):
     return col_risk, col_rate, col_indicator
 
 
-def testUnseen(d2MP, ego_vx, ego_acc, dVis, brakeD=2):
+def unseenEventRate(unseenEventIndicator,
+                    eventRate_max=param._UNSEENEVENT_RATE_MAX,
+                    eventRate_beta=param._UNSEENEVENT_RATE_BETA):
+    assert np.isscalar(eventRate_max) and eventRate_max >= 1.0
+    assert np.isscalar(eventRate_beta) and eventRate_beta > 0.0
+    assert 0.0 <= unseenEventIndicator <= 1.0
+    return eventRate_max \
+        * (1.0 - np.exp(-eventRate_beta*unseenEventIndicator)) \
+        / (1.0 - np.exp(-eventRate_beta))
 
-    _MAX_UNSEEN_OBJECT = 2
-    _OBJECT_APPEAR_WEIGHT = 5
 
-    time2MergePoint = min(abs(np.roots([0.5*ego_acc, ego_vx, -d2MP])))
-    probUnseen = 1 - np.exp(-_MAX_UNSEEN_OBJECT * time2MergePoint)
+def unseenEventRisk(d2MP, ego_vx, ego_acc, dVis,
+                    obj_vx=param._V_MAX_OBJECT, dBrakeThresh=0.3,
+                    ref_deAcc=-0.5):
+    # ego vehicle brake distance
+    sBrake_max = abs(0.5 * ego_vx**2 / param._A_MAX_BRAKE)
 
-    sBrake_max = abs(0.5 * ego_vx**2 / param._A_MAX_BRAKE) + brakeD
+    if d2MP <= sBrake_max + dBrakeThresh:
+        t_obj2MP = dVis / obj_vx
+        t_ego2Brake = - ego_vx / param._A_MAX_BRAKE
+        v_egoAtMP = max(np.sqrt(ego_vx**2 + 2*param._A_MAX_BRAKE*d2MP), 0)
 
-    tObjectMP = dVis / param._V_MAX_OBJECT
+        col_indicator = min(t_ego2Brake / t_obj2MP, 1)
+        col_event = unseenEventRate(col_indicator)
+        col_severity = 0.01 * abs(v_egoAtMP)**2
+        col_risk = col_event * col_severity
 
-    unseenCost = np.exp(-0.5 * time2MergePoint/tObjectMP) * 0.05
-    return probUnseen, unseenCost
+        return col_event, col_risk
+    else:
+        # ideal velocity for comfort stopping at merge point
+        v_ref = min(np.sqrt(2 * d2MP * abs(ref_deAcc)), ego_vx)
+        col_risk = 0.01 * abs(ego_vx - v_ref)**2 * sBrake_max / d2MP
+
+        return 0, col_risk
 
 
 def unseenObjectEventRate(d2MP, ego_vx, ego_acc, dVis, brakeD=0.3):
@@ -197,43 +217,17 @@ def unseenObjectEventRate(d2MP, ego_vx, ego_acc, dVis, brakeD=0.3):
     return probUnseen, unseenRisk
 
 
-def unseenEventRate(unseenEventIndicator,
-                    eventRate_max=param._UNSEENEVENT_RATE_MAX,
-                    eventRate_beta=param._UNSEENEVENT_RATE_BETA):
-    assert np.isscalar(eventRate_max) and eventRate_max >= 1.0
-    assert np.isscalar(eventRate_beta) and eventRate_beta > 0.0
-    assert 0.0 <= unseenEventIndicator <= 1.0
-    return eventRate_max \
-        * (1.0 - np.exp(-eventRate_beta*unseenEventIndicator)) \
-        / (1.0 - np.exp(-eventRate_beta))
+def testUnseen(d2MP, ego_vx, ego_acc, dVis, brakeD=2):
 
+    _MAX_UNSEEN_OBJECT = 2
+    _OBJECT_APPEAR_WEIGHT = 5
 
-def unseenEventRisk(d2MP, ego_vx, ego_acc, dVis,
-                    obj_vx=param._V_MAX_OBJECT, dBrakeThresh=0.3):
-    # ego vehicle brake distance
-    sBrake_max = abs(0.5 * ego_vx**2 / param._A_MAX_BRAKE)
-    print("MAx brake distance:", sBrake_max)
-    print("D2MP:", d2MP)
-    col_indicator = 0
-    if d2MP <= sBrake_max + dBrakeThresh:
-        t_obj2MP = dVis / obj_vx
-        t_ego2Brake = - ego_vx / param._A_MAX_BRAKE
-        col_indicator = min(t_ego2Brake / t_obj2MP, 1)
-        col_event = unseenEventRate(col_indicator)
+    time2MergePoint = min(abs(np.roots([0.5*ego_acc, ego_vx, -d2MP])))
+    probUnseen = 1 - np.exp(-_MAX_UNSEEN_OBJECT * time2MergePoint)
 
-        print("Obj2MP:{:.2f}, Ego2MP:{:.2f}".format(t_obj2MP, t_ego2Brake))
-        print("Unseen indicator:{:.2f}".format(col_indicator))
-        print("Unseen event rate:{:.2f}".format(col_event))
+    sBrake_max = abs(0.5 * ego_vx**2 / param._A_MAX_BRAKE) + brakeD
 
-        t_ego2MP = min(abs(np.roots([0.5*param._A_MAX_BRAKE, ego_vx, -d2MP])))
-        v_egoMP = max(ego_vx + t_ego2MP * param._A_MAX_BRAKE, 0)
+    tObjectMP = dVis / param._V_MAX_OBJECT
 
-        print("V brake at MP:", v_egoMP)
-
-        col_severity = 0.02 * abs(v_egoMP)**2
-        col_risk = col_event * col_severity
-        return col_event, col_risk
-    else:
-        v_ref = min(np.sqrt(2 * d2MP * 0.5), ego_vx)
-        col_risk = 0.02 * abs(ego_vx - v_ref)**2 * sBrake_max / d2MP
-        return 0, col_risk
+    unseenCost = np.exp(-0.5 * time2MergePoint/tObjectMP) * 0.05
+    return probUnseen, unseenCost

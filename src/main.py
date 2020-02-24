@@ -15,7 +15,7 @@ from objects import OtherVehicle, StaticObject
 import _param as param
 
 # %%
-SCENARIO_NR = 2
+SCENARIO_NR = 3
 
 # -------- ENV -----------
 env = Environment()
@@ -34,11 +34,12 @@ vehicle1.start(startPose=startPose1, u_in=0)
 
 # %%
 while vehicle1.getCurrentTimestamp() < param._SIMULATION_TIME:
+    start = time.time()
     vehicle1.optimize()
-
+    print(time.time() - start)
 # %%
 test = True
-plotTimes = [2, 4, 5, 6, 8, 10]
+plotTimes = [2, 4, 5, 6, 8, 10, 15]
 if test:
     for plotTime in plotTimes:
         fig1 = plt.figure()
@@ -55,7 +56,7 @@ if test:
 # %%
 vehicle1.plotDynamic()
 vehicle1.plotPassedCost()
-vehicle1._unseenObjectCost()
+l_cost = vehicle1._unseenObjectCost()
 
 # %%
 

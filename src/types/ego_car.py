@@ -146,34 +146,29 @@ class EgoVehicle:
         l_obj = self._searchEnvironment(timestamp_s)
         total_risk = 0
         total_eventRate = 0
-        for obj in l_obj:
-            if type(obj).__name__ == 'OtherVehicle':
-                objPose = obj.getPoseAt(timestamp_s)
-                objPoly = obj.getPoly(timestamp_s)
-                col_risk, col_rate, col_ind = rfnc.collisionRisk(
-                    egoPose=egoPose,
-                    egoPoly=egoPoly,
-                    objPose=objPose,
-                    objPoly=objPoly
-                    )
-                total_risk += col_risk
-                total_eventRate += col_rate
-            if type(obj).__name__ == 'StaticObject':
-                objPoly = obj._poly
-                # define unexpected risk here and add rate and risk
-                dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
-                    pose=egoPose,
-                    poly=objPoly
-                    )
-                if MP is not None:
-                    proUn, cost = rfnc.unseenEventRisk(
-                        d2MP=dMerge,
-                        ego_vx=egoPose.vdy.vx_ms,
-                        ego_acc=self._p_u,
-                        dVis=dVis
-                    )
-                    total_risk += cost
-                    total_eventRate += proUn
+        for obj in l_obj['vehicle']:
+            col_risk, col_rate, col_ind = rfnc.collisionRisk(
+                egoPose=egoPose,
+                egoPoly=egoPoly,
+                objPose=obj.getPoseAt(timestamp_s),
+                objPoly=obj.getPoly(timestamp_s)
+                )
+            total_risk += col_risk
+            total_eventRate += col_rate
+        for obj in l_obj['staticObject']:
+            dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
+                pose=egoPose,
+                poly=obj._poly
+                )
+            if MP is not None:
+                proUn, cost = rfnc.unseenEventRisk(
+                    d2MP=dMerge,
+                    ego_vx=egoPose.vdy.vx_ms,
+                    ego_acc=self._p_u,
+                    dVis=dVis
+                )
+                total_risk += cost
+                total_eventRate += proUn
 
         self._p_eventRate.update({timestamp_s: total_eventRate})
         return total_risk
@@ -218,8 +213,6 @@ class EgoVehicle:
         for k in self._p_pose:
             dCost = self._computeCost(k, u_in)
             s = self._survivalRate(k)
-            if k % 2 == 0:
-                print("Time:", k, " Survival rate: ", s)
             cost += dCost * s
         cost = cost * s * dT
         return cost
@@ -242,19 +235,41 @@ class EgoVehicle:
                 )
         self._l_pose.update({nextTimestamp_s: nextPose})
         self._l_u.update({nextTimestamp_s: self._u})
-       
+
     def optimize(self):
-        # start = time.time()
         val = 0
         lowBound = max(self._u - 0.5, param._A_MIN)
         upBound = min(self._u + 0.5, param._A_MAX)
-        val = optimize.minimize_scalar(
-            lambda x: self._computeTotalCost(u_in=x, dT=param._dT),
-            bounds=(lowBound, upBound), method='bounded', options={"maxiter": 5}
+
+        # handle stop case
+        if self.getCurrentPose().vdy.vx_ms < 0.1:
+            val = optimize.minimize_scalar(
+                lambda x: self._computeTotalCost(u_in=x, dT=param._dT),
+                bounds=(0, param._A_MAX), method='bounded',
+                options={"maxiter": 5}
+                ).x
+        else:
+            val = optimize.minimize_scalar(
+                lambda x: self._computeTotalCost(u_in=x, dT=param._dT),
+                bounds=(self._u - 0.5, self._u + 0.5), method='bounded',
+                options={"maxiter": 5}
+                ).x
+
+        # check if critical event occur
+        total_eventRate = sum(
+            list((self._p_eventRate[k]) for k in self._p_eventRate))
+
+        if total_eventRate > 1:
+            val = optimize.minimize_scalar(
+                lambda x: self._computeTotalCost(u_in=x, dT=param._dT),
+                bounds=(-8, -5), method='bounded',
+                options={"maxiter": 5}
             ).x
+        if self.getCurrentTimestamp() % 2 == 0:
+            print(self._p_eventRate)
+
         self._p_u = val
         self._move()
-        # print(time.time() - start)
 
     # ------------------- Export function ---------------------
 
@@ -291,30 +306,21 @@ class EgoVehicle:
                                 timestamp_s=pose.timestamp_s,
                                 from_timestamp=pose.timestamp_s
                                 )
-                    for obj in l_obj:
-                        if type(obj).__name__ == 'StaticObject':
-                            objPoly = obj._poly
-                            dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
-                                pose=pose,
-                                poly=objPoly
-                                )
-                            if MP is not None:
-                                plt.scatter(randVertex[0], randVertex[1], color='r')
-                                plt.scatter(MP[0], MP[1])
-                                print("____OBJECT: ", obj._idx)
-                                print("Time:", timestamp_s)
-                                # proUn, cost = rfnc.unseenObjectEventRate(
-                                #     d2MP=dMerge,
-                                #     ego_vx=pose.vdy.vx_ms,
-                                #     ego_acc=self._l_u[timestamp_s],
-                                #     dVis=dVis
-                                # )
-                                rate, risk = rfnc.unseenEventRisk(
-                                    d2MP=dMerge,
-                                    ego_vx=pose.vdy.vx_ms,
-                                    ego_acc=self._l_u[timestamp_s],
-                                    dVis=dVis
-                                )
+                    for obj in l_obj['staticObject']:
+                        objPoly = obj._poly
+                        d2MP, MP, dVis, randVertex = pfnc.distanceToMergePoint(
+                            pose=pose,
+                            poly=objPoly
+                            )
+                        if MP is not None:
+                            plt.scatter(randVertex[0], randVertex[1], color='r')
+                            plt.scatter(MP[0], MP[1])
+                            rate, risk = rfnc.unseenEventRisk(
+                                d2MP=d2MP,
+                                ego_vx=pose.vdy.vx_ms,
+                                ego_acc=self._l_u[timestamp_s],
+                                dVis=dVis
+                            )
             elif timestamp_s < maxTimestamp_s + 5 * param._dT:
                 plt.scatter(pose.x_m, pose.y_m, s=1, color='m')
                 cov = pose.covLatLong
@@ -328,7 +334,7 @@ class EgoVehicle:
                     alpha=0.4
                     )
                 ax.add_patch(ellipse)
-    
+
     def plotDynamic(self):
         fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(14, 6))
         self._plotVelocity(ax=ax[0])
@@ -336,9 +342,9 @@ class EgoVehicle:
 
     def _plotVelocity(self, ax=plt):
         l_vdy = np.empty((0, 2))
-        for time, pose in self._l_pose.items():
+        for t, pose in self._l_pose.items():
             l_vdy = np.append(
-                l_vdy, np.array([[time, pose.vdy.vx_ms]]), axis=0)
+                l_vdy, np.array([[t, pose.vdy.vx_ms]]), axis=0)
 
         ax.plot(l_vdy[:, 0], l_vdy[:, 1], 'b-', label='velocity')
         ax.set_xlabel("Time [s]")
@@ -377,75 +383,82 @@ class EgoVehicle:
             col_rate = 0
             egoPose = self._l_pose[k]
             egoPoly = self.getPoly(k)
-            self._env.updateAt(x_m=egoPose.x_m,
-                               y_m=egoPose.y_m,
-                               timestamp_s=egoPose.timestamp_s)
-            for obj in self._env._l_updateObject:
-                if type(obj).__name__ == 'OtherVehicle':
-                    objPose = obj.getPoseAt(k)
-                    objPoly = obj.getPoly(k)
-                    col_risk1, col_rate1, col_ind1 = rfnc.collisionRisk(
-                        egoPose=egoPose,
-                        egoPoly=egoPoly,
-                        objPose=objPose,
-                        objPoly=objPoly
+            l_obj = self._env.updateAt(x_m=egoPose.x_m,
+                                       y_m=egoPose.y_m,
+                                       timestamp_s=egoPose.timestamp_s)
+            for obj in l_obj['vehicle']:
+                objPose = obj.getPoseAt(k)
+                objPoly = obj.getPoly(k)
+                col_risk1, col_rate1, col_ind1 = rfnc.collisionRisk(
+                    egoPose=egoPose,
+                    egoPoly=egoPoly,
+                    objPose=objPose,
+                    objPoly=objPoly
+                )
+                col_risk += col_risk1
+                col_rate += col_rate1
+            for obj in l_obj['staticObject']:
+                objPoly = obj._poly
+                # define unexpected risk here and add rate and risk
+                dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
+                    pose=egoPose,
+                    poly=objPoly
                     )
-                    col_risk += col_risk1
-                    col_rate += col_rate1
-                if type(obj).__name__ == 'StaticObject':
-                    objPoly = obj._poly
-                    # define unexpected risk here and add rate and risk
-                    dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
-                        pose=egoPose,
-                        poly=objPoly
-                        )
-                    if MP is not None:
-                        rate, risk = rfnc.unseenEventRisk(
-                            d2MP=dMerge,
-                            ego_vx=egoPose.vdy.vx_ms,
-                            ego_acc=self._p_u,
-                            dVis=dVis
-                        )
-                        print("TImestamp:", k)
-                        print("Rate:{:.2f}, Risk:{:.2f}".format(rate, risk))
-                        col_risk += risk
-                        col_rate += rate
+                if MP is not None:
+                    rate, risk = rfnc.unseenEventRisk(
+                        d2MP=dMerge,
+                        ego_vx=egoPose.vdy.vx_ms,
+                        ego_acc=self._p_u,
+                        dVis=dVis
+                    )
+                    col_risk += risk
+                    col_rate += rate
 
             l_cost = np.append(
                 l_cost, np.array([[k, col_risk, col_rate]]), axis=0)
         return l_cost
 
     def _unseenObjectCost(self):
-        l_cost = np.empty((0, 3))
+        nrObj = len(self._env._l_staticObject)
+        l_cost_list = {}
+
+        for i in range(0, nrObj):
+            l_cost = np.empty((0, 3))
+            l_cost_list.update({i: l_cost})
 
         for k in self._l_pose:
             egoPose = self._l_pose[k]
-            self._env.updateAt(x_m=egoPose.x_m,
-                               y_m=egoPose.y_m,
-                               timestamp_s=egoPose.timestamp_s)
+            l_obj = self._env.updateAt(x_m=egoPose.x_m,
+                                       y_m=egoPose.y_m,
+                                       timestamp_s=egoPose.timestamp_s)
 
-            for obj in self._env._l_updateObject:
-                if type(obj).__name__ == 'StaticObject':
-                    objPoly = obj._poly
-                    # define unexpected risk here and add rate and risk
-                    dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
-                        pose=egoPose,
-                        poly=objPoly
-                        )
-                    if MP is not None:
-                        rate, risk = rfnc.unseenEventRisk(
-                            d2MP=dMerge,
-                            ego_vx=egoPose.vdy.vx_ms,
-                            ego_acc=self._p_u,
-                            dVis=dVis
-                        )
-                l_cost = np.append(
-                    l_cost, np.array([[k, rate, risk]]), axis=0)
+            for obj in l_obj['staticObject']:
+                rate, risk = 0, 0
+                # define unexpected risk here and add rate and risk
+                dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
+                    pose=egoPose,
+                    poly=obj._poly
+                    )
+                if MP is not None:
+                    rate, risk = rfnc.unseenEventRisk(
+                        d2MP=dMerge,
+                        ego_vx=egoPose.vdy.vx_ms,
+                        ego_acc=self._p_u,
+                        dVis=dVis
+                    )
 
-        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(21, 6))
-        ax[0].plot(l_cost[:, 0], l_cost[:, 1], 'k-', label='probability of unseen object')
-        ax[1].plot(l_cost[:, 0], l_cost[:, 2], 'b-', label='unseen cost')
-        # ax[2].plot(l_cost[:, 0], l_cost[:, 3], 'r-', label='cost of unseen object')
+                l_cost_list[obj._idx-1] = np.append(
+                    l_cost_list[obj._idx-1], np.array([[k, rate, risk]]), axis=0)
+
+        fig, ax = plt.subplots(nrows=1, ncols=nrObj, figsize=(21, 6))
+
+        for (i, l_cost) in l_cost_list.items():
+            ax[0].plot(l_cost[:, 0], l_cost[:, 1],
+                       label='object {:}'.format(i+1))
+            ax[1].plot(l_cost[:, 0], l_cost[:, 2],
+                       label='object {:}'.format(i+1))
 
         for a in ax:
             a.legend()
+
+        return l_cost_list

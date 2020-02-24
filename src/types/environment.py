@@ -14,7 +14,6 @@ class Environment(object):
         self._l_road = []
         self._l_staticObject = []
         self._l_vehicle = []
-        self._l_updateObject = []
 
     def addRoadBoundary(self, roadBoundary):
         self._l_road.append(roadBoundary)
@@ -32,13 +31,15 @@ class Environment(object):
         """
         Get environment around a given position
         """
-        self._l_updateObject = []
+        l_vehicle = []
+        l_object = []
+        l_pedestrian = []
         # find static object
         currentPos = np.array([x_m, y_m])
         for sObj in self._l_staticObject:
             d2ego = np.linalg.norm(sObj._poly - currentPos, axis=1)
             if ((d2ego) < radius).any():
-                self._l_updateObject.append(sObj)
+                l_object.append(sObj)
 
         # find vehicle
         for veh in self._l_vehicle:
@@ -46,20 +47,30 @@ class Environment(object):
             if vehPose is not None:
                 vehPos = np.array([vehPose.x_m, vehPose.y_m])
                 if np.linalg.norm(vehPos - currentPos) < radius:
-                    self._l_updateObject.append(veh)
+                    l_vehicle.append(veh)
 
-    def update(self, x_m, y_m, timestamp_s, from_timestamp, radius=param._SCAN_RADIUS):
+        l_update = {'vehicle': l_vehicle,
+                    'staticObject': l_object,
+                    'pedestrian': l_pedestrian}
+
+        return l_update
+
+    def update(self, x_m, y_m, timestamp_s, from_timestamp,
+               radius=param._SCAN_RADIUS):
         """
         Get environment around a given position
         """
+        l_vehicle = []
+        l_object = []
+        l_pedestrian = []
+
         currentPos = np.array([x_m, y_m])
-        l_updateObject = []
 
         # find static object
         for sObj in self._l_staticObject:
             d2ego = np.linalg.norm(sObj._poly - currentPos, axis=1)
             if ((d2ego) < radius).any():
-                l_updateObject.append(sObj)
+                l_object.append(sObj)
 
         # find vehicle
         for veh in self._l_vehicle:
@@ -70,8 +81,13 @@ class Environment(object):
             if vehPose is not None:
                 vehPos = np.array([vehPose.x_m, vehPose.y_m])
                 if np.linalg.norm(vehPos - currentPos) < radius:
-                    l_updateObject.append(veh)
-        return l_updateObject
+                    l_vehicle.append(veh)
+
+        l_update = {'vehicle': l_vehicle,
+                    'staticObject': l_object,
+                    'pedestrian': l_pedestrian}
+
+        return l_update
 
     def plot(self, timestamp_s, plotHistory=False, ax=plt):
         """
@@ -165,28 +181,29 @@ class Environment(object):
             # pedestrian
             pedes = OtherVehicle(idx=3, length=1, width=1)
             startPose3 = Pose(
-                x_m=0, y_m=-7, yaw_rad=np.pi/2 - 0.5,
+                x_m=-3, y_m=-7, yaw_rad=np.pi/2,
                 covLatLong=np.array([[1, 0.0], [0.0, 0.5]]),
-                vdy=VehicleDynamic(2, 0), timestamp_s=4)
+                vdy=VehicleDynamic(4, 0), timestamp_s=6)
             pedes.start(startPose=startPose3, u_in=0)
-            pedes.predict(l_u_in={param._SIMULATION_TIME: 0})
+            pedes.predict(l_u_in={7: -1, 8: 0, 10: -2})
             pedes.update(param._SIMULATION_TIME)
             self.addVehicle(pedes)
             # static object
             obs1 = StaticObject(
                 idx=1,
-                poly=np.array([[-20, -10], [-20, -6], [-15, -4], [-5, -4], [-5, -15], [-15, -15]]))
+                poly=np.array([[-20, -10], [-20, -6], [-15, -4],
+                               [-5, -4], [-5, -15], [-15, -15]]))
             self.addStaticObject(obs1)
 
             obs2 = StaticObject(
                 idx=2,
-                poly=np.array([[5, 3], [10, 3], [10, 7], [5, 7]]))
-            # self.addStaticObject(obs2)
+                poly=np.array([[5, -10], [5, -3], [10, -3], [10, -10]]))
+            self.addStaticObject(obs2)
 
             obs3 = StaticObject(
                 idx=3,
-                poly=np.array([[5, -10], [5, -3], [10, -3], [10, -10]]))
-            self.addStaticObject(obs3)
+                poly=np.array([[5, 3], [10, 3], [10, 7], [5, 7]]))
+            # self.addStaticObject(obs3)
 
             # road boundary
             road1 = RoadBoundary(scenario=2)
