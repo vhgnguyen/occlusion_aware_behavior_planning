@@ -164,23 +164,26 @@ def unseenEventRisk(d2MP, ego_vx, ego_acc, dVis,
     # ego vehicle brake distance
     sBrake_max = abs(0.5 * ego_vx**2 / param._A_MAX_BRAKE)
 
+    col_indicator = 0
     if d2MP <= sBrake_max + dBrakeThresh:
         t_obj2MP = dVis / obj_vx
         t_ego2Brake = - ego_vx / param._A_MAX_BRAKE
         v_egoAtMP = max(np.sqrt(ego_vx**2 + 2*param._A_MAX_BRAKE*d2MP), 0)
 
+        col_indicator = 1 - np.exp(-5*min(t_ego2Brake / t_obj2MP, 1))
         col_indicator = min(t_ego2Brake / t_obj2MP, 1)
         col_event = unseenEventRate(col_indicator)
-        col_severity = 0.01 * abs(v_egoAtMP)**2
+
+        col_severity = 0.05 * abs(v_egoAtMP)**2
         col_risk = col_event * col_severity
 
-        return col_event, col_risk
+        return col_indicator, col_event, col_risk
     else:
         # ideal velocity for comfort stopping at merge point
-        v_ref = min(np.sqrt(2 * d2MP * abs(ref_deAcc)), ego_vx)
-        col_risk = 0.01 * abs(ego_vx - v_ref)**2 * sBrake_max / d2MP
+        v_ref = min(np.sqrt(2*(d2MP - dBrakeThresh)*abs(ref_deAcc)), param._C_V_CRUISE)
+        col_risk = 0.05 * abs(ego_vx - v_ref)**2 * sBrake_max / d2MP
 
-        return 0, col_risk
+        return col_indicator, 0, col_risk
 
 
 def unseenObjectEventRate(d2MP, ego_vx, ego_acc, dVis, brakeD=0.3):

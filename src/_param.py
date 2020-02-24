@@ -24,10 +24,8 @@ _A_MIN = -2
 _A_MAX_BRAKE = -5.0
 
 # velocity
-_ALPHA_V_LONG = 0.2
+_ALPHA_V_LONG = 0.1
 _ALPHA_V_LAT = 0.0
-_STD_V_LAT = 0.3
-_STD_V_LONG = 1.
 
 # ------------------------------
 # Risk model
@@ -48,7 +46,7 @@ _SEVERITY_MIN_WEIGHT_CONST = 10.
 
 # collision event rate
 _COLLISION_RATE_MAX = 10.
-_COLLISION_RATE_BETA = 5.
+_COLLISION_RATE_BETA = 2.
 # escape rate
 _ESCAPE_RATE = 3.
 
@@ -60,4 +58,4 @@ _C_JERK = 0.0005
 
 # unseen event rate
 _UNSEENEVENT_RATE_MAX = 1
-_UNSEENEVENT_RATE_BETA = 0.1
+_UNSEENEVENT_RATE_BETA = 2

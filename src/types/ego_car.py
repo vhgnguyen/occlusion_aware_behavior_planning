@@ -161,14 +161,14 @@ class EgoVehicle:
                 poly=obj._poly
                 )
             if MP is not None:
-                proUn, cost = rfnc.unseenEventRisk(
+                indicator, rate, risk = rfnc.unseenEventRisk(
                     d2MP=dMerge,
                     ego_vx=egoPose.vdy.vx_ms,
                     ego_acc=self._p_u,
                     dVis=dVis
                 )
-                total_risk += cost
-                total_eventRate += proUn
+                total_risk += risk
+                total_eventRate += rate
 
         self._p_eventRate.update({timestamp_s: total_eventRate})
         return total_risk
@@ -262,11 +262,9 @@ class EgoVehicle:
         if total_eventRate > 1:
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(u_in=x, dT=param._dT),
-                bounds=(-8, -5), method='bounded',
+                bounds=(-8, param._A_MIN), method='bounded',
                 options={"maxiter": 5}
             ).x
-        if self.getCurrentTimestamp() % 2 == 0:
-            print(self._p_eventRate)
 
         self._p_u = val
         self._move()
@@ -315,13 +313,13 @@ class EgoVehicle:
                         if MP is not None:
                             plt.scatter(randVertex[0], randVertex[1], color='r')
                             plt.scatter(MP[0], MP[1])
-                            rate, risk = rfnc.unseenEventRisk(
+                            indicator, rate, risk = rfnc.unseenEventRisk(
                                 d2MP=d2MP,
                                 ego_vx=pose.vdy.vx_ms,
                                 ego_acc=self._l_u[timestamp_s],
                                 dVis=dVis
                             )
-            elif timestamp_s < maxTimestamp_s + 5 * param._dT:
+            elif timestamp_s < maxTimestamp_s + param._PREDICT_TIME:
                 plt.scatter(pose.x_m, pose.y_m, s=1, color='m')
                 cov = pose.covLatLong
                 ellipse = Ellipse(
@@ -405,7 +403,7 @@ class EgoVehicle:
                     poly=objPoly
                     )
                 if MP is not None:
-                    rate, risk = rfnc.unseenEventRisk(
+                    indicator, rate, risk = rfnc.unseenEventRisk(
                         d2MP=dMerge,
                         ego_vx=egoPose.vdy.vx_ms,
                         ego_acc=self._p_u,
@@ -423,7 +421,7 @@ class EgoVehicle:
         l_cost_list = {}
 
         for i in range(0, nrObj):
-            l_cost = np.empty((0, 3))
+            l_cost = np.empty((0, 4))
             l_cost_list.update({i: l_cost})
 
         for k in self._l_pose:
@@ -433,14 +431,14 @@ class EgoVehicle:
                                        timestamp_s=egoPose.timestamp_s)
 
             for obj in l_obj['staticObject']:
-                rate, risk = 0, 0
+                indicator, rate, risk = 0, 0, 0
                 # define unexpected risk here and add rate and risk
                 dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
                     pose=egoPose,
                     poly=obj._poly
                     )
                 if MP is not None:
-                    rate, risk = rfnc.unseenEventRisk(
+                    indicator, rate, risk = rfnc.unseenEventRisk(
                         d2MP=dMerge,
                         ego_vx=egoPose.vdy.vx_ms,
                         ego_acc=self._p_u,
@@ -448,15 +446,32 @@ class EgoVehicle:
                     )
 
                 l_cost_list[obj._idx-1] = np.append(
-                    l_cost_list[obj._idx-1], np.array([[k, rate, risk]]), axis=0)
+                    l_cost_list[obj._idx-1], np.array([[k, indicator, rate, risk]]), axis=0)
 
-        fig, ax = plt.subplots(nrows=1, ncols=nrObj, figsize=(21, 6))
+        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(21, 6))
 
         for (i, l_cost) in l_cost_list.items():
+
             ax[0].plot(l_cost[:, 0], l_cost[:, 1],
                        label='object {:}'.format(i+1))
+
             ax[1].plot(l_cost[:, 0], l_cost[:, 2],
                        label='object {:}'.format(i+1))
+
+            ax[2].plot(l_cost[:, 0], l_cost[:, 3],
+                       label='object {:}'.format(i+1))
+
+        ax[0].set_title("Probability of collision with unseen pedestrian")
+        ax[0].set_xlabel("Time [s]")
+        ax[0].set_ylabel("Probability")
+
+        ax[1].set_title("Event rate of collision with unseen pedestrian")
+        ax[1].set_xlabel("Time [s]")
+        ax[1].set_ylabel("Event rate [event/s]")
+
+        ax[2].set_title("Risk of collision with unseen pedestrian")
+        ax[2].set_xlabel("Time [s]")
+        ax[2].set_ylabel("Risk")
 
         for a in ax:
             a.legend()
