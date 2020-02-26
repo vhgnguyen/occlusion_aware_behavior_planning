@@ -258,8 +258,9 @@ class EgoVehicle:
         # check if critical event occur
         total_eventRate = sum(
             list((self._p_eventRate[k]) for k in self._p_eventRate))
-
-        if total_eventRate > 1:
+        # max_eventRate = max(self._p_eventRate.values())
+        # if max_eventRate > 1:
+        if total_eventRate > 2:
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(u_in=x, dT=param._dT),
                 bounds=(-8, param._A_MIN), method='bounded',
@@ -406,7 +407,7 @@ class EgoVehicle:
                     indicator, rate, risk = rfnc.unseenEventRisk(
                         d2MP=dMerge,
                         ego_vx=egoPose.vdy.vx_ms,
-                        ego_acc=self._p_u,
+                        ego_acc=self._l_u[k],
                         dVis=dVis
                     )
                     col_risk += risk
@@ -441,7 +442,7 @@ class EgoVehicle:
                     indicator, rate, risk = rfnc.unseenEventRisk(
                         d2MP=dMerge,
                         ego_vx=egoPose.vdy.vx_ms,
-                        ego_acc=self._p_u,
+                        ego_acc=self._l_u[k],
                         dVis=dVis
                     )
 
@@ -449,6 +450,20 @@ class EgoVehicle:
                     l_cost_list[obj._idx-1], np.array([[k, indicator, rate, risk]]), axis=0)
 
         fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(21, 6))
+
+        ax[0].set_title("Probability of collision with unseen pedestrian")
+        ax[0].set_xlabel("Time [s]")
+        ax[0].set_ylabel("Probability")
+        ax[0].set_ylim(0, 1)
+
+        ax[1].set_title("Event rate of collision with unseen pedestrian")
+        ax[1].set_xlabel("Time [s]")
+        ax[1].set_ylabel("Event rate [event/s]")
+        ax[1].set_ylim(0, 1)
+
+        ax[2].set_title("Risk of collision with unseen pedestrian")
+        ax[2].set_xlabel("Time [s]")
+        ax[2].set_ylabel("Risk")
 
         for (i, l_cost) in l_cost_list.items():
 
@@ -461,19 +476,335 @@ class EgoVehicle:
             ax[2].plot(l_cost[:, 0], l_cost[:, 3],
                        label='object {:}'.format(i+1))
 
+        for a in ax:
+            a.legend()
+
+        return l_cost_list
+
+    def _unseenObjectCost_unseenRate(self):
+        nrObj = len(self._env._l_staticObject)
+        l_cost_list = {}
+        unseenRate = [0.1, 0.5, 1, 2]
+        for i in unseenRate:
+            l_cost = np.empty((0, 5))
+            l_cost_list.update({i: l_cost})
+
+        for k in self._l_pose:
+            egoPose = self._l_pose[k]
+            l_obj = self._env.updateAt(x_m=egoPose.x_m,
+                                       y_m=egoPose.y_m,
+                                       timestamp_s=egoPose.timestamp_s)
+
+            for obj in l_obj['staticObject']:
+                for i in unseenRate:
+                    indicator, rate, risk = 0, 0, 0
+                    # define unexpected risk here and add rate and risk
+                    dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
+                        pose=egoPose,
+                        poly=obj._poly
+                        )
+                    if MP is not None:
+                        indicator, rate, risk = rfnc.unseenEventRisk(
+                            d2MP=dMerge,
+                            ego_vx=egoPose.vdy.vx_ms,
+                            ego_acc=self._l_u[k],
+                            dVis=dVis,
+                            objectAppearRate=i
+                        )
+                    else:
+                        dMerge = 0
+                    l_cost_list[i] = np.append(
+                        l_cost_list[i], np.array([[k, dMerge, indicator, rate, risk]]), axis=0)                  
+
+        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(21, 6))
+
+        ax[0].set_title("Probability of collision with unseen pedestrian")
+        ax[0].set_xlabel("Distane to merge point [m]")
+        ax[0].set_ylabel("Probability")
+        ax[0].set_ylim(0, 1)
+
+        ax[1].set_title("Event rate of collision with unseen pedestrian")
+        ax[1].set_xlabel("Distane to merge point [m]")
+        ax[1].set_ylabel("Event rate [event/s]")
+        ax[1].set_ylim(0, 1)
+
+        ax[2].set_title("Risk of collision with unseen pedestrian")
+        ax[2].set_xlabel("Distane to merge point [m]")
+        ax[2].set_ylabel("Risk")
+
+        for (i, l_cost) in l_cost_list.items():
+
+            ax[0].plot(l_cost[:, 1], l_cost[:, 2],
+                       label='unseen rate = {:}'.format(i))
+
+            ax[1].plot(l_cost[:, 1], l_cost[:, 3],
+                       label='unseen rate = {:}'.format(i))
+
+            ax[2].plot(l_cost[:, 1], l_cost[:, 4],
+                       label='unseen rate = {:}'.format(i))
+
+        for a in ax:
+            a.legend()
+
+        ax[0].set_xlim(25, -2)
+        ax[1].set_xlim(25, -2)
+        ax[2].set_xlim(25, -2)
+
+        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(21, 6))
+
         ax[0].set_title("Probability of collision with unseen pedestrian")
         ax[0].set_xlabel("Time [s]")
         ax[0].set_ylabel("Probability")
+        ax[0].set_ylim(0, 1)
 
         ax[1].set_title("Event rate of collision with unseen pedestrian")
         ax[1].set_xlabel("Time [s]")
         ax[1].set_ylabel("Event rate [event/s]")
+        ax[1].set_ylim(0, 1)
 
         ax[2].set_title("Risk of collision with unseen pedestrian")
         ax[2].set_xlabel("Time [s]")
         ax[2].set_ylabel("Risk")
 
+        for (i, l_cost) in l_cost_list.items():
+
+            ax[0].plot(l_cost[:, 0], l_cost[:, 2],
+                       label='unseen rate = {:}'.format(i))
+
+            ax[1].plot(l_cost[:, 0], l_cost[:, 3],
+                       label='unseen rate = {:}'.format(i))
+
+            ax[2].plot(l_cost[:, 0], l_cost[:, 4],
+                       label='unseen rate = {:}'.format(i))
+
         for a in ax:
             a.legend()
 
         return l_cost_list
+
+    def _unseenObjectCost_velocity(self):
+        l_cost_list = {}
+        velocity = [4, 6, 8, 10]
+        for i in velocity:
+            l_cost = np.empty((0, 6))
+            l_cost_list.update({i: l_cost})
+
+        for k in self._l_pose:
+            egoPose = self._l_pose[k]
+            l_obj = self._env.updateAt(x_m=egoPose.x_m,
+                                       y_m=egoPose.y_m,
+                                       timestamp_s=egoPose.timestamp_s)
+
+            for obj in l_obj['staticObject']:
+                for i in velocity:
+                    indicator, rate, risk = 0, 0, 0
+                    # define unexpected risk here and add rate and risk
+                    dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
+                        pose=egoPose,
+                        poly=obj._poly
+                        )
+                    if MP is not None:
+                        indicator, rate, risk = rfnc.unseenEventRisk(
+                            d2MP=dMerge,
+                            ego_vx=i,
+                            ego_acc=self._l_u[k],
+                            dVis=dVis
+                        )
+                    else:
+                        dMerge, dVis = 0, 0
+                    l_cost_list[i] = np.append(
+                        l_cost_list[i], np.array([[k, dMerge, dVis, indicator, rate, risk]]), axis=0)                  
+
+        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(21, 6))
+
+        ax[0].set_title("Probability of collision with unseen pedestrian")
+        ax[0].set_xlabel("Distane to merge point [m]")
+        ax[0].set_ylabel("Probability")
+        ax[0].set_ylim(0, 1)
+
+        ax[1].set_title("Event rate of collision with unseen pedestrian")
+        ax[1].set_xlabel("Distane to merge point [m]")
+        ax[1].set_ylabel("Event rate [event/s]")
+        ax[1].set_ylim(0, 1)
+
+        ax[2].set_title("Risk of collision with unseen pedestrian")
+        ax[2].set_xlabel("Distane to merge point [m]")
+        ax[2].set_ylabel("Risk")
+
+        for (i, l_cost) in l_cost_list.items():
+
+            ax[0].plot(l_cost[:, 1], l_cost[:, 3],
+                       label='$v_x$ = {:} [m/s]'.format(i))
+
+            ax[1].plot(l_cost[:, 1], l_cost[:, 4],
+                       label='$v_x$ = {:} [m/s]'.format(i))
+
+            ax[2].plot(l_cost[:, 1], l_cost[:, 5],
+                       label='$v_x$ = {:} [m/s]'.format(i))
+
+        for a in ax:
+            a.legend()
+
+        ax[0].set_xlim(25, -2)
+        ax[1].set_xlim(25, -2)
+        ax[2].set_xlim(25, -2)
+
+        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(21, 6))
+
+        ax[0].set_title("Probability of collision with unseen pedestrian")
+        ax[0].set_xlabel("Time [s]")
+        ax[0].set_ylabel("Probability")
+        ax[0].set_ylim(0, 1)
+
+        ax[1].set_title("Event rate of collision with unseen pedestrian")
+        ax[1].set_xlabel("Time [s]")
+        ax[1].set_ylabel("Event rate [event/s]")
+        ax[1].set_ylim(0, 1)
+
+        ax[2].set_title("Risk of collision with unseen pedestrian")
+        ax[2].set_xlabel("Time [s]")
+        ax[2].set_ylabel("Risk")
+
+        for (i, l_cost) in l_cost_list.items():
+
+            ax[0].plot(l_cost[:, 0], l_cost[:, 3],
+                       label='$v_x$ = {:} [m/s]'.format(i))
+
+            ax[1].plot(l_cost[:, 0], l_cost[:, 4],
+                       label='$v_x$ = {:} [m/s]'.format(i))
+
+            ax[2].plot(l_cost[:, 0], l_cost[:, 5],
+                       label='$v_x$ = {:} [m/s]'.format(i))
+
+        for a in ax:
+            a.legend()
+        
+        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(21, 6))
+
+        ax[0].set_title("Probability of collision with unseen pedestrian")
+        ax[0].set_xlabel("Minimal visible range [m]")
+        ax[0].set_ylabel("Probability")
+        ax[0].set_ylim(0, 1)
+
+        ax[1].set_title("Event rate of collision with unseen pedestrian")
+        ax[1].set_xlabel("Minimal visible range [m]")
+        ax[1].set_ylabel("Event rate [event/s]")
+        ax[1].set_ylim(0, 1)
+
+        ax[2].set_title("Risk of collision with unseen pedestrian")
+        ax[2].set_xlabel("Minimal visible range [m]")
+        ax[2].set_ylabel("Risk")
+
+        for (i, l_cost) in l_cost_list.items():
+
+            ax[0].plot(l_cost[:, 2], l_cost[:, 3],
+                       label='velocity = {:}'.format(i))
+
+            ax[1].plot(l_cost[:, 2], l_cost[:, 4],
+                       label='velocity = {:}'.format(i))
+
+            ax[2].plot(l_cost[:, 2], l_cost[:, 5],
+                       label='velocity = {:}'.format(i))
+
+        for a in ax:
+            a.legend()
+
+        return l_cost_list
+
+    def _unseenObjectCost_dVis(self):
+        l_cost_list = {}
+        unseenRate = [0.1, 0.5, 1, 2]
+        for i in unseenRate:
+            l_cost = np.empty((0, 5))
+            l_cost_list.update({i: l_cost})
+
+        for k in self._l_pose:
+            egoPose = self._l_pose[k]
+            l_obj = self._env.updateAt(x_m=egoPose.x_m,
+                                       y_m=egoPose.y_m,
+                                       timestamp_s=egoPose.timestamp_s)
+
+            for obj in l_obj['staticObject']:
+                for i in unseenRate:
+                    indicator, rate, risk = 0, 0, 0
+                    # define unexpected risk here and add rate and risk
+                    dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
+                        pose=egoPose,
+                        poly=obj._poly
+                        )
+                    if MP is not None:
+                        indicator, rate, risk = rfnc.unseenEventRisk(
+                            d2MP=dMerge,
+                            ego_vx=egoPose.vdy.vx_ms,
+                            ego_acc=self._l_u[k],
+                            dVis=dVis,
+                            objectAppearRate=i
+                        )
+                    l_cost_list[i] = np.append(
+                        l_cost_list[i], np.array([[k, dVis, indicator, rate, risk]]), axis=0)                  
+
+        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(21, 6))
+
+        ax[0].set_title("Probability of collision with unseen pedestrian")
+        ax[0].set_xlabel("Minimal visible range [m]")
+        ax[0].set_ylabel("Probability")
+        ax[0].set_ylim(0, 1)
+
+        ax[1].set_title("Event rate of collision with unseen pedestrian")
+        ax[1].set_xlabel("Minimal visible range [m]")
+        ax[1].set_ylabel("Event rate [event/s]")
+        ax[1].set_ylim(0, 1)
+
+        ax[2].set_title("Risk of collision with unseen pedestrian")
+        ax[2].set_xlabel("Minimal visible range [m]")
+        ax[2].set_ylabel("Risk")
+
+        for (i, l_cost) in l_cost_list.items():
+
+            ax[0].plot(l_cost[:, 1], l_cost[:, 2],
+                       label='unseen rate = {:}'.format(i))
+
+            ax[1].plot(l_cost[:, 1], l_cost[:, 3],
+                       label='unseen rate = {:}'.format(i))
+
+            ax[2].plot(l_cost[:, 1], l_cost[:, 4],
+                       label='unseen rate = {:}'.format(i))
+
+        for a in ax:
+            a.legend()
+
+        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(21, 6))
+
+        ax[0].set_title("Probability of collision with unseen pedestrian")
+        ax[0].set_xlabel("Time [s]")
+        ax[0].set_ylabel("Probability")
+        ax[0].set_ylim(0, 1)
+
+        ax[1].set_title("Event rate of collision with unseen pedestrian")
+        ax[1].set_xlabel("Time [s]")
+        ax[1].set_ylabel("Event rate [event/s]")
+        ax[1].set_ylim(0, 1)
+
+        ax[2].set_title("Risk of collision with unseen pedestrian")
+        ax[2].set_xlabel("Time [s]")
+        ax[2].set_ylabel("Risk")
+
+        for (i, l_cost) in l_cost_list.items():
+
+            ax[0].plot(l_cost[:, 0], l_cost[:, 2],
+                       label='unseen rate = {:}'.format(i))
+
+            ax[1].plot(l_cost[:, 0], l_cost[:, 3],
+                       label='unseen rate = {:}'.format(i))
+
+            ax[2].plot(l_cost[:, 0], l_cost[:, 4],
+                       label='unseen rate = {:}'.format(i))
+
+        for a in ax:
+            a.legend()
+
+        return l_cost_list
+
+
+    def _getAllPassedCost(self):
+        return

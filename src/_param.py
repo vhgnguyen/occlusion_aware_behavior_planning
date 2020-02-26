@@ -21,7 +21,7 @@ _CAR_WIDTH = 2
 # acceleration
 _A_MAX = 2
 _A_MIN = -2
-_A_MAX_BRAKE = -5.0
+_A_MAX_BRAKE = -6.0
 
 # velocity
 _ALPHA_V_LONG = 0.1
@@ -48,14 +48,14 @@ _SEVERITY_MIN_WEIGHT_CONST = 10.
 _COLLISION_RATE_MAX = 10.
 _COLLISION_RATE_BETA = 2.
 # escape rate
-_ESCAPE_RATE = 3.
+_ESCAPE_RATE = 1.
 
 # utility weight
 _C_CRUISE = 0.001
 _C_V_CRUISE = 8
 _C_COMFORT = 0.001
-_C_JERK = 0.0005
+_C_JERK = 0.005
 
 # unseen event rate
 _UNSEENEVENT_RATE_MAX = 1
-_UNSEENEVENT_RATE_BETA = 2
+_UNSEENEVENT_RATE_BETA = 0.1

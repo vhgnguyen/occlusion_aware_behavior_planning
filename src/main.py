@@ -24,11 +24,10 @@ env.setupScenario(scenario=SCENARIO_NR)
 
 # -------- EGO -----------
 vehicle1 = EgoVehicle(idx=1, env=env)
-init_VDY1 = VehicleDynamic(10, 0.0)
 startPose1 = Pose(
-    x_m=-35, y_m=-2, yaw_rad=0,
+    x_m=-35, y_m=0, yaw_rad=0,
     covLatLong=np.array([[0.3, 0.0], [0.0, 0.1]]),
-    vdy=VehicleDynamic(8, 0),
+    vdy=VehicleDynamic(6, 0),
     timestamp_s=0)
 vehicle1.start(startPose=startPose1, u_in=0)
 
@@ -40,7 +39,7 @@ while vehicle1.getCurrentTimestamp() < param._SIMULATION_TIME:
     print(time.time() - start)
 # %%
 test = True
-plotTimes = [2, 4, 5, 6, 8, 10, 15]
+plotTimes = [2, 4, 4.6, 5, 6, 8, 10, 15]
 if test:
     for plotTime in plotTimes:
         fig1 = plt.figure()
@@ -57,19 +56,10 @@ if test:
 # %%
 vehicle1.plotDynamic()
 vehicle1.plotPassedCost()
-l_cost = vehicle1._unseenObjectCost()
+_ = vehicle1._unseenObjectCost()
+_ = vehicle1._unseenObjectCost_unseenRate()
+_ = vehicle1._unseenObjectCost_velocity()
+_ = vehicle1._unseenObjectCost_dVis()
 
 # %%
 
-def indicator(ttb_ttc_rate, weight):
-
-    return 1 - np.exp(-weight * ttb_ttc_rate)
-
-
-ttb_ttc = np.linspace(0, 1, 100)
-prob = indicator(ttb_ttc, 5)
-
-fig = plt.figure()
-plt.scatter(ttb_ttc[:], prob[:])
-
-# %%

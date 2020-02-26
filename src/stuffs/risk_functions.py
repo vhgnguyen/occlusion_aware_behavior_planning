@@ -160,9 +160,12 @@ def unseenEventRate(unseenEventIndicator,
 
 def unseenEventRisk(d2MP, ego_vx, ego_acc, dVis,
                     obj_vx=param._V_MAX_OBJECT, dBrakeThresh=0.3,
-                    ref_deAcc=-0.5):
+                    ref_deAcc=-0.5,
+                    objectAppearRate=0.1):
     # ego vehicle brake distance
     sBrake_max = abs(0.5 * ego_vx**2 / param._A_MAX_BRAKE)
+    t_ego2MP = min(abs(np.roots([0.5*ego_acc, ego_vx, -d2MP])))
+    pro_unseen = 1 - np.exp(- objectAppearRate * t_ego2MP)
 
     col_indicator = 0
     if d2MP <= sBrake_max + dBrakeThresh:
@@ -170,8 +173,7 @@ def unseenEventRisk(d2MP, ego_vx, ego_acc, dVis,
         t_ego2Brake = - ego_vx / param._A_MAX_BRAKE
         v_egoAtMP = max(np.sqrt(ego_vx**2 + 2*param._A_MAX_BRAKE*d2MP), 0)
 
-        col_indicator = 1 - np.exp(-5*min(t_ego2Brake / t_obj2MP, 1))
-        col_indicator = min(t_ego2Brake / t_obj2MP, 1)
+        col_indicator = min(t_ego2Brake / t_obj2MP, 1) * pro_unseen
         col_event = unseenEventRate(col_indicator)
 
         col_severity = 0.05 * abs(v_egoAtMP)**2
@@ -181,56 +183,6 @@ def unseenEventRisk(d2MP, ego_vx, ego_acc, dVis,
     else:
         # ideal velocity for comfort stopping at merge point
         v_ref = min(np.sqrt(2*(d2MP - dBrakeThresh)*abs(ref_deAcc)), param._C_V_CRUISE)
-        col_risk = 0.05 * abs(ego_vx - v_ref)**2 * sBrake_max / d2MP
+        col_risk = 0.01 * abs(ego_vx - v_ref)**2 * pro_unseen
 
         return col_indicator, 0, col_risk
-
-
-def unseenObjectEventRate(d2MP, ego_vx, ego_acc, dVis, brakeD=0.3):
-
-    # object 
-    t_obj2MP = dVis / param._V_MAX_OBJECT
-    sBrake_obj_max = abs(0.5 * param._V_MAX_OBJECT / param._A_MAX_BRAKE) - 1 # offset
-
-    # ego vehicle
-    t_ego2MP = min(abs(np.roots([0.5*ego_acc, ego_vx, -d2MP])))
-    s_obj2MP = t_ego2MP * param._V_MAX_OBJECT #  assume object travel
-    sBrake_max = abs(0.5 * ego_vx**2 / param._A_MAX_BRAKE) + brakeD # safe distance for brake
-
-    v_ego_max = np.sqrt(max(d2MP - sBrake_max, 0) * abs(param._A_MAX_BRAKE))
-    v_ego_max = min(v_ego_max, 6)
-    # print("T_MP:{:.2f}, Vmax:{:.2f}".format(t_ego2MP, v_ego_max))
-    # print("T_OBJ_MP", t_obj2MP)
-    # probability of unseen object move close to vehicle at MP
-    _UNSEEN_WEIGHT = 0.2
-    if dVis > t_ego2MP*param._V_MAX_OBJECT + sBrake_obj_max:
-        probUnseen = 0
-    else:
-        probUnseen = np.exp(-_UNSEEN_WEIGHT * abs(dVis - d2MP))
-        # TODO: for this case acc should be non increased
-
-    # probability of collision if object appear
-
-    # severity of collision
-
-    unseenSeverity = 0.01 * abs(2 - ego_vx)
-
-    unseenRisk = probUnseen * unseenSeverity
-
-    return probUnseen, unseenRisk
-
-
-def testUnseen(d2MP, ego_vx, ego_acc, dVis, brakeD=2):
-
-    _MAX_UNSEEN_OBJECT = 2
-    _OBJECT_APPEAR_WEIGHT = 5
-
-    time2MergePoint = min(abs(np.roots([0.5*ego_acc, ego_vx, -d2MP])))
-    probUnseen = 1 - np.exp(-_MAX_UNSEEN_OBJECT * time2MergePoint)
-
-    sBrake_max = abs(0.5 * ego_vx**2 / param._A_MAX_BRAKE) + brakeD
-
-    tObjectMP = dVis / param._V_MAX_OBJECT
-
-    unseenCost = np.exp(-0.5 * time2MergePoint/tObjectMP) * 0.05
-    return probUnseen, unseenCost
