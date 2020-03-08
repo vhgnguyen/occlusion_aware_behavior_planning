@@ -16,6 +16,15 @@ class Environment(object):
         self._l_vehicle = []
         self._l_pedestrian = []
 
+    def countPedestrian(self):
+        return len(self._l_pedestrian)
+
+    def countVehicle(self):
+        return len(self._l_vehicle)
+
+    def countStaticObject(self):
+        return len(self._l_staticObject)
+
     def addRoadBoundary(self, roadBoundary):
         self._l_road.append(roadBoundary)
 
@@ -112,8 +121,56 @@ class Environment(object):
         else:
             for veh in self._l_vehicle:
                 veh.plot(maxTimestamp_s=timestamp_s, ax=ax)
-
+    
     def setupScenario(self, scenario):
+        if scenario == 1:
+            # static object
+            obs1 = StaticObject(
+                idx=1,
+                poly=np.array([[-10, -5], [-5, -5], [-5, -15], [-10, -15]]))
+            self.addStaticObject(obs1)
+
+        elif scenario == 2:
+            # static object
+            obs1 = StaticObject(
+                idx=1,
+                poly=np.array([[-20, -10], [-20, -6], [-15, -4],
+                               [-5, -4], [-5, -15], [-15, -15]]))
+            self.addStaticObject(obs1)
+
+            obs2 = StaticObject(
+                idx=2,
+                poly=np.array([[0, 4], [10, 7], [10, 10], [0, 10]]))
+            self.addStaticObject(obs2)
+
+            obs3 = StaticObject(
+                idx=3,
+                poly=np.array([[5, -10], [5, -3], [10, -3], [8, -10]]))
+            self.addStaticObject(obs3)
+
+        elif scenario == 3:
+            # static object
+            obs1 = StaticObject(
+                idx=1,
+                poly=np.array([[-20, -10], [-20, -8], [-15, -3],
+                               [-5, -3], [-5, -15], [-15, -15]]))
+            self.addStaticObject(obs1)
+
+            obs2 = StaticObject(
+                idx=2,
+                poly=np.array([[0, -10], [0, -4], [10, -4], [8, -10]]))
+            self.addStaticObject(obs2)
+
+            obs3 = StaticObject(
+                idx=3,
+                poly=np.array([[5, 3], [10, 3], [10, 7], [5, 7]]))
+            # self.addStaticObject(obs3)
+
+        # road boundary
+        road = RoadBoundary(scenario=scenario)
+        self.addRoadBoundary(road)
+
+    def setupScenario1(self, scenario):
 
         if scenario == 1:
             # first vehicle
@@ -249,3 +306,4 @@ class Environment(object):
             # road boundary
             road1 = RoadBoundary(scenario=2)
             self.addRoadBoundary(road1)
+        

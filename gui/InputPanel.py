@@ -23,6 +23,7 @@ class InputWidget(QWidget):
 
         """ Parameter """
         self.addTimeBox()
+        self.addParamBox()
         
         self.mainLayout.addStretch()
         self.setLayout(self.mainLayout)
@@ -40,6 +41,7 @@ class InputWidget(QWidget):
         self.scenarioButton2.setMaximumWidth(50)
         self.scenarioButton3 = QRadioButton("3")
         self.scenarioButton3.setMaximumWidth(50)
+
         self.scenarioButtonGroup.addButton(self.scenarioButton1)
         self.scenarioButtonGroup.addButton(self.scenarioButton2)
         self.scenarioButtonGroup.addButton(self.scenarioButton3)
@@ -75,14 +77,14 @@ class InputWidget(QWidget):
         self.carGrid.setColumnMinimumWidth(0, 200)
 
         self.carGrid.addWidget(QLabel("Length, width [m]"), 0, 0)
-        self.lengthValue = QLineEdit()
-        self.lengthValue.setMaximumWidth(100)
-        self.lengthValue.setText(str(3.5))
-        self.widthValue = QLineEdit()
-        self.widthValue.setText(str(2.0))
-        self.widthValue.setMaximumWidth(100)
-        self.carGrid.addWidget(self.lengthValue, 0, 1)
-        self.carGrid.addWidget(self.widthValue, 0, 2)
+        self.carLengthValue = QLineEdit()
+        self.carLengthValue.setMaximumWidth(100)
+        self.carLengthValue.setText(str(3.5))
+        self.carWidthValue = QLineEdit()
+        self.carWidthValue.setText(str(2.0))
+        self.carWidthValue.setMaximumWidth(100)
+        self.carGrid.addWidget(self.carLengthValue, 0, 1)
+        self.carGrid.addWidget(self.carWidthValue, 0, 2)
 
         self.carGrid.addWidget(QLabel("From (x, y) [m]"), 1, 0)
         self.carGrid.addWidget(QLabel("Heading (\u03B8) [degree]"), 2, 0)
@@ -113,37 +115,33 @@ class InputWidget(QWidget):
         self.carValue_longVel.setText(str(10.0))
         self.carGrid.addWidget(self.carValue_longVel, 4, 1)
 
-        self.carGrid.addWidget(QLabel("Start timestamp [s]"), 5, 0)
+        self.carGrid.addWidget(QLabel("Longtitude acceleration [m/s<sup>2</sup>]"), 5, 0)
+        self.carValue_longAcc = QLineEdit()
+        self.carValue_longAcc.setMaximumWidth(100)
+        self.carValue_longAcc.setText(str(0.0))
+        self.carGrid.addWidget(self.carValue_longAcc, 5, 1)
+        
+        self.carGrid.addWidget(QLabel("Start timestamp [s]"), 6, 0)
         self.carValue_time = QLineEdit()
         self.carValue_time.setMaximumWidth(100)
         self.carValue_time.setText(str(0.0))
-        self.carGrid.addWidget(self.carValue_time, 5, 1)
+        self.carGrid.addWidget(self.carValue_time, 6, 1)
 
-        self.carGrid.addWidget(QLabel("Acceleration (min, max) [m/s<sup>2</sup>]"), 6, 0)
+        self.carGrid.addWidget(QLabel("Acceleration (min, max) [m/s<sup>2</sup>]"), 7, 0)
         self.maxAcccValue = QLineEdit()
         self.maxAcccValue.setMaximumWidth(100)
         self.maxAcccValue.setText(str(3.0))
         self.minAcccValue = QLineEdit()
         self.minAcccValue.setMaximumWidth(100)
         self.minAcccValue.setText(str(-3.0))
-        self.carGrid.addWidget(self.maxAcccValue, 6, 1)
-        self.carGrid.addWidget(self.minAcccValue, 6, 2)
+        self.carGrid.addWidget(self.maxAcccValue, 7, 1)
+        self.carGrid.addWidget(self.minAcccValue, 7, 2)
 
-        self.carGrid.addWidget(QLabel("Max brake deacceleration [m/s<sup>2</sup>]"), 7, 0)
+        self.carGrid.addWidget(QLabel("Max brake deacceleration [m/s<sup>2</sup>]"), 8, 0)
         self.brakeAccValue = QLineEdit()
         self.brakeAccValue.setMaximumWidth(100)
         self.brakeAccValue.setText(str(-6.0))
-        self.carGrid.addWidget(self.brakeAccValue, 7, 1)
-
-        self.carGrid.addWidget(QLabel("\u03C3<sub>velocity</sub> (long, lat)"), 8, 0)
-        self.stdLongValue = QLineEdit()
-        self.stdLongValue.setMaximumWidth(100)
-        self.stdLongValue.setText(str(0.1))
-        self.stdLatValue = QLineEdit()
-        self.stdLatValue.setMaximumWidth(100)
-        self.stdLatValue.setText(str(0.01))
-        self.carGrid.addWidget(self.stdLongValue, 8, 1)
-        self.carGrid.addWidget(self.stdLatValue, 8, 2)
+        self.carGrid.addWidget(self.brakeAccValue, 8, 1)
 
         self.carAddButton = QPushButton("Add ego vehicle")
         self.carAddButton.setMinimumWidth(200)
@@ -211,8 +209,29 @@ class InputWidget(QWidget):
         self.timeBox.setLayout(self.timeParameterGrid)
         self.mainLayout.addWidget(self.timeBox)
 
+    def addParamBox(self):
+        self.paramBox = QGroupBox()
+        self.paramBox.setTitle("Other parameters")
+        self.paramGrid = QGridLayout()
+
+        self.paramGrid.addWidget(QLabel("\u03C3<sub>velocity</sub> (long, lat)"), 1, 0)
+        self.stdLongValue = QLineEdit()
+        self.stdLongValue.setMaximumWidth(100)
+        self.stdLongValue.setText(str(0.1))
+        self.stdLatValue = QLineEdit()
+        self.stdLatValue.setMaximumWidth(100)
+        self.stdLatValue.setText(str(0.01))
+        self.paramGrid.addWidget(self.stdLongValue, 1, 1)
+        self.paramGrid.addWidget(self.stdLatValue, 1, 2)
+
     def on_chooseScenario_checked(self):
         self.scenarioGenerateButton.setEnabled(True)
+        if self.scenarioButton1.isChecked():
+            self.core.setScenario(nr=1)
+        elif self.scenarioButton2.isChecked():
+            self.core.setScenario(nr=2)
+        elif self.scenarioButton3.isChecked():
+            self.core.setCentralWidget(nr=3)
 
     def on_generateButton_clicked(self):
         self.scenarioGenerateButton.setEnabled(False)
@@ -231,7 +250,16 @@ class InputWidget(QWidget):
 
     def on_addEgoVehicleButton_clicked(self):
         self.core.addEgoVehicle(
-            
+            length=float(self.carLengthValue.text()),
+            width=float(self.carWidthValue.text()),
+            x_m=float(self.carValue_x.text()),
+            y_m=float(self.carValue_y.text()),
+            theta=float(self.carValue_theta.text()),
+            cov_long=float(self.carValue_covLong.text()),
+            cov_lat=float(self.carValue_covLat.text()),
+            vx_ms=float(self.carValue_longVel.text()),
+            u_in=float(self.carValue_longAcc.text()),
+            startTime=float(self.carValue_time.text())
         )
 
     def on_addVehicleButton_clicked(self):
@@ -246,7 +274,6 @@ class AddVehicleWindow(QMainWindow):
     def __init__(self, core, parent=None):
         super(AddVehicleWindow, self).__init__(parent)
         self.core = core
-        print(id(self.core))
         self.setWindowTitle("Add vehicle")
         self.setGeometry(100, 100, 400, 400)
         self.mainWidget = QWidget(self)
@@ -267,7 +294,7 @@ class AddVehicleWindow(QMainWindow):
         self.vehicleGrid.addWidget(self.vehWidthValue, 0, 2)
 
         self.vehicleGrid.addWidget(QLabel("From (x, y) [m]"), 1, 0)
-        self.vehicleStopCheck = QCheckBox("To (x, y) [m]")
+        self.vehicleStopCheck = QCheckBox("To (x, y) [m] (check if stop there)")
         self.vehicleValue_x = QLineEdit()
         self.vehicleValue_x.setMaximumWidth(100)
         self.vehicleValue_y = QLineEdit()
@@ -276,9 +303,6 @@ class AddVehicleWindow(QMainWindow):
         self.vehicleValue_xStop.setMaximumWidth(100)
         self.vehicleValue_yStop = QLineEdit()
         self.vehicleValue_yStop.setMaximumWidth(100)
-        self.vehicleValue_xStop.setDisabled(True)
-        self.vehicleValue_yStop.setDisabled(True)
-        self.vehicleStopCheck.stateChanged.connect(self.on_stopVehicle_checked)
 
         self.vehicleGrid.addWidget(self.vehicleValue_x, 1, 1)
         self.vehicleGrid.addWidget(self.vehicleValue_y, 1, 2)
@@ -318,14 +342,22 @@ class AddVehicleWindow(QMainWindow):
         self.mainLayout.addStretch()
         self.mainWidget.setLayout(self.mainLayout)
         self.show()
-    
+
     def on_addVehicleButton_clicked(self):
-        self.core.addOtherVehicle()
+        self.core.addOtherVehicle(
+            length=float(self.vehLengthValue.text()),
+            width=float(self.vehWidthValue.text()),
+            x_m=float(self.vehicleValue_x.text()),
+            y_m=float(self.vehicleValue_y.text()),
+            to_x_m=float(self.vehicleValue_xStop.text()),
+            to_y_m=float(self.vehicleValue_yStop.text()),
+            cov_long=float(self.vehicleValue_covLong.text()),
+            cov_lat=float(self.vehicleValue_covLat.text()),
+            vx_ms=float(self.vehicleValue_longVel.text()),
+            startTime=float(self.vehicleValue_time.text()),
+            isStop=self.vehicleStopCheck.isChecked()
+        )
         self.close()
-    
-    def on_stopVehicle_checked(self):
-        self.vehicleValue_xStop.setEnabled(self.vehicleStopCheck.isChecked())
-        self.vehicleValue_yStop.setEnabled(self.vehicleStopCheck.isChecked())
 
 
 class AddPedestrianWindow(QMainWindow):
@@ -333,7 +365,6 @@ class AddPedestrianWindow(QMainWindow):
     def __init__(self, core, parent=None):
         super(AddPedestrianWindow, self).__init__(parent)
         self.core = core
-        print(id(self.core))
         self.setWindowTitle("Add pedestrian")
         self.setGeometry(100, 100, 400, 400)
         self.mainWidget = QWidget(self)
@@ -344,7 +375,7 @@ class AddPedestrianWindow(QMainWindow):
         self.pedestrianGrid.setColumnMinimumWidth(0, 200)
 
         self.pedestrianGrid.addWidget(QLabel("From (x, y) [m]"), 1, 0)
-        self.pedestrianStopCheck = QCheckBox("To (x, y) [m]")
+        self.pedestrianStopCheck = QCheckBox("To (x, y) [m] (check if stop there)")
         self.pedestrianValue_x = QLineEdit()
         self.pedestrianValue_x.setMaximumWidth(100)
         self.pedestrianValue_y = QLineEdit()
@@ -353,9 +384,6 @@ class AddPedestrianWindow(QMainWindow):
         self.pedestrianValue_xStop.setMaximumWidth(100)
         self.pedestrianValue_yStop = QLineEdit()
         self.pedestrianValue_yStop.setMaximumWidth(100)
-        self.pedestrianValue_xStop.setDisabled(True)
-        self.pedestrianValue_yStop.setDisabled(True)
-        self.pedestrianStopCheck.stateChanged.connect(self.on_stopPedestrian_checked)
 
         self.pedestrianGrid.addWidget(self.pedestrianStopCheck, 2, 0)
         self.pedestrianGrid.addWidget(self.pedestrianValue_x, 1, 1)
@@ -397,11 +425,15 @@ class AddPedestrianWindow(QMainWindow):
         self.show()
 
     def on_addPedestrianButton_clicked(self):
-        self.core.addPedestrian()
+        self.core.addPedestrian(
+            x_m=float(self.pedestrianValue_x.text()),
+            y_m=float(self.pedestrianValue_y.text()),
+            to_x_m=float(self.pedestrianValue_xStop.text()),
+            to_y_m=float(self.pedestrianValue_yStop.text()),
+            cov_long=float(self.pedestrianValue_covLong.text()),
+            cov_lat=float(self.pedestrianValue_covLat.text()),
+            vx_ms=float(self.pedestrianValue_longVel.text()),
+            startTime=float(self.pedestrianValue_time.text()),
+            isStop=self.pedestrianStopCheck.isChecked()
+        )
         self.close()
-
-    def on_stopPedestrian_checked(self):
-        self.pedestrianValue_xStop.setEnabled(self.pedestrianStopCheck.isChecked())
-        self.pedestrianValue_yStop.setEnabled(self.pedestrianStopCheck.isChecked())
-
-

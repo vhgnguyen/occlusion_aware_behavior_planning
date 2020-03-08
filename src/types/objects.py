@@ -285,14 +285,25 @@ class RoadBoundary(object):
 
 class Vehicle(object):
 
-    def __init__(self, idx, length, width, startPose, u_in):
+    def __init__(self, idx, length, width,
+                 from_x_m, from_y_m, to_x_m, to_y_m,
+                 covLong, covLat, vx_ms, startTime, isStop=False):
         self._idx = idx
         self._length = length
         self._width = width
-        self._u = u_in
+        theta = np.arctan2(to_y_m-from_y_m, to_x_m-from_x_m)
+        if isStop:
+            self._u = pfnc.computeAccToStop(
+                from_x_m=from_x_m, from_y_m=from_y_m,
+                to_x_m=to_x_m, to_y_m=to_y_m, vx_ms=vx_ms)
+        else:
+            self._u = 0
         self._p_pose = {}
-        self._l_pose = {}
-        self._l_pose[startPose.timestamp_s] = startPose
+        startPose = Pose(
+            x_m=from_x_m, y_m=from_y_m, yaw_rad=theta,
+            covLatLong=np.diag([covLong, covLat]),
+            vdy=VehicleDynamic(vx_ms, 0), timestamp_s=startTime)
+        self._l_pose = {startPose.timestamp_s: startPose}
 
     def getLastPose(self):
         return self._l_pose[max(self._l_pose)]
@@ -350,11 +361,8 @@ class Vehicle(object):
         if pose is None:
             print("No pose. is vehicle started?")
             return None
-        return pfnc.rectangle(pose.x_m,
-                              pose.y_m,
-                              pose.yaw_rad,
-                              self._length,
-                              self._width)
+        return pfnc.rectangle(pose.x_m, pose.y_m, pose.yaw_rad,
+                              self._length, self._width)
 
     def plotAt(self, timestamp_s, ax=plt):
         if timestamp_s in self._l_pose:
@@ -397,17 +405,24 @@ class Vehicle(object):
 
 class Pedestrian(object):
 
-    def __init__(self, idx, x_m, y_m, yaw_rad, timestamp_s):
+    def __init__(self, idx, from_x_m, from_y_m, to_x_m, to_y_m,
+                 covLong, covLat, vx_ms, startTime, isStop=False):
         self._idx = idx
         self._length = 1
         self._width = 1
+        startTime = round(int(startTime/param._dT) * param._dT, 3)
+        theta = np.arctan2(to_y_m-from_y_m, to_x_m-from_x_m)
+        if isStop:
+            s = np.sqrt((from_x_m-to_x_m)**2 + (from_y_m-to_y_m)**2)
+            self._stopTimestamp_s = startTime + s / vx_ms
+        else:
+            self._stopTimestamp_s = 99999
         self._p_pose = {}
-        self._l_pose = {}
-        self.startPose = Pose(x_m=x_m, y_m=y_m, yaw_rad=yaw_rad,
-                              covLatLong=np.diag([0.2, 0.1]),
-                              vdy=VehicleDynamic(2, 0),
-                              timestamp_s=timestamp_s)
-        self._l_pose[startPose.timestamp_s] = startPose
+        startPose = Pose(
+            x_m=from_x_m, y_m=from_y_m, yaw_rad=theta,
+            covLatLong=np.diag([covLong, covLat]),
+            vdy=VehicleDynamic(vx_ms, 0), timestamp_s=startTime)
+        self._l_pose = {startPose.timestamp_s: startPose}
 
     def getLastPose(self):
         return self._l_pose[max(self._l_pose)]
@@ -443,12 +458,13 @@ class Pedestrian(object):
         """
         lastPose = self.getCurrentPose()
         nextTimestamp_s = round(lastPose.timestamp_s + dT, 3)
-        nextPose = pfnc.updatePose(
-            lastPose=lastPose,
-            u_in=self._u,
-            dT=dT
-            )
-        self._l_pose.update({nextTimestamp_s: nextPose})
+        if nextTimestamp_s <= self._stopTimestamp_s:
+            nextPose = pfnc.updatePose(
+                lastPose=lastPose,
+                u_in=self._u,
+                dT=dT
+                )
+            self._l_pose.update({nextTimestamp_s: nextPose})
 
     def getPoly(self, timestamp_s):
         """

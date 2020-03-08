@@ -23,39 +23,16 @@ class EgoVehicle:
         _is_moving: if vehicle is started or not
     """
 
-    def __init__(self, length, width, env=None):
+    def __init__(self, length, width, env, startPose, u_in):
         self.length = length
         self.width = width
-        self._u = 0
-        self._p_pose = {}
         self._p_u = None
+        self._p_pose = {}
         self._p_eventRate = {}
-
-        self._l_pose = {}
-        self._l_u = {}
-
-        if env is not None:
-            self._env = env
-
-        self._is_moving = False
-
-    def start(self, startPose, u_in):
-        """
-        Call this function to start the vehicle
-        Args:
-            startPose: start sate of vehicle
-            u_in: start acceleration
-        Return:
-            False if vehicle is already started, otherwise True
-        """
-        if self._is_moving:
-            return False
-        else:
-            self._is_moving = True
-            self._u = u_in
-            self._l_u[startPose.timestamp_s] = u_in
-            self._l_pose[startPose.timestamp_s] = startPose
-        return True
+        self._env = env
+        self._u = u_in
+        self._l_u = {startPose.timestamp_s: u_in}
+        self._l_pose = {startPose.timestamp_s: startPose}
 
     def getCurrentPose(self):
         # debug

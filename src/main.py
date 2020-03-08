@@ -23,13 +23,13 @@ env.setupScenario(scenario=SCENARIO_NR)
 # env._l_vehicle = []
 
 # -------- EGO -----------
-vehicle1 = EgoVehicle(idx=1, env=env)
 startPose1 = Pose(
     x_m=-35, y_m=0, yaw_rad=0,
     covLatLong=np.array([[0.3, 0.0], [0.0, 0.1]]),
     vdy=VehicleDynamic(6, 0),
     timestamp_s=0)
-vehicle1.start(startPose=startPose1, u_in=0)
+vehicle1 = EgoVehicle(
+    length=3.5, width=2.5, env=env, startPose=startPose1, u_in=0)
 
 # %%
 while vehicle1.getCurrentTimestamp() < param._SIMULATION_TIME:

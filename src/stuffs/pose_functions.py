@@ -1,8 +1,13 @@
-from pose import Pose, VehicleDynamic
-
 import numpy as np
 
+from pose import Pose, VehicleDynamic
+
 import _param as param
+
+
+def computeAccToStop(from_x_m, from_y_m, to_x_m, to_y_m, vx_ms):
+    s = np.sqrt((from_x_m-to_x_m)**2 + (from_y_m-to_y_m)**2)
+    return - 0.5 * vx_ms**2 / s
 
 
 def updatePose(lastPose, u_in, dT=param._dT):
