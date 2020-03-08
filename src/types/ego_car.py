@@ -23,10 +23,10 @@ class EgoVehicle:
         _is_moving: if vehicle is started or not
     """
 
-    def __init__(self, idx, env=None):
-        self._idx = idx
+    def __init__(self, length, width, env=None):
+        self.length = length
+        self.width = width
         self._u = 0
-
         self._p_pose = {}
         self._p_u = None
         self._p_eventRate = {}
@@ -88,11 +88,11 @@ class EgoVehicle:
         if timestamp_s in self._p_pose:
             pose = self._p_pose[timestamp_s]
             return pfnc.rectangle(pose.x_m, pose.y_m, pose.yaw_rad,
-                                  param._CAR_LENGTH, param._CAR_WIDTH)
+                                  self.length, self.width)
         elif timestamp_s in self._l_pose:
             pose = self._l_pose[timestamp_s]
             return pfnc.rectangle(pose.x_m, pose.y_m, pose.yaw_rad,
-                                  param._CAR_LENGTH, param._CAR_WIDTH)
+                                  self.length, self.width)
         else:
             print("No state at: ", timestamp_s)
             return
@@ -218,6 +218,7 @@ class EgoVehicle:
         return cost
 
     def _move(self, dT=param._dT):
+        self.optimize()
         lastPose = self.getCurrentPose()
         nextTimestamp_s = round(lastPose.timestamp_s + dT, 3)
         if self._p_u is not None:
@@ -305,6 +306,7 @@ class EgoVehicle:
                                 timestamp_s=pose.timestamp_s,
                                 from_timestamp=pose.timestamp_s
                                 )
+                    polys = []
                     for obj in l_obj['staticObject']:
                         objPoly = obj._poly
                         d2MP, MP, dVis, randVertex = pfnc.distanceToMergePoint(
@@ -320,6 +322,10 @@ class EgoVehicle:
                                 ego_acc=self._l_u[timestamp_s],
                                 dVis=dVis
                             )
+                        polys.append(objPoly)
+                    fov = pfnc.FOV(pose, polys, np.pi/6, 25)
+                    for f in fov:
+                        plt.plot([pose.x_m, f[0]], [pose.y_m, f[1]], color='r', alpha=0.3, linewidth=0.5)
             elif timestamp_s < maxTimestamp_s + param._PREDICT_TIME:
                 plt.scatter(pose.x_m, pose.y_m, s=1, color='m')
                 cov = pose.covLatLong

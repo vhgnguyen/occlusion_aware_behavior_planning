@@ -14,10 +14,6 @@ _SCAN_RADIUS = 25.
 # Vehicle
 # ------------------------------
 
-# shape
-_CAR_LENGTH = 4
-_CAR_WIDTH = 2
-
 # acceleration
 _A_MAX = 2
 _A_MIN = -2

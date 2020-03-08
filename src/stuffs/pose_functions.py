@@ -23,7 +23,8 @@ def updatePose(lastPose, u_in, dT=param._dT):
     return nextPose
 
 
-def updatePoseList(lastPose, u_in, nextTimestamp_s, dT=param._dT, straight=True):
+def updatePoseList(lastPose, u_in, nextTimestamp_s,
+                   dT=param._dT, straight=True):
     """
     Update vehicle pose with given longtitude acceleration and timestamp
     Args:
@@ -200,14 +201,14 @@ def minFOVAngle(x_m, y_m, yaw_rad, poly):
 
 def distanceToMergePoint(pose, poly, dThres=1):
     """
-        EGO ------------------------ MP
-             `  alpha/               ^
-                `   /                |
-                    `                |
-         o-------------`o <--dThres->| visibleDistance
-         |   obstacle   |  `         |
-         |   polygon    |      `     |
-         o--------------o          ` V
+    EGO ------------------------ MP
+            `  alpha/               ^
+            `   /                |
+                `                |
+        o-------------`o <--dThres->| visibleDistance
+        |   obstacle   |  `         |
+        |   polygon    |      `     |
+        o--------------o          ` V
     """
     randVertex, alpha = minFOVAngle(
         x_m=pose.x_m,
@@ -224,3 +225,56 @@ def distanceToMergePoint(pose, poly, dThres=1):
         MP = heading * dToMergePoint + np.array([pose.x_m, pose.y_m])
         visibleDistance = dToMergePoint * np.tan(alpha)
     return dToMergePoint, MP, visibleDistance, randVertex
+
+
+def FOV(pose, polys, angle, radius, nrRays=50):
+    """
+    Field of view (FOV) around ego car
+    """
+    l_alpha = np.linspace(-angle, angle, nrRays) + pose.yaw_rad
+    l1_1 = np.array([pose.x_m, pose.y_m])
+    l_fov = np.empty((0, 2))
+    for k, alpha in enumerate(l_alpha):
+        l1_2 = l1_1 + np.array([np.cos(alpha), np.sin(alpha)]) * radius
+        ip = None
+        for poly in polys:
+            for i in range(0, poly.shape[0], 1):
+                ip_tmp = line_intersection(l1_1, l1_2, poly[i-1], poly[i])
+                if ip_tmp is not None:
+                    if ip is not None:
+                        if np.linalg.norm(ip_tmp-l1_1) <= np.linalg.norm(ip-l1_1):
+                            ip = ip_tmp
+                    else:
+                        ip = ip_tmp
+        if ip is not None:
+            l_fov = np.append(l_fov, ip, axis=0)
+        else:
+            l_fov = np.append(l_fov, np.array([l1_2]), axis=0)
+    return l_fov
+
+
+def line_intersection(line1_1, line1_2, line2_1, line2_2):
+    xdiff = (line1_1[0] - line1_2[0], line2_1[0] - line2_2[0])
+    ydiff = (line1_1[1] - line1_2[1], line2_1[1] - line2_2[1])
+    div = det(xdiff, ydiff)
+    if div == 0:
+        return None
+    d = (det(line1_1, line1_2), det(line2_1, line2_2))
+    x = det(d, xdiff) / div
+    y = det(d, ydiff) / div
+    if (onSegment(line1_1, line1_2, [x, y]) and
+       onSegment(line2_1, line2_2, [x, y])):
+        return np.array([[x, y]])
+    else:
+        return None
+
+
+def det(a, b):
+    return a[0] * b[1] - a[1] * b[0]
+
+
+def onSegment(p, r, q):
+    if ((q[0] <= max(p[0], r[0])) and (q[0] >= min(p[0], r[0])) and
+       (q[1] <= max(p[1], r[1])) and (q[1] >= min(p[1], r[1]))):
+        return True
+    return False

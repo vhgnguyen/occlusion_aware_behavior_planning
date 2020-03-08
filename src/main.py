@@ -15,7 +15,7 @@ from objects import OtherVehicle, StaticObject
 import _param as param
 
 # %%
-SCENARIO_NR = 3
+SCENARIO_NR = 2
 
 # -------- ENV -----------
 env = Environment()
@@ -39,7 +39,7 @@ while vehicle1.getCurrentTimestamp() < param._SIMULATION_TIME:
     print(time.time() - start)
 # %%
 test = True
-plotTimes = [2, 4, 4.6, 5, 6, 8, 10, 15]
+plotTimes = [2, 4, 6]
 if test:
     for plotTime in plotTimes:
         fig1 = plt.figure()

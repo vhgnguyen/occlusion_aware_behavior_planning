@@ -1,6 +1,7 @@
 from matplotlib.patches import Ellipse, Polygon
 import matplotlib.pyplot as plt
 
+from pose import Pose, VehicleDynamic
 import numpy as np
 import pose_functions as pfnc
 import _param as param
@@ -224,39 +225,283 @@ class StaticObject(object):
 class RoadBoundary(object):
     """
         Class define road boundary as lines between points
-        Params: UTM coordinate in ^-> direction
-            _idx: index (to classify with different vehicle)
-            _left: (1,2,n) array points of left boundary
-            _right: (1,2,n) array points of right boundary
+        with UTM coordinate in ^-> direction
     """
-    def __init__(self, left=None, right=None, scenario=1):
-        self._left = left
-        self._right = right
-        self._scenario = scenario
+    def __init__(self, scenario):
+        self.left = None
+        self.right = None
+        self.lane = None
+        self.setup(scenario)
 
-    def updateLeft(self, left):
-        np.concatenate([self._left, left], axis=0)
+    def setup(self, scenario):
+        if scenario == 1:
+            self.left = np.array(([[-100, 4], [100, 4]]))
+            self.right = np.array(([[-100, -4], [100, -4]]))
+            self.lane = np.array(([[-100, 0], [100, 0]]))
 
-    def updateRight(self, right):
-        np.concatenate([self._right, right], axis=0)
+        if scenario == 2:
+            self.left = np.array((
+                [[-100, 4], [100, 4]],
+                [[4, -100], [4, -4]]
+            ))
+            self.right = np.array((
+                [[-100, -4], [100, -4]],
+                [[-4, -100], [-4, -4]]
+            ))
+            self.lane = np.array((
+                [[-100, 0], [100, 0]],
+                [[0, -100], [0, -4]]
+            ))
 
-    def toDict(self):
-        return {'left': self._left, 'right': self._right}
+        if scenario == 3:
+            self.left = np.array((
+                [[-100, 4], [-4, 4]],
+                [[4, 4], [100, 4]],
+                [[4, 100], [4, 4]],
+                [[4, -100], [4, -4]]
+            ))
+            self.right = np.array((
+                [[-100, -4], [-4, -4]],
+                [[4, -4], [100, -4]],
+                [[-4, 100], [-4, 4]],
+                [[-4, -100], [-4, -4]]
+            ))
+            self.lane = np.array((
+                [[-100, 0], [-4, 0]],
+                [[4, 0], [100, -0]],
+                [[0, 100], [0, 4]],
+                [[0, -100], [0, -4]]
+            ))
 
     def plot(self, ax=plt):
-        if self._scenario == 1:
-            ax.plot([-30, 30], [-4, -4], 'k-')
-            ax.plot([-30, 30], [4, 4], 'k-')
+        nrRoad = self.lane.shape[0]
+        for i in nrRoad:
+            boundStyle = {'linestyle': '-', 'color': 'k'}
+            plotLine(self.left[i], ax=ax, **boundStyle)
+            plotLine(self.right[i], ax=ax, **boundStyle)
+            laneStyle = {'linestyle': '--', 'color': 'k'}
+            plotLine(self.lane[i], ax=ax, **laneStyle)
 
-        if self._scenario == 2:
-            ax.plot([-30, 10], [-4, -4], 'k-')
-            ax.plot([-30, 12], [4, 4], 'k-')
 
-            ax.plot([16, 30], [-4, -4], 'k-')
-            ax.plot([18, 30], [4, 4], 'k-')
+class Vehicle(object):
 
-            ax.plot([12, 20], [4, 30], 'k-')
-            ax.plot([18, 26], [4, 30], 'k-')
+    def __init__(self, idx, length, width, startPose, u_in):
+        self._idx = idx
+        self._length = length
+        self._width = width
+        self._u = u_in
+        self._p_pose = {}
+        self._l_pose = {}
+        self._l_pose[startPose.timestamp_s] = startPose
 
-            ax.plot([10, 2], [-4, -30], 'k-')
-            ax.plot([16, 8], [-4, -30], 'k-')
+    def getLastPose(self):
+        return self._l_pose[max(self._l_pose)]
+
+    def getLastTimestamp(self):
+        return max(self._l_pose)
+
+    def getPoseAt(self, timestamp_s):
+        if timestamp_s not in self._l_pose:
+            return None
+        else:
+            return self._l_pose[timestamp_s]
+
+    def predict(self, const_vx=True, pT=param._PREDICT_TIME):
+        """
+        Predict the vehicle motion from current state
+        Args:
+            const_vx: if True predict with constant velocity
+                      else with current acceleration
+        """
+        self._p_pose = {}
+        lastPose = self.getCurrentPose()
+        nextTimestamp_s = round(self.getLastTimestamp() + pT, 3)
+        if const_vx:
+            self._p_pose = pfnc.updatePoseList(
+                lastPose=lastPose,
+                u_in=0,
+                nextTimestamp_s=nextTimestamp_s
+            )
+        else:
+            self._p_pose = pfnc.updatePoseList(
+                lastPose=lastPose,
+                u_in=self._u,
+                nextTimestamp_s=nextTimestamp_s
+            )
+
+    def move(self, dT=param._dT):
+        """
+        Update vehicle state to next timestamp
+        """
+        lastPose = self.getCurrentPose()
+        nextTimestamp_s = round(lastPose.timestamp_s + dT, 3)
+        nextPose = pfnc.updatePose(
+            lastPose=lastPose,
+            u_in=self._u,
+            dT=dT
+            )
+        self._l_pose.update({nextTimestamp_s: nextPose})
+
+    def getPoly(self, timestamp_s):
+        """
+        Return the bounding polygon of vehicle
+        """
+        pose = self.getPoseAt(timestamp_s)
+        if pose is None:
+            print("No pose. is vehicle started?")
+            return None
+        return pfnc.rectangle(pose.x_m,
+                              pose.y_m,
+                              pose.yaw_rad,
+                              self._length,
+                              self._width)
+
+    def plotAt(self, timestamp_s, ax=plt):
+        if timestamp_s in self._l_pose:
+            pose = self._l_pose[timestamp_s]
+            ax.scatter(pose.x_m, pose.y_m, s=1, color='b')
+            cov = pose.covLatLong
+            ellipse = Ellipse([pose.x_m, pose.y_m],
+                              width=np.sqrt(cov[0, 0])*2,
+                              height=np.sqrt(cov[1, 1])*2,
+                              angle=np.degrees(pose.yaw_rad),
+                              facecolor=None,
+                              edgecolor='blue',
+                              alpha=0.4)
+            ax.add_patch(ellipse)
+        else:
+            return
+
+    def plot(self, maxTimestamp_s, ax=plt):
+        for timestamp_s, pose in self._l_pose.items():
+            if timestamp_s <= maxTimestamp_s:
+                ax.scatter(pose.x_m, pose.y_m, s=1, color='b')
+                cov = pose.covLatLong
+                ellipse = Ellipse(
+                    [pose.x_m, pose.y_m],
+                    width=np.sqrt(cov[0, 0])*2,
+                    height=np.sqrt(cov[1, 1])*2,
+                    angle=np.degrees(pose.yaw_rad),
+                    facecolor=None,
+                    edgecolor='blue',
+                    alpha=0.4)
+                ax.add_patch(ellipse)
+            if timestamp_s == maxTimestamp_s:
+                poly = self.getPoly(timestamp_s)
+                poly = Polygon(
+                    poly, facecolor='cyan',
+                    edgecolor='blue', alpha=0.7, label='other vehicle'
+                )
+                ax.add_patch(poly)
+
+
+class Pedestrian(object):
+
+    def __init__(self, idx, x_m, y_m, yaw_rad, timestamp_s):
+        self._idx = idx
+        self._length = 1
+        self._width = 1
+        self._p_pose = {}
+        self._l_pose = {}
+        self.startPose = Pose(x_m=x_m, y_m=y_m, yaw_rad=yaw_rad,
+                              covLatLong=np.diag([0.2, 0.1]),
+                              vdy=VehicleDynamic(2, 0),
+                              timestamp_s=timestamp_s)
+        self._l_pose[startPose.timestamp_s] = startPose
+
+    def getLastPose(self):
+        return self._l_pose[max(self._l_pose)]
+
+    def getLastTimestamp(self):
+        return max(self._l_pose)
+
+    def getPoseAt(self, timestamp_s):
+        if timestamp_s not in self._l_pose:
+            return None
+        else:
+            return self._l_pose[timestamp_s]
+
+    def predict(self, pT=param._PREDICT_TIME):
+        """
+        Predict the vehicle motion from current state
+        Args:
+            const_vx: if True predict with constant velocity
+                      else with current acceleration
+        """
+        self._p_pose = {}
+        lastPose = self.getCurrentPose()
+        nextTimestamp_s = round(self.getLastTimestamp() + pT, 3)
+        self._p_pose = pfnc.updatePoseList(
+            lastPose=lastPose,
+            u_in=0,
+            nextTimestamp_s=nextTimestamp_s
+        )
+
+    def move(self, dT=param._dT):
+        """
+        Update vehicle state to next timestamp
+        """
+        lastPose = self.getCurrentPose()
+        nextTimestamp_s = round(lastPose.timestamp_s + dT, 3)
+        nextPose = pfnc.updatePose(
+            lastPose=lastPose,
+            u_in=self._u,
+            dT=dT
+            )
+        self._l_pose.update({nextTimestamp_s: nextPose})
+
+    def getPoly(self, timestamp_s):
+        """
+        Return the bounding polygon of vehicle
+        """
+        pose = self.getPoseAt(timestamp_s)
+        if pose is None:
+            print("No pose. is vehicle started?")
+            return None
+        return pfnc.rectangle(pose.x_m,
+                              pose.y_m,
+                              pose.yaw_rad,
+                              self._length,
+                              self._width)
+
+    def plotAt(self, timestamp_s, ax=plt):
+        if timestamp_s in self._l_pose:
+            pose = self._l_pose[timestamp_s]
+            ax.scatter(pose.x_m, pose.y_m, s=1, color='b')
+            cov = pose.covLatLong
+            ellipse = Ellipse([pose.x_m, pose.y_m],
+                              width=np.sqrt(cov[0, 0])*2,
+                              height=np.sqrt(cov[1, 1])*2,
+                              angle=np.degrees(pose.yaw_rad),
+                              facecolor=None,
+                              edgecolor='blue',
+                              alpha=0.4)
+            ax.add_patch(ellipse)
+        else:
+            return
+
+    def plot(self, maxTimestamp_s, ax=plt):
+        for timestamp_s, pose in self._l_pose.items():
+            if timestamp_s <= maxTimestamp_s:
+                ax.scatter(pose.x_m, pose.y_m, s=1, color='b')
+                cov = pose.covLatLong
+                ellipse = Ellipse(
+                    [pose.x_m, pose.y_m],
+                    width=np.sqrt(cov[0, 0])*2,
+                    height=np.sqrt(cov[1, 1])*2,
+                    angle=np.degrees(pose.yaw_rad),
+                    facecolor=None,
+                    edgecolor='blue',
+                    alpha=0.4)
+                ax.add_patch(ellipse)
+            if timestamp_s == maxTimestamp_s:
+                poly = self.getPoly(timestamp_s)
+                poly = Polygon(
+                    poly, facecolor='cyan',
+                    edgecolor='blue', alpha=0.7, label='other vehicle'
+                )
+                ax.add_patch(poly)
+
+
+def plotLine(line, ax=plt, **kwargs):
+    ax.plot([line[0][0], line[1][0]], [line[0][1], line[1][1]], **kwargs)

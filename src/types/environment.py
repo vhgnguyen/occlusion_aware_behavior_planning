@@ -14,6 +14,7 @@ class Environment(object):
         self._l_road = []
         self._l_staticObject = []
         self._l_vehicle = []
+        self._l_pedestrian = []
 
     def addRoadBoundary(self, roadBoundary):
         self._l_road.append(roadBoundary)
@@ -24,8 +25,16 @@ class Environment(object):
     def addStaticObject(self, staticObject):
         self._l_staticObject.append(staticObject)
 
-    def addMoveObject(self, moveObject):
-        self._l_moveObject.append(moveObject)
+    def addPedestrian(self, pedestrian):
+        self._l_pedestrian.append(pedestrian)
+
+    def move(self, dT=param._dT):
+        """
+        Move objects in environment to next step
+        """
+        for (vehicle, pedestrian) in zip(self._l_vehicle, self._l_pedestrian):
+            vehicle.move()
+            pedestrian.move()
 
     def updateAt(self, x_m, y_m, timestamp_s, radius=param._SCAN_RADIUS):
         """
@@ -206,7 +215,7 @@ class Environment(object):
             # self.addStaticObject(obs3)
 
             # road boundary
-            road1 = RoadBoundary(scenario=2)
+            road1 = RoadBoundary(scenario=3)
             self.addRoadBoundary(road1)
 
         if scenario == 4:
