@@ -122,7 +122,7 @@ class Environment(object):
             for veh in self._l_vehicle:
                 veh.plot(maxTimestamp_s=timestamp_s, ax=ax)
     
-    def setupScenario(self, scenario):
+    def setScenario(self, scenario):
         if scenario == 1:
             # static object
             obs1 = StaticObject(

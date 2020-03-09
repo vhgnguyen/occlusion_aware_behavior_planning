@@ -231,7 +231,7 @@ class InputWidget(QWidget):
         elif self.scenarioButton2.isChecked():
             self.core.setScenario(nr=2)
         elif self.scenarioButton3.isChecked():
-            self.core.setCentralWidget(nr=3)
+            self.core.setScenario(nr=3)
 
     def on_generateButton_clicked(self):
         self.scenarioGenerateButton.setEnabled(False)

@@ -2,8 +2,9 @@ from PyQt5.QtWidgets import (QVBoxLayout, QGroupBox, QTextEdit,
                              QLineEdit, QGridLayout, QOpenGLWidget,
                              QLabel, QPushButton)
 from PyQt5.QtGui import QColor
-import OpenGL.GL as gl
-
+from OpenGL.GL import *
+from OpenGL.GLU import *
+import numpy as np
 
 class SimulationControlBox(QGroupBox):
 
@@ -11,7 +12,7 @@ class SimulationControlBox(QGroupBox):
         super(SimulationControlBox, self).__init__(parent)
         self.setTitle("Simulation control")
         self.setMaximumSize(1800, 900)
-        self.setMinimumSize(900, 600)
+        self.setMinimumSize(900, 450)
         self.simulationGrid = QGridLayout()
         self.simulationGrid.setSpacing(10)
         self.simulationGrid.addWidget(QLabel("Simulation time [s]"), 0, 0)
@@ -38,17 +39,19 @@ class BirdEyeView(QOpenGLWidget):
     def __init__(self, parent=None):
         super(BirdEyeView, self).__init__(parent)
         self.setMaximumSize(1800, 900)
-        self.setMinimumSize(900, 600)
+        self.setMinimumSize(900, 450)
 
     def initializeGL(self):
         print(self.getOpenglInfo())
         self.setClearColor(QColor.fromCmykF(0.3, 0.3, 0.0, 0.0).darker())
-        gl.glShadeModel(gl.GL_FLAT)
-        gl.glEnable(gl.GL_DEPTH_TEST)
-        gl.glEnable(gl.GL_CULL_FACE)
+        glShadeModel(GL_FLAT)
+        glEnable(GL_DEPTH_TEST)
+        glEnable(GL_CULL_FACE)
+        self.resizeGL(5, 5)
+        self.drawRoadBoundary(1)
 
     def setClearColor(self, c):
-        gl.glClearColor(c.redF(), c.greenF(), c.blueF(), c.alphaF())
+        glClearColor(c.redF(), c.greenF(), c.blueF(), c.alphaF())
 
     def getOpenglInfo(self):
         info = """
@@ -57,15 +60,32 @@ class BirdEyeView(QOpenGLWidget):
             OpenGL Version: {2}
             Shader Version: {3}
         """.format(
-            gl.glGetString(gl.GL_VENDOR),
-            gl.glGetString(gl.GL_RENDERER),
-            gl.glGetString(gl.GL_VERSION),
-            gl.glGetString(gl.GL_SHADING_LANGUAGE_VERSION)
+            glGetString(GL_VENDOR),
+            glGetString(GL_RENDERER),
+            glGetString(GL_VERSION),
+            glGetString(GL_SHADING_LANGUAGE_VERSION)
         )
         return info
+    
+    def resizeGL(self, width, height):
+        side = min(width, height)
+        if side < 0:
+            return
+
+        glViewport((width - side) // 2, (height - side) // 2, side, side)
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+        glOrtho(-0.5, +0.5, +0.5, -0.5, 4.0, 15.0)
+        glMatrixMode(GL_MODELVIEW)
 
     def drawRoadBoundary(self, road):
-        return None
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glColor3f(0.0, 0.0, 1.0)
+        print("Drawing line")
+        glBegin(GL_LINES)
+        glVertex2f(-5.0, -5.0)
+        glVertex2f(5.0, 5.0)
+        glEnd()
 
     def drawStaticObject(self, obs):
         return None
