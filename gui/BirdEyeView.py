@@ -2,56 +2,31 @@ from PyQt5.QtWidgets import (QVBoxLayout, QGroupBox, QTextEdit,
                              QLineEdit, QGridLayout, QOpenGLWidget,
                              QLabel, QPushButton)
 from PyQt5.QtGui import QColor
-from OpenGL.GL import *
-from OpenGL.GLU import *
+from PyQt5.QtCore import pyqtSignal, QPoint, QSize, Qt
+import OpenGL.GL as gl
+import math
 import numpy as np
-
-class SimulationControlBox(QGroupBox):
-
-    def __init__(self, parent=None):
-        super(SimulationControlBox, self).__init__(parent)
-        self.setTitle("Simulation control")
-        self.setMaximumSize(1800, 900)
-        self.setMinimumSize(900, 450)
-        self.simulationGrid = QGridLayout()
-        self.simulationGrid.setSpacing(10)
-        self.simulationGrid.addWidget(QLabel("Simulation time [s]"), 0, 0)
-        self.simulationGrid.addWidget(QLabel("Current simulation timestamp [s]"), 1, 0)
-        self.simulationTimeValue = QLineEdit()
-        self.simulationTimeValue.setMaximumWidth(100)
-        self.currentTimeValue = QLabel()
-        self.simulationGrid.addWidget(self.simulationTimeValue, 0, 1)
-        self.simulationGrid.addWidget(self.currentTimeValue, 1, 1)
-        self.setLayout(self.simulationGrid)
-
-    def updateSimulationTime(self, simulation_time):
-        return None
-
-    def updateCurrentTime(self, current_time):
-        return None
-
-    def generateValuesButtonClicked(self, simulation_time):
-        return None
 
 
 class BirdEyeView(QOpenGLWidget):
 
-    def __init__(self, parent=None):
+    def __init__(self, core, parent=None):
         super(BirdEyeView, self).__init__(parent)
-        self.setMaximumSize(1800, 900)
-        self.setMinimumSize(900, 450)
+
+        self.core = core
+
+        self.trolltechGreen = QColor.fromCmykF(0.40, 0.0, 1.0, 0.0)
+        self.trolltechPurple = QColor.fromCmykF(0.39, 0.39, 0.0, 0.0)
 
     def initializeGL(self):
         print(self.getOpenglInfo())
-        self.setClearColor(QColor.fromCmykF(0.3, 0.3, 0.0, 0.0).darker())
-        glShadeModel(GL_FLAT)
-        glEnable(GL_DEPTH_TEST)
-        glEnable(GL_CULL_FACE)
-        self.resizeGL(5, 5)
-        self.drawRoadBoundary(1)
 
-    def setClearColor(self, c):
-        glClearColor(c.redF(), c.greenF(), c.blueF(), c.alphaF())
+        self.setClearColor(self.trolltechPurple.darker())
+        self.object = self.makeObject()
+
+        gl.glShadeModel(gl.GL_FLAT)
+        gl.glEnable(gl.GL_DEPTH_TEST)
+        gl.glEnable(gl.GL_CULL_FACE)
 
     def getOpenglInfo(self):
         info = """
@@ -60,38 +35,93 @@ class BirdEyeView(QOpenGLWidget):
             OpenGL Version: {2}
             Shader Version: {3}
         """.format(
-            glGetString(GL_VENDOR),
-            glGetString(GL_RENDERER),
-            glGetString(GL_VERSION),
-            glGetString(GL_SHADING_LANGUAGE_VERSION)
+            gl.glGetString(gl.GL_VENDOR),
+            gl.glGetString(gl.GL_RENDERER),
+            gl.glGetString(gl.GL_VERSION),
+            gl.glGetString(gl.GL_SHADING_LANGUAGE_VERSION)
         )
         return info
-    
+
+    def minimumSizeHint(self):
+        return QSize(50, 50)
+
+    def sizeHint(self):
+        return QSize(400, 400)
+
+    def paintGL(self):
+        gl.glClear(
+            gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
+        gl.glLoadIdentity()
+        gl.glTranslated(0.0, 0.0, -10.0)
+        self.makeObject()
+
     def resizeGL(self, width, height):
         side = min(width, height)
         if side < 0:
             return
+        gl.glViewport((width - side) // 2, (height - side) // 2, side, side)
+        gl.glMatrixMode(gl.GL_PROJECTION)
+        gl.glLoadIdentity()
+        gl.glOrtho(-50, 50, -50, 50, 4.0, 15.0)
+        gl.glMatrixMode(gl.GL_MODELVIEW)
+        gl.glLoadIdentity()
 
-        glViewport((width - side) // 2, (height - side) // 2, side, side)
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-        glOrtho(-0.5, +0.5, +0.5, -0.5, 4.0, 15.0)
-        glMatrixMode(GL_MODELVIEW)
+    def makeObject(self):
+        self.drawRoadBoundary(self.core._env._l_road)
+        self.drawStaticObject(self.core._env._l_staticObject)
 
     def drawRoadBoundary(self, road):
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        glColor3f(0.0, 0.0, 1.0)
-        print("Drawing line")
-        glBegin(GL_LINES)
-        glVertex2f(-5.0, -5.0)
-        glVertex2f(5.0, 5.0)
-        glEnd()
+        gl.glColor4f(0.6, 0.6, 0.6, 1.0)  # gray
+        gl.glLineWidth(2.0)
 
-    def drawStaticObject(self, obs):
+        if road == 0:
+            return
+
+        # draw left boundary
+        gl.glBegin(gl.GL_LINES)
+        for l in road.left:
+            gl.glVertex2f(l[0][0], l[0][1])
+            gl.glVertex2f(l[1][0], l[1][1])
+        gl.glEnd()
+
+        # # draw right boundary
+        gl.glBegin(gl.GL_LINES)
+        for l in road.right:
+            gl.glVertex2f(l[0][0], l[0][1])
+            gl.glVertex2f(l[1][0], l[1][1])
+        gl.glEnd()
+
+        # # draw lane in dashed
+        gl.glLineStipple(1, 0xAAAA)  # [1]
+        gl.glEnable(gl.GL_LINE_STIPPLE)
+        gl.glBegin(gl.GL_LINES)
+        for l in road.lane:
+            gl.glVertex2f(l[0][0], l[0][1])
+            gl.glVertex2f(l[1][0], l[1][1])
+        gl.glEnd()
+        gl.glDisable(gl.GL_LINE_STIPPLE)
+
+    def drawStaticObject(self, objectList):
+        gl.glColor4f(0.0, 0.0, 0.0, 1.0)  # black
+
+        # poly should be sorted in counter clock-wise
+        for obj in objectList:
+            gl.glBegin(gl.GL_POLYGON)
+            for i, pt in enumerate(obj._poly):
+                gl.glVertex2f(pt[0], pt[1])
+            gl.glEnd()
+
+    def drawPedestrian(self, pedestrianPoly):
         return None
 
-    def drawDynamicObject(self, obs):
+    def drawOtherVehicle(self, vehiclePoly):
         return None
 
-    def drawEgoVehicle(self, ego):
+    def drawEgoVehicle(self, egoPoly):
         return None
+
+    def setClearColor(self, c):
+        gl.glClearColor(c.redF(), c.greenF(), c.blueF(), c.alphaF())
+
+    def setColor(self, c):
+        gl.glColor4f(c.redF(), c.greenF(), c.blueF(), c.alphaF())

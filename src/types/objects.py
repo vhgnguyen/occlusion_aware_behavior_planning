@@ -235,9 +235,9 @@ class RoadBoundary(object):
 
     def setup(self, scenario):
         if scenario == 1:
-            self.left = np.array(([[-100, 4], [100, 4]]))
-            self.right = np.array(([[-100, -4], [100, -4]]))
-            self.lane = np.array(([[-100, 0], [100, 0]]))
+            self.left = np.array([[[-100, 4], [100, 4]]])
+            self.right = np.array([[[-100, -4], [100, -4]]])
+            self.lane = np.array([[[-100, 0], [100, 0]]])
 
         if scenario == 2:
             self.left = np.array((

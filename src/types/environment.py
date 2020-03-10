@@ -11,7 +11,7 @@ class Environment(object):
         Class define environment
     """
     def __init__(self):
-        self._l_road = []
+        self._l_road = 0
         self._l_staticObject = []
         self._l_vehicle = []
         self._l_pedestrian = []
@@ -123,11 +123,15 @@ class Environment(object):
                 veh.plot(maxTimestamp_s=timestamp_s, ax=ax)
     
     def setScenario(self, scenario):
+        self._l_road = 0
+        self._l_staticObject = []
+        self._l_vehicle = []
+        self._l_pedestrian = []
         if scenario == 1:
             # static object
             obs1 = StaticObject(
                 idx=1,
-                poly=np.array([[-10, -5], [-5, -5], [-5, -15], [-10, -15]]))
+                poly=np.array([[-10, -10], [-5, -10], [-5, -5], [-10, -5]]))
             self.addStaticObject(obs1)
 
         elif scenario == 2:
@@ -167,8 +171,8 @@ class Environment(object):
             # self.addStaticObject(obs3)
 
         # road boundary
-        road = RoadBoundary(scenario=scenario)
-        self.addRoadBoundary(road)
+        self._l_road = RoadBoundary(scenario=scenario)
+        # self.addRoadBoundary(road)
 
     def setupScenario1(self, scenario):
 
