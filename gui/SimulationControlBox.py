@@ -7,8 +7,8 @@ class SimulationControlBox(QGroupBox):
     def __init__(self, parent=None):
         super(SimulationControlBox, self).__init__(parent)
         self.setTitle("Simulation control")
-        self.setMaximumSize(1800, 900)
-        self.setMinimumSize(900, 450)
+        # self.setMaximumSize(500, 400)
+        self.setMinimumSize(250, 200)
         self.simulationGrid = QGridLayout()
         self.simulationGrid.setSpacing(10)
         self.simulationGrid.addWidget(QLabel("Simulation time [s]"), 0, 0)

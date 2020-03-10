@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from pose import Pose, VehicleDynamic
-from objects import OtherVehicle, StaticObject, RoadBoundary
+from objects import OtherVehicle, StaticObject, RoadBoundary, PedestrianCross
 import _param as param
 
 
@@ -15,6 +15,7 @@ class Environment(object):
         self._l_staticObject = []
         self._l_vehicle = []
         self._l_pedestrian = []
+        self._l_cross = []
 
     def countPedestrian(self):
         return len(self._l_pedestrian)
@@ -36,6 +37,9 @@ class Environment(object):
 
     def addPedestrian(self, pedestrian):
         self._l_pedestrian.append(pedestrian)
+
+    def addPedestrianCross(self, cross):
+        self._l_cross.append(cross)
 
     def move(self, dT=param._dT):
         """
@@ -127,52 +131,73 @@ class Environment(object):
         self._l_staticObject = []
         self._l_vehicle = []
         self._l_pedestrian = []
+        self._l_cross = []
+
         if scenario == 1:
             # static object
             obs1 = StaticObject(
                 idx=1,
-                poly=np.array([[-10, -10], [-5, -10], [-5, -5], [-10, -5]]))
+                poly=np.array([[-40, -20], [-10, -20], [-10, -10],
+                               [-20, -5], [-40, -5]]))
             self.addStaticObject(obs1)
+
+            # pedestrian cross
+            cross1 = PedestrianCross(
+                left=np.array([[10, -20], [10, 20]]),
+                right=np.array([[15, -20], [15, 20]]),
+                density=0.5
+            )
+            self.addPedestrianCross(cross1)
 
         elif scenario == 2:
             # static object
             obs1 = StaticObject(
                 idx=1,
-                poly=np.array([[-20, -10], [-20, -6], [-15, -4],
-                               [-5, -4], [-5, -15], [-15, -15]]))
+                poly=np.array([[-40, -20], [-10, -20], [-10, -10],
+                               [-20, -5], [-40, -5]]))
             self.addStaticObject(obs1)
 
             obs2 = StaticObject(
                 idx=2,
-                poly=np.array([[0, 4], [10, 7], [10, 10], [0, 10]]))
+                poly=np.array([[8, -20], [30, -20], [30, -5], [8, -5]]))
             self.addStaticObject(obs2)
 
-            obs3 = StaticObject(
-                idx=3,
-                poly=np.array([[5, -10], [5, -3], [10, -3], [8, -10]]))
-            self.addStaticObject(obs3)
+            # pedestrian cross
+            cross1 = PedestrianCross(
+                left=np.array([[-10, -20], [-10, 20]]),
+                right=np.array([[-4, -20], [-4, 20]]),
+                density=0.8
+            )
+            self.addPedestrianCross(cross1)
 
         elif scenario == 3:
             # static object
             obs1 = StaticObject(
                 idx=1,
-                poly=np.array([[-20, -10], [-20, -8], [-15, -3],
-                               [-5, -3], [-5, -15], [-15, -15]]))
+                poly=np.array([[-40, -20], [-10, -20], [-10, -10],
+                               [-20, -5], [-40, -5]]))
             self.addStaticObject(obs1)
 
             obs2 = StaticObject(
                 idx=2,
-                poly=np.array([[0, -10], [0, -4], [10, -4], [8, -10]]))
+                poly=np.array([[8, -20], [30, -20], [30, -5], [8, -5]]))
             self.addStaticObject(obs2)
 
             obs3 = StaticObject(
                 idx=3,
-                poly=np.array([[5, 3], [10, 3], [10, 7], [5, 7]]))
-            # self.addStaticObject(obs3)
+                poly=np.array([[-40, 8], [-20, 8], [-10, 15], [-10, 20], [-40, 20]]))
+            self.addStaticObject(obs3)
+
+            # pedestrian cross
+            cross1 = PedestrianCross(
+                left=np.array([[-10, -20], [-10, 20]]),
+                right=np.array([[-4, -20], [-4, 20]]),
+                density=0.8
+            )
+            self.addPedestrianCross(cross1)
 
         # road boundary
         self._l_road = RoadBoundary(scenario=scenario)
-        # self.addRoadBoundary(road)
 
     def setupScenario1(self, scenario):
 

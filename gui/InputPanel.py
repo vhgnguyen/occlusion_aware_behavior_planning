@@ -9,8 +9,8 @@ class InputWidget(QWidget):
         super(InputWidget, self).__init__(parent)
         self.core = core
         self.mainLayout = QVBoxLayout()
-        self.setMaximumSize(800, 1500)
-        self.setMinimumSize(600, 1500)
+        self.setMaximumSize(800, 1000)
+        self.setMinimumSize(400, 600)
 
         """ Scenario setup """
         self.addScenarioBox()

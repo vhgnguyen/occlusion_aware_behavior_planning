@@ -522,3 +522,13 @@ class Pedestrian(object):
 
 def plotLine(line, ax=plt, **kwargs):
     ax.plot([line[0][0], line[1][0]], [line[0][1], line[1][1]], **kwargs)
+
+
+class PedestrianCross(object):
+
+    def __init__(self, left, right, density):
+        assert np.linalg.norm(left[0] - left[1]) == \
+               np.linalg.norm(right[0] - right[1])
+        self.left = left
+        self.right = right
+        self.density = density

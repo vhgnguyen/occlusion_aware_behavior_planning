@@ -12,6 +12,7 @@ class Core(object):
     def __init__(self):
         self._egoCar = None
         self._env = Environment()
+        self.timestamp_s = 0
 
     def addEgoVehicle(self, length, width, x_m, y_m, theta, cov_long, cov_lat,
         vx_ms, u_in, startTime):
