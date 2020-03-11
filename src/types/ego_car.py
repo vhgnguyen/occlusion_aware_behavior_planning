@@ -35,44 +35,38 @@ class EgoVehicle:
         self._l_pose = {startPose.timestamp_s: startPose}
 
     def getCurrentPose(self):
-        # debug
-        if not self._l_pose:
-            print("No pose. is vehicle started?")
-            return
         return self._l_pose[max(self._l_pose)]
 
     def getCurrentTimestamp(self):
-        # debug
-        if not self._l_pose:
-            print("No pose. is vehicle started?")
-            return
         return max(self._l_pose)
 
     def getPoseAt(self, timestamp_s):
         if timestamp_s in self._l_pose:
             return self._l_pose[timestamp_s]
-        elif timestamp_s in self._p_pose:
-            return self._p_pose[timestamp_s]
         else:
-            print("No pose at: ", timestamp_s)
+            print("Ego: No pose at: ", timestamp_s)
             return None
 
     def getPoly(self, timestamp_s):
         """
         Return the bounding polygon of vehicle
         """
-
-        if timestamp_s in self._p_pose:
-            pose = self._p_pose[timestamp_s]
-            return pfnc.rectangle(pose.x_m, pose.y_m, pose.yaw_rad,
-                                  self.length, self.width)
-        elif timestamp_s in self._l_pose:
+        if timestamp_s in self._l_pose:
             pose = self._l_pose[timestamp_s]
             return pfnc.rectangle(pose.x_m, pose.y_m, pose.yaw_rad,
                                   self.length, self.width)
         else:
-            print("No state at: ", timestamp_s)
-            return
+            print("Ego: No state at: ", timestamp_s)
+            return None
+
+    def getPredictPoly(self, timestamp_s):
+        if timestamp_s in self._p_pose:
+            pose = self._p_pose[timestamp_s]
+            return pfnc.rectangle(pose.x_m, pose.y_m, pose.yaw_rad,
+                                  self.length, self.width)
+        else:
+            print("Ego: No predict state at: ", timestamp_s)
+            return None
 
     # ------------------- Opt function ---------------------
 
@@ -118,24 +112,28 @@ class EgoVehicle:
         """
         Compute collision risk & event rate at given predict timestamp
         """
+        timestamp_s = round(timestamp_s, 3)
         egoPose = self._p_pose[timestamp_s]
-        egoPoly = self.getPoly(timestamp_s)
+        egoPoly = self.getPredictPoly(timestamp_s)
         l_obj = self._searchEnvironment(timestamp_s)
         total_risk = 0
         total_eventRate = 0
-        for obj in l_obj['vehicle']:
-            col_risk, col_rate, col_ind = rfnc.collisionRisk(
+
+        for veh in l_obj['vehicle']:
+            vehPose, vehPoly = veh.getPredictAt(timestamp_s)
+            vcol_risk, vcol_rate, vcol_ind = rfnc.collisionRisk(
                 egoPose=egoPose,
                 egoPoly=egoPoly,
-                objPose=obj.getPoseAt(timestamp_s),
-                objPoly=obj.getPoly(timestamp_s)
+                objPose=vehPose,
+                objPoly=vehPoly
                 )
-            total_risk += col_risk
-            total_eventRate += col_rate
-        for obj in l_obj['staticObject']:
+            total_risk += vcol_risk
+            total_eventRate += vcol_rate
+
+        for sobj in l_obj['staticObject']:
             dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
                 pose=egoPose,
-                poly=obj._poly
+                poly=sobj._poly
                 )
             if MP is not None:
                 indicator, rate, risk = rfnc.unseenEventRisk(
@@ -146,6 +144,17 @@ class EgoVehicle:
                 )
                 total_risk += risk
                 total_eventRate += rate
+
+        for pedes in l_obj['pedestrian']:
+            pedesPose, pedesPoly = pedes.getPredictAt(timestamp_s)
+            pcol_risk, pcol_rate, pcol_ind = rfnc.collisionRisk(
+                egoPose=egoPose,
+                egoPoly=egoPoly,
+                objPose=pedesPose,
+                objPoly=pedesPoly
+                )
+            total_risk += pcol_risk
+            total_eventRate += pcol_rate
 
         self._p_eventRate.update({timestamp_s: total_eventRate})
         return total_risk
@@ -195,7 +204,6 @@ class EgoVehicle:
         return cost
 
     def _move(self, dT=param._dT):
-        self.optimize()
         lastPose = self.getCurrentPose()
         nextTimestamp_s = round(lastPose.timestamp_s + dT, 3)
         if self._p_u is not None:
@@ -224,13 +232,13 @@ class EgoVehicle:
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(u_in=x, dT=param._dT),
                 bounds=(0, param._A_MAX), method='bounded',
-                options={"maxiter": 5}
+                options={"maxiter": 3}
                 ).x
         else:
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(u_in=x, dT=param._dT),
                 bounds=(self._u - 0.5, self._u + 0.5), method='bounded',
-                options={"maxiter": 5}
+                options={"maxiter": 3}
                 ).x
 
         # check if critical event occur

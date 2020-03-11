@@ -292,6 +292,7 @@ class Vehicle(object):
         self._idx = idx
         self._length = length
         self._width = width
+        self._startTime = startTime
         theta = np.arctan2(to_y_m-from_y_m, to_x_m-from_x_m)
         if isStop:
             self._u = pfnc.computeAccToStop(
@@ -306,7 +307,7 @@ class Vehicle(object):
             vdy=VehicleDynamic(vx_ms, 0), timestamp_s=startTime)
         self._l_pose = {startPose.timestamp_s: startPose}
 
-    def getLastPose(self):
+    def getCurrentPose(self):
         return self._l_pose[max(self._l_pose)]
 
     def getLastTimestamp(self):
@@ -318,7 +319,7 @@ class Vehicle(object):
         else:
             return self._l_pose[timestamp_s]
 
-    def predict(self, const_vx=True, pT=param._PREDICT_TIME):
+    def predict(self, const_vx=False, pT=param._PREDICT_TIME):
         """
         Predict the vehicle motion from current state
         Args:
@@ -327,7 +328,7 @@ class Vehicle(object):
         """
         self._p_pose = {}
         lastPose = self.getCurrentPose()
-        nextTimestamp_s = round(self.getLastTimestamp() + pT, 3)
+        nextTimestamp_s = self.getLastTimestamp() + pT
         if const_vx:
             self._p_pose = pfnc.updatePoseList(
                 lastPose=lastPose,
@@ -341,12 +342,19 @@ class Vehicle(object):
                 nextTimestamp_s=nextTimestamp_s
             )
 
+    def getPredictAt(self, timestamp_s):
+        self.predict()
+        pose = self._p_pose[timestamp_s]
+        posePoly = pfnc.rectangle(pose.x_m, pose.y_m, pose.yaw_rad,
+                                  self._length, self._width)
+        return pose, posePoly
+               
     def move(self, dT=param._dT):
         """
         Update vehicle state to next timestamp
         """
         lastPose = self.getCurrentPose()
-        nextTimestamp_s = round(lastPose.timestamp_s + dT, 3)
+        nextTimestamp_s = lastPose.timestamp_s + dT
         nextPose = pfnc.updatePose(
             lastPose=lastPose,
             u_in=self._u,
@@ -360,7 +368,6 @@ class Vehicle(object):
         """
         pose = self.getPoseAt(timestamp_s)
         if pose is None:
-            print("No pose. is vehicle started?")
             return None
         return pfnc.rectangle(pose.x_m, pose.y_m, pose.yaw_rad,
                               self._length, self._width)
@@ -411,6 +418,8 @@ class Pedestrian(object):
         self._idx = idx
         self._length = 1
         self._width = 1
+        self._startTime = startTime
+        self._u = 0
         startTime = round(int(startTime/param._dT) * param._dT, 3)
         theta = np.arctan2(to_y_m-from_y_m, to_x_m-from_x_m)
         if isStop:
@@ -425,7 +434,7 @@ class Pedestrian(object):
             vdy=VehicleDynamic(vx_ms, 0), timestamp_s=startTime)
         self._l_pose = {startPose.timestamp_s: startPose}
 
-    def getLastPose(self):
+    def getCurrentPose(self):
         return self._l_pose[max(self._l_pose)]
 
     def getLastTimestamp(self):
@@ -446,26 +455,35 @@ class Pedestrian(object):
         """
         self._p_pose = {}
         lastPose = self.getCurrentPose()
-        nextTimestamp_s = round(self.getLastTimestamp() + pT, 3)
+        nextTimestamp_s = self.getLastTimestamp() + pT
         self._p_pose = pfnc.updatePoseList(
             lastPose=lastPose,
-            u_in=0,
+            u_in=self._u,
             nextTimestamp_s=nextTimestamp_s
         )
+
+    def getPredictAt(self, timestamp_s):
+        self.predict()
+        pose = self._p_pose[timestamp_s]
+        posePoly = pfnc.rectangle(pose.x_m, pose.y_m, pose.yaw_rad,
+                                  self._length, self._width)
+        return pose, posePoly
 
     def move(self, dT=param._dT):
         """
         Update vehicle state to next timestamp
         """
         lastPose = self.getCurrentPose()
-        nextTimestamp_s = round(lastPose.timestamp_s + dT, 3)
-        if nextTimestamp_s <= self._stopTimestamp_s:
+        nextTimestamp_s = lastPose.timestamp_s + dT
+        if nextTimestamp_s < self._stopTimestamp_s:
             nextPose = pfnc.updatePose(
                 lastPose=lastPose,
                 u_in=self._u,
                 dT=dT
                 )
             self._l_pose.update({nextTimestamp_s: nextPose})
+        else:
+            self._l_pose.update({nextTimestamp_s: lastPose})
 
     def getPoly(self, timestamp_s):
         """
@@ -473,7 +491,6 @@ class Pedestrian(object):
         """
         pose = self.getPoseAt(timestamp_s)
         if pose is None:
-            print("No pose. is vehicle started?")
             return None
         return pfnc.rectangle(pose.x_m,
                               pose.y_m,

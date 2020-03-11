@@ -41,13 +41,16 @@ class Environment(object):
     def addPedestrianCross(self, cross):
         self._l_cross.append(cross)
 
-    def move(self, dT=param._dT):
+    def move(self, currentTime, dT=param._dT):
         """
         Move objects in environment to next step
         """
-        for (vehicle, pedestrian) in zip(self._l_vehicle, self._l_pedestrian):
-            vehicle.move()
-            pedestrian.move()
+        for vehicle in self._l_vehicle:
+            if currentTime >= vehicle._startTime:
+                vehicle.move()
+        for pedestrian in self._l_pedestrian:
+            if currentTime >= pedestrian._startTime:
+                pedestrian.move()
 
     def updateAt(self, x_m, y_m, timestamp_s, radius=param._SCAN_RADIUS):
         """
@@ -56,6 +59,7 @@ class Environment(object):
         l_vehicle = []
         l_object = []
         l_pedestrian = []
+
         # find static object
         currentPos = np.array([x_m, y_m])
         for sObj in self._l_staticObject:
@@ -71,6 +75,14 @@ class Environment(object):
                 if np.linalg.norm(vehPos - currentPos) < radius:
                     l_vehicle.append(veh)
 
+        # find pedestrian
+        for pedes in self._l_pedestrian:
+            pedesPose = pedes.getPoseAt(timestamp_s)
+            if pedesPose is not None:
+                pedesPos = np.array([pedesPose.x_m, pedesPose.y_m])
+                if np.linalg.norm(pedesPos - currentPos) < radius:
+                    l_pedestrian.append(pedes)
+                    
         l_update = {'vehicle': l_vehicle,
                     'staticObject': l_object,
                     'pedestrian': l_pedestrian}
@@ -97,13 +109,19 @@ class Environment(object):
         # find vehicle
         for veh in self._l_vehicle:
             # if object doesn't appear at current time
-            if veh.getPoseAt(from_timestamp) is None:
-                continue
-            vehPose = veh.getPoseAt(timestamp_s)
+            vehPose = veh.getPoseAt(from_timestamp)
             if vehPose is not None:
                 vehPos = np.array([vehPose.x_m, vehPose.y_m])
                 if np.linalg.norm(vehPos - currentPos) < radius:
                     l_vehicle.append(veh)
+
+        # find pedestrian
+        for pedes in self._l_pedestrian:
+            pedesPose = pedes.getPoseAt(from_timestamp)
+            if pedesPose is not None:
+                pedesPos = np.array([pedesPose.x_m, pedesPose.y_m])
+                if np.linalg.norm(pedesPos - currentPos) < radius:
+                    l_pedestrian.append(pedes)
 
         l_update = {'vehicle': l_vehicle,
                     'staticObject': l_object,
@@ -125,7 +143,7 @@ class Environment(object):
         else:
             for veh in self._l_vehicle:
                 veh.plot(maxTimestamp_s=timestamp_s, ax=ax)
-    
+
     def setScenario(self, scenario):
         self._l_road = 0
         self._l_staticObject = []

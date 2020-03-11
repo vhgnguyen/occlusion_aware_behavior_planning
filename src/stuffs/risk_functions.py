@@ -171,7 +171,8 @@ def unseenEventRisk(d2MP, ego_vx, ego_acc, dVis,
     if d2MP <= sBrake_max + dBrakeThresh:
         t_obj2MP = dVis / obj_vx
         t_ego2Brake = - ego_vx / param._A_MAX_BRAKE
-        v_egoAtMP = max(np.sqrt(ego_vx**2 + 2*param._A_MAX_BRAKE*d2MP), 0)
+        v_max2 = max(ego_vx**2 + 2*param._A_MAX_BRAKE*d2MP, 0)
+        v_egoAtMP = max(np.sqrt(v_max2), 0)
 
         col_indicator = min(t_ego2Brake / t_obj2MP, 1) * pro_unseen
         col_event = unseenEventRate(col_indicator)

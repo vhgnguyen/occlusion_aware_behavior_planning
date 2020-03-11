@@ -2,7 +2,7 @@
 # Discreted time interval
 # ------------------------------
 _dT = 0.2
-_PREDICT_TIME = 3
+_PREDICT_TIME = 2.
 _SIMULATION_TIME = 20.
 
 # ------------------------------
@@ -20,7 +20,7 @@ _A_MIN = -2
 _A_MAX_BRAKE = -6.0
 
 # velocity
-_ALPHA_V_LONG = 0.1
+_ALPHA_V_LONG = 0.05
 _ALPHA_V_LAT = 0.0
 
 # ------------------------------
@@ -50,7 +50,7 @@ _ESCAPE_RATE = 1.
 _C_CRUISE = 0.001
 _C_V_CRUISE = 8
 _C_COMFORT = 0.001
-_C_JERK = 0.005
+_C_JERK = 0.001
 
 # unseen event rate
 _UNSEENEVENT_RATE_MAX = 1

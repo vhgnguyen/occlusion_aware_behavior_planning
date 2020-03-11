@@ -139,37 +139,6 @@ def updatePoseTurn(lastPose, u_in, nextTimestamp_s):
     return l_pose
 
 
-def interpolatePose(lastPose, nextTimestamp_s):
-    """
-    Interpolate vehicle pose with given timestamp
-    Args:
-        lastPose: current pose
-        nextTimestamp_s: next timestamp
-    Return:
-        l_pose(timestamp, pose): discreted pose list to given timestamp
-    """
-    assert nextTimestamp_s > lastPose.timestamp_s
-
-    step = int((nextTimestamp_s - lastPose.timestamp_s)/param._dT)
-    vx, dyaw = lastPose.vdy.vx_ms, lastPose.vdy.dyaw_rads
-    l_pose = {}
-    for i in range(1, step+1, 1):
-        dT = i * param._dT
-        if abs(dyaw) < 0.0001:
-            dX = vx * dT * np.cos(lastPose.yaw_rad)
-            dY = vx * dT * np.sin(lastPose.yaw_rad)
-        else:
-            dX = (vx / dyaw) * np.sin(dyaw*dT + lastPose.yaw_rad) \
-                - (vx / dyaw) * np.sin(lastPose.yaw_rad)
-            dY = (-vx / dyaw) * np.cos(dyaw*dT + lastPose.yaw_rad) \
-                + (vx / dyaw) * np.cos(lastPose.yaw_rad)
-        nextPose = Pose(x_m=lastPose.x_m + dX, y_m=lastPose.y_m + dY,
-                        yaw_rad=lastPose.yaw_rad + dyaw*dT,
-                        timestamp_s=nextTimestamp_s)
-        l_pose[lastPose.timestamp_s + dT] = nextPose
-    return l_pose
-
-
 def rectangle(x_m, y_m, yaw_rad, length, width):
     """
         Return rectangle centered at given position

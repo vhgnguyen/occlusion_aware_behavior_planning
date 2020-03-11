@@ -38,6 +38,7 @@ class BirdEyeView(QOpenGLWidget):
 
         gl.glShadeModel(gl.GL_FLAT)
         gl.glEnable(gl.GL_DEPTH_TEST)
+        gl.glEnable(gl.GL_POLYGON_SMOOTH)
 
     def getOpenglInfo(self):
         info = """
@@ -58,7 +59,7 @@ class BirdEyeView(QOpenGLWidget):
 
     def sizeHint(self):
         return QSize(900, 900)
-
+    
     def paintGL(self):
         gl.glClear(
             gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
@@ -83,16 +84,20 @@ class BirdEyeView(QOpenGLWidget):
         self._height = self.size().height()
 
     def makeObject(self):
-        self.drawPedestrianCross(self.core._env._l_cross)
-        self.drawRoadBoundary(self.core._env._l_road)
-        self.drawStaticObject(self.core._env._l_staticObject)
+        # draw static object
+        self.drawPedestrianCross()
+        self.drawRoadBoundary()
+        self.drawStaticObject()
 
-        
+        # draw moving object
+        self.drawEgoVehicle()
+        self.drawOtherVehicle()
+        self.drawPedestrian()
 
-    def drawRoadBoundary(self, road):
+    def drawRoadBoundary(self):
+        road = self.core._env._l_road
         if road == 0:
             return
-
         gl.glColor4f(0., 0., 0., 1.0)  # gray
         gl.glLineWidth(4.0)
         # draw left boundary
@@ -119,7 +124,8 @@ class BirdEyeView(QOpenGLWidget):
         gl.glEnd()
         gl.glDisable(gl.GL_LINE_STIPPLE)
 
-    def drawStaticObject(self, objectList):
+    def drawStaticObject(self):
+        objectList = self.core._env._l_staticObject
         gl.glColor4f(0.5, 0.5, 0.5, 0.8)  # black
         # poly should be sorted in counter clock-wise
         for obj in objectList:
@@ -127,15 +133,14 @@ class BirdEyeView(QOpenGLWidget):
             for i, pt in enumerate(obj._poly):
                 gl.glVertex2f(pt[0], pt[1])
             gl.glEnd()
-    
-    def drawPedestrianCross(self, crossList):
-        gl.glColor4f(0.8, 0.8, 0.8, 0.3)
+
+    def drawPedestrianCross(self):
+        crossList = self.core._env._l_cross
+        gl.glColor4f(0.8, 0.8, 0.8, 0.3)  # off white
         gl.glBegin(gl.GL_QUADS)
         for cross in crossList:
             v_l = cross.left[1] - cross.left[0]
-            print(v_l)
             length = np.linalg.norm(v_l)
-            print(length)
             v_l = v_l / length
             v_r = cross.right[1] - cross.right[0]
             v_r = v_r / length
@@ -151,16 +156,32 @@ class BirdEyeView(QOpenGLWidget):
                 gl.glVertex2f(p4[0], p4[1])
         gl.glEnd()
 
+    def drawPedestrian(self):
+        gl.glColor4f(0.0, 0.2, 0.8, 0.6)  # blue
+        gl.glBegin(gl.GL_QUADS)
+        pedestrianPoly = self.core.currentPedestrianPoly()
+        for pedestrian in pedestrianPoly:
+            for vertex in pedestrian:
+                gl.glVertex2f(vertex[0], vertex[1])
+        gl.glEnd()
 
-    def drawPedestrian(self, pedestrianList):
+    def drawOtherVehicle(self):
+        gl.glColor4f(0.0, 0.8, 0.2, 0.6)  # green
+        gl.glBegin(gl.GL_QUADS)
+        vehiclePoly = self.core.currentVehiclePoly()
+        for vehicle in vehiclePoly:
+            for vertex in vehicle:
+                gl.glVertex2f(vertex[0], vertex[1])
+        gl.glEnd()
 
-        return None
-
-    def drawOtherVehicle(self, vehiclePoly):
-        return None
-
-    def drawEgoVehicle(self, egoPoly):
-        return None
+    def drawEgoVehicle(self):
+        gl.glColor4f(0.8, 0.2, 0.2, 0.6)  # red
+        gl.glBegin(gl.GL_QUADS)
+        egoPoly = self.core.currentEgoPoly()
+        if egoPoly is not None:
+            for vertex in egoPoly:
+                gl.glVertex2f(vertex[0], vertex[1])
+        gl.glEnd()
 
     def drawAxis(self):
 
@@ -168,7 +189,7 @@ class BirdEyeView(QOpenGLWidget):
         xAxisMax = self._x_center + self._sizeX // 2
         startX = int(xAxisMin / self._rulerScale)
         endX = int(xAxisMax / self._rulerScale)
-        
+
         yAxisMin = self._y_center - self._sizeY // 2
         yAxisMax = self._y_center + self._sizeY // 2
         startY = int(yAxisMin / self._rulerScale)

@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import (QVBoxLayout, QGroupBox, QWidget,
                              QLabel, QPushButton, QRadioButton,
                              QMainWindow, QCheckBox, QButtonGroup)
 
+
 class InputWidget(QWidget):
 
     def __init__(self, core, parent=None):
@@ -64,6 +65,7 @@ class InputWidget(QWidget):
         # reset button
         self.scenarioResetButton = QPushButton("Reset")
         self.scenarioResetButton.setMaximumWidth(200)
+        self.scenarioResetButton.setEnabled(False)
         self.scenarioResetButton.clicked.connect(self.on_resetButton_clicked)
         self.scenarioGrid.addWidget(self.scenarioResetButton, 1, 1)
 
@@ -155,6 +157,7 @@ class InputWidget(QWidget):
     def addEnvironmentBox(self):
         self.envBox = QGroupBox()
         self.envBox.setTitle("Environment")
+        self.envBox.setEnabled(False)
         self.envGrid = QGridLayout()
         self.envBoxLayout = QVBoxLayout()
 
@@ -227,20 +230,21 @@ class InputWidget(QWidget):
     def on_chooseScenario_checked(self):
         self.scenarioGenerateButton.setEnabled(True)
         if self.scenarioButton1.isChecked():
-            self.core.setScenario(nr=1)
+            self.core._env.setScenario(scenario=1)
         elif self.scenarioButton2.isChecked():
-            self.core.setScenario(nr=2)
+            self.core._env.setScenario(scenario=2)
         elif self.scenarioButton3.isChecked():
-            self.core.setScenario(nr=3)
+            self.core._env.setScenario(scenario=3)
 
     def on_generateButton_clicked(self):
         self.scenarioGenerateButton.setEnabled(False)
+        self.scenarioResetButton.setEnabled(True)
         self.carBox.setEnabled(True)
-        self.envBox.setEnabled(True)
         self.timeBox.setEnabled(True)
 
     def on_resetButton_clicked(self):
         self.scenarioGenerateButton.setEnabled(False)
+        self.scenarioResetButton.setEnabled(False)
         self.scenarioButtonGroup.setExclusive(False)
         self.scenarioButtonGroup.checkedButton().setChecked(False)
         self.scenarioButtonGroup.setExclusive(True)
@@ -248,13 +252,17 @@ class InputWidget(QWidget):
         self.envBox.setEnabled(False)
         self.timeBox.setEnabled(False)
 
+        self.core.reset()
+
     def on_addEgoVehicleButton_clicked(self):
+        self.envBox.setEnabled(True)
+
         self.core.addEgoVehicle(
             length=float(self.carLengthValue.text()),
             width=float(self.carWidthValue.text()),
             x_m=float(self.carValue_x.text()),
             y_m=float(self.carValue_y.text()),
-            theta=float(self.carValue_theta.text()),
+            theta=float(self.carValue_theta.text()) * 0.0174533,
             cov_long=float(self.carValue_covLong.text()),
             cov_lat=float(self.carValue_covLat.text()),
             vx_ms=float(self.carValue_longVel.text()),
