@@ -16,8 +16,8 @@ def minkowskiSum(obj1, obj2):
             bound: [min_x, min_y] max/min signed distances from vertices
                    [max_x, max_y] to center of polygon
     """
-    assert obj1.ndim == 2 and obj1.shape[1] == 2
-    assert obj2.ndim == 2 and obj2.shape[1] == 2
+    # assert obj1.ndim == 2 and obj1.shape[1] == 2
+    # assert obj2.ndim == 2 and obj2.shape[1] == 2
 
     poly = np.array([], dtype=np.float).reshape(0, 2)
     for p1 in obj1:
@@ -28,7 +28,7 @@ def minkowskiSum(obj1, obj2):
     poly = poly00[hull.vertices]
     bound = {'max': hull.max_bound, 'min': hull.min_bound}
 
-    assert poly.ndim == 2 and poly.shape[1] == 2
+    # assert poly.ndim == 2 and poly.shape[1] == 2
 
     return poly, bound
 
@@ -44,8 +44,8 @@ def pdfExplicit(point2D, mean, cov):
         Return:
             prob: value of the PDF of given point
     """
-    assert mean.shape == (2,)
-    assert cov.shape == (2, 2)
+    # assert mean.shape == (2,)
+    # assert cov.shape == (2, 2)
 
     x = point2D[0] - mean[0]
     y = point2D[1] - mean[1]
@@ -91,9 +91,9 @@ def polyIntegratePdf(poly, mean, cov, eps=1.0e-1, method=None):
         Return:
             I: result of the integral
     """
-    assert poly.ndim == 2 and poly.shape[1] == 2
-    assert mean.shape == (2,)
-    assert cov.shape == (2, 2)
+    # assert poly.ndim == 2 and poly.shape[1] == 2
+    # assert mean.shape == (2,)
+    # assert cov.shape == (2, 2)
 
     if method == 'simulation':
         count = 10000
@@ -113,7 +113,7 @@ def polyIntegratePdf(poly, mean, cov, eps=1.0e-1, method=None):
                 eps)
             areaSum += sol
 
-        assert np.isscalar(areaSum)
+        # assert np.isscalar(areaSum)
 
         return min(areaSum, 1)
 

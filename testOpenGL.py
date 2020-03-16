@@ -136,8 +136,8 @@ class GLWidget(QOpenGLWidget):
         if side < 0:
             return
 
-        gl.glViewport((width - side) // 2, (height - side) // 2, side,
-                           side)
+        gl.glViewport((width - side) // 2, (height - side) // 2,
+                      side, side)
 
         gl.glMatrixMode(gl.GL_PROJECTION)
         gl.glLoadIdentity()

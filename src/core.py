@@ -110,7 +110,22 @@ class Core(object):
 
     
     def currentEgoPoly(self):
-        if self._egoCar is not None:
-            return self._egoCar.getPoly(self.timestamp_s)
-        else:
+        if self._egoCar is None:
             return None
+        
+        return self._egoCar.getPoly(self.timestamp_s)
+
+    
+    def getCurrentFOV(self):
+        if self._egoCar is None:
+            return None
+        
+        return self._egoCar.getFOV()
+
+    
+    def getCurrentEgoPos(self):
+        if self._egoCar is None:
+            return None
+        
+        return [self._egoCar.getCurrentPose().x_m,
+                self._egoCar.getCurrentPose().y_m]

@@ -37,8 +37,10 @@ class BirdEyeView(QOpenGLWidget):
         self.setClearColor(self.trolltechPurple.darker())
 
         gl.glShadeModel(gl.GL_FLAT)
-        gl.glEnable(gl.GL_DEPTH_TEST)
+        # gl.glEnable(gl.GL_DEPTH_TEST)
         gl.glEnable(gl.GL_POLYGON_SMOOTH)
+        gl.glEnable(gl.GL_BLEND)
+        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
 
     def getOpenglInfo(self):
         info = """
@@ -59,8 +61,9 @@ class BirdEyeView(QOpenGLWidget):
 
     def sizeHint(self):
         return QSize(900, 900)
-    
+
     def paintGL(self):
+        self.setClearColor(self.trolltechPurple.darker())
         gl.glClear(
             gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
         gl.glLoadIdentity()
@@ -93,6 +96,7 @@ class BirdEyeView(QOpenGLWidget):
         self.drawEgoVehicle()
         self.drawOtherVehicle()
         self.drawPedestrian()
+        self.drawFOV()
 
     def drawRoadBoundary(self):
         road = self.core._env._l_road
@@ -183,6 +187,21 @@ class BirdEyeView(QOpenGLWidget):
                 gl.glVertex2f(vertex[0], vertex[1])
         gl.glEnd()
 
+    def drawFOV(self):
+        vehPos = self.core.getCurrentEgoPos()
+        l_FOV = self.core.getCurrentFOV()
+
+        gl.glColor4f(0.0, 0.0, 0.5, 0.1)  # orange
+        gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_LINE)
+        if (vehPos is not None and l_FOV is not None):
+            gl.glBegin(gl.GL_POLYGON)
+            # gl.glBegin(gl.GL_LINES)
+            for pt in l_FOV:
+                # gl.glVertex2f(vehPos[0], vehPos[1])
+                gl.glVertex2f(pt[0], pt[1])
+            gl.glEnd()
+        gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_FILL)
+
     def drawAxis(self):
 
         xAxisMin = self._x_center - self._sizeX // 2
@@ -215,7 +234,7 @@ class BirdEyeView(QOpenGLWidget):
         painter.end()
 
     def setClearColor(self, c):
-        gl.glClearColor(c.redF(), c.greenF(), c.blueF(), c.alphaF())
+        gl.glClearColor(c.redF(), c.greenF(), c.blueF(), 0)
 
     def setColor(self, c):
         gl.glColor4f(c.redF(), c.greenF(), c.blueF(), c.alphaF())

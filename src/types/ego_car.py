@@ -1,6 +1,7 @@
 from matplotlib.patches import Ellipse, Polygon
 import matplotlib.pyplot as plt
 from scipy import optimize
+
 import numpy as np
 import time
 
@@ -26,19 +27,25 @@ class EgoVehicle:
     def __init__(self, length, width, env, startPose, u_in):
         self.length = length
         self.width = width
+
         self._p_u = None
         self._p_pose = {}
         self._p_eventRate = {}
-        self._env = env
-        self._u = u_in
+
         self._l_u = {startPose.timestamp_s: u_in}
         self._l_pose = {startPose.timestamp_s: startPose}
+        self._currentPose = startPose
+        self._u = u_in
+
+        self._env = env
+        self._fov = None
+        self._l_currentObject = {}
 
     def getCurrentPose(self):
-        return self._l_pose[max(self._l_pose)]
+        return self._currentPose
 
     def getCurrentTimestamp(self):
-        return max(self._l_pose)
+        return self._currentPose.timestamp_s
 
     def getPoseAt(self, timestamp_s):
         if timestamp_s in self._l_pose:
@@ -70,18 +77,17 @@ class EgoVehicle:
 
     # ------------------- Opt function ---------------------
 
-    def _searchEnvironment(self, timestamp_s):
+    def _searchEnvironment(self):
         """
-        Scan environment at given predict timestamp
+        Scan environment at current state
         """
-        p_pose = self._p_pose[timestamp_s]
-        l_obj = self._env.update(
-            x_m=p_pose.x_m,
-            y_m=p_pose.y_m,
-            timestamp_s=p_pose.timestamp_s,
-            from_timestamp=self.getCurrentTimestamp()
+        currentPose = self.getCurrentPose()
+        self._l_currentObject = self._env.update(
+            x_m=currentPose.x_m,
+            y_m=currentPose.y_m,
+            from_timestamp=currentPose.timestamp_s
             )
-        return l_obj
+        self._fov = self.getFOV()
 
     def _predict(self, u_in, predictTime=param._PREDICT_TIME):
         """
@@ -115,7 +121,7 @@ class EgoVehicle:
         timestamp_s = round(timestamp_s, 3)
         egoPose = self._p_pose[timestamp_s]
         egoPoly = self.getPredictPoly(timestamp_s)
-        l_obj = self._searchEnvironment(timestamp_s)
+        l_obj = self._l_currentObject
         total_risk = 0
         total_eventRate = 0
 
@@ -219,6 +225,7 @@ class EgoVehicle:
                 u_in=self._u,
                 dT=dT
                 )
+        self._currentPose = nextPose
         self._l_pose.update({nextTimestamp_s: nextPose})
         self._l_u.update({nextTimestamp_s: self._u})
 
@@ -226,6 +233,9 @@ class EgoVehicle:
         val = 0
         lowBound = max(self._u - 0.5, param._A_MIN)
         upBound = min(self._u + 0.5, param._A_MAX)
+
+        # search environment
+        self._searchEnvironment()
 
         # handle stop case
         if self.getCurrentPose().vdy.vx_ms < 0.1:
@@ -258,8 +268,22 @@ class EgoVehicle:
 
     # ------------------- Export function ---------------------
 
-    def exportPose(self, timestamp_s):
-        return
+    def getFOV(self):
+        l_poly = []
+        if len(self._l_currentObject) != 0:
+            for veh in self._l_currentObject['vehicle']:
+                vehPoly = veh.getPoly(self.getCurrentTimestamp())
+                if vehPoly is not None and veh.getCurrentPose().vdy.vx_ms < 2:
+                    l_poly.append(veh.getPoly(self.getCurrentTimestamp()))
+            for staticObject in self._l_currentObject['staticObject']:
+                l_poly.append(staticObject._poly)
+            return pfnc.FOV(
+                pose=self.getCurrentPose(), polys=l_poly,
+                angle=np.pi/2 - 0.3,
+                radius=param._SCAN_RADIUS,
+                nrRays=50)
+        else:
+            return None
 
     # ------------------- Test function ---------------------
 
@@ -669,7 +693,7 @@ class EgoVehicle:
 
         for a in ax:
             a.legend()
-        
+
         fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(21, 6))
 
         ax[0].set_title("Probability of collision with unseen pedestrian")
@@ -795,7 +819,6 @@ class EgoVehicle:
             a.legend()
 
         return l_cost_list
-
 
     def _getAllPassedCost(self):
         return

@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from pose import Pose, VehicleDynamic
-from objects import OtherVehicle, StaticObject, RoadBoundary, PedestrianCross
+from objects import StaticObject, RoadBoundary, PedestrianCross
 import _param as param
 
 
@@ -89,7 +89,7 @@ class Environment(object):
 
         return l_update
 
-    def update(self, x_m, y_m, timestamp_s, from_timestamp,
+    def update(self, x_m, y_m, from_timestamp,
                radius=param._SCAN_RADIUS):
         """
         Get environment around a given position
@@ -109,16 +109,16 @@ class Environment(object):
         # find vehicle
         for veh in self._l_vehicle:
             # if object doesn't appear at current time
-            vehPose = veh.getPoseAt(from_timestamp)
-            if vehPose is not None:
+            vehPose = veh.getCurrentPose()
+            if vehPose.timestamp_s == from_timestamp:
                 vehPos = np.array([vehPose.x_m, vehPose.y_m])
                 if np.linalg.norm(vehPos - currentPos) < radius:
                     l_vehicle.append(veh)
 
         # find pedestrian
         for pedes in self._l_pedestrian:
-            pedesPose = pedes.getPoseAt(from_timestamp)
-            if pedesPose is not None:
+            pedesPose = pedes.getCurrentPose()
+            if pedesPose.timestamp_s == from_timestamp:
                 pedesPos = np.array([pedesPose.x_m, pedesPose.y_m])
                 if np.linalg.norm(pedesPos - currentPos) < radius:
                     l_pedestrian.append(pedes)

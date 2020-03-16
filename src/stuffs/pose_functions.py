@@ -1,6 +1,7 @@
 import numpy as np
 
 from pose import Pose, VehicleDynamic
+from scipy.spatial import Delaunay
 
 import _param as param
 
@@ -92,51 +93,7 @@ def updateCovLatlong(lastCovLatLong, dT, dX, dY):
                     lastCovLatLong[1, 1] + (param._ALPHA_V_LAT*(dY+0.05))**2])
 
 
-def updatePoseTurn(lastPose, u_in, nextTimestamp_s):
-    """
-    Update vehicle pose with given longtitude acceleration and timestamp
-    Args:
-        lastPose: current pose
-        u_in: acceleration as model input
-        nextTimestamp_s: next timestamp
-    Return:
-        l_pose(timestamp, pose): discreted pose list to given timestamp
-        l_u(timestamp, u): input list to given timestamp
-    """
-    assert nextTimestamp_s > lastPose.timestamp_s
 
-    step = int((nextTimestamp_s - lastPose.timestamp_s)/param._dT)
-    vx = lastPose.vdy.vx_ms
-    dyaw = lastPose.vdy.dyaw_rads
-    l_pose = {}
-    for i in range(1, step+1, 1):
-        dT = i * param._dT
-        current_vx = vx + u_in * (dT - param._dT)
-        current_yaw_rad = lastPose.yaw_rad + (dT - param._dT) * dyaw
-        if abs(dyaw) < 0.0001:
-            dX = current_vx * dT * np.cos(current_yaw_rad)
-            dY = current_vx * dT * np.sin(current_yaw_rad)
-        else:
-            dX = (current_vx / dyaw) * np.sin(dyaw*dT + current_yaw_rad) \
-                - (current_vx / dyaw) * np.sin(current_yaw_rad)
-            dY = (-current_vx / dyaw) * np.cos(dyaw*dT + current_yaw_rad) \
-                + (current_vx / dyaw) * np.cos(current_yaw_rad)
-        next_vdy = VehicleDynamic(current_vx, dyaw)
-        # update covariance matrix from the nearest pose
-        next_covLatLong = 0
-        if not l_pose:
-            next_covLatLong = updateCovLatlong(lastPose.covLatLong,
-                                               param._dT, current_vx * dT, 0)
-        else:
-            nearestPose = l_pose[max(l_pose)]
-            next_covLatLong = updateCovLatlong(nearestPose.covLatLong,
-                                               param._dT, current_vx * dT, 0)
-        nextPose = Pose(x_m=lastPose.x_m + dX, y_m=lastPose.y_m + dY,
-                        yaw_rad=lastPose.yaw_rad + dyaw*dT, vdy=next_vdy,
-                        covLatLong=next_covLatLong,
-                        timestamp_s=lastPose.timestamp_s + dT)
-        l_pose[lastPose.timestamp_s + dT] = nextPose
-    return l_pose
 
 
 def rectangle(x_m, y_m, yaw_rad, length, width):
@@ -201,50 +158,11 @@ def distanceToMergePoint(pose, poly, dThres=1):
     return dToMergePoint, MP, visibleDistance, randVertex
 
 
-def FOV(pose, polys, angle, radius, nrRays=50):
-    """
-    Field of view (FOV) around ego car
-    """
-    l_alpha = np.linspace(-angle, angle, nrRays) + pose.yaw_rad
-    l1_1 = np.array([pose.x_m, pose.y_m])
-    l_fov = np.empty((0, 2))
-    for k, alpha in enumerate(l_alpha):
-        l1_2 = l1_1 + np.array([np.cos(alpha), np.sin(alpha)]) * radius
-        ip = None
-        for poly in polys:
-            for i in range(0, poly.shape[0], 1):
-                ip_tmp = line_intersection(l1_1, l1_2, poly[i-1], poly[i])
-                if ip_tmp is not None:
-                    if ip is not None:
-                        if np.linalg.norm(ip_tmp-l1_1) <= np.linalg.norm(ip-l1_1):
-                            ip = ip_tmp
-                    else:
-                        ip = ip_tmp
-        if ip is not None:
-            l_fov = np.append(l_fov, ip, axis=0)
-        else:
-            l_fov = np.append(l_fov, np.array([l1_2]), axis=0)
-    return l_fov
-
-
-def line_intersection(line1_1, line1_2, line2_1, line2_2):
-    xdiff = (line1_1[0] - line1_2[0], line2_1[0] - line2_2[0])
-    ydiff = (line1_1[1] - line1_2[1], line2_1[1] - line2_2[1])
-    div = det(xdiff, ydiff)
-    if div == 0:
-        return None
-    d = (det(line1_1, line1_2), det(line2_1, line2_2))
-    x = det(d, xdiff) / div
-    y = det(d, ydiff) / div
-    if (onSegment(line1_1, line1_2, [x, y]) and
-       onSegment(line2_1, line2_2, [x, y])):
-        return np.array([[x, y]])
-    else:
-        return None
-
-
-def det(a, b):
-    return a[0] * b[1] - a[1] * b[0]
+def perp(a):
+    b = np.empty_like(a)
+    b[0] = -a[1]
+    b[1] = a[0]
+    return b
 
 
 def onSegment(p, r, q):
@@ -252,3 +170,169 @@ def onSegment(p, r, q):
        (q[1] <= max(p[1], r[1])) and (q[1] >= min(p[1], r[1]))):
         return True
     return False
+
+
+def seg_intersect(a1, a2, b1, b2):
+    da = a2-a1
+    db = b2-b1
+    dp = a1-b1
+    dap = perp(da)
+    denom = np.dot(dap, db)
+    num = np.dot(dap, dp)
+    cross = (num / denom)*db + b1
+    if onSegment(a1, a2, cross) and onSegment(b1, b2, cross):
+        return np.array([cross])
+    else:
+        return None
+
+
+def FOV(pose, polys, angle, radius, nrRays=50):
+    """
+    Field of view (FOV) around ego car
+    """
+    l_alpha = np.linspace(-angle, angle, nrRays) + pose.yaw_rad
+    l1_1 = np.array([pose.x_m, pose.y_m])
+    l_fov = np.empty((0, 2))
+    l_fov = np.append(l_fov, np.array([l1_1]), axis=0)
+
+    for k, alpha in enumerate(l_alpha):
+        l1_2 = l1_1 + np.array([np.cos(alpha), np.sin(alpha)]) * radius
+        ip = np.array([l1_2])
+        for poly in polys:
+            for i in range(0, poly.shape[0], 1):
+                ip_tmp = seg_intersect(l1_1, l1_2, poly[i-1], poly[i])
+                if ip_tmp is not None:
+                    if np.linalg.norm(ip_tmp-l1_1) < np.linalg.norm(ip-l1_1):
+                        ip = ip_tmp
+        l_fov = np.append(l_fov, ip, axis=0)
+
+    return l_fov
+
+
+def inPolygon(point, poly):
+    """
+    Test if points list p in poly
+    """
+    poly = Delaunay(poly)
+    return poly.find_simplex(point) >= 0
+
+
+# ---------------------- BACK UP FUNCTIONS -----------------------------
+
+def updatePoseTurn(lastPose, u_in, nextTimestamp_s):
+    """
+    Update vehicle pose with given longtitude acceleration and timestamp
+    Args:
+        lastPose: current pose
+        u_in: acceleration as model input
+        nextTimestamp_s: next timestamp
+    Return:
+        l_pose(timestamp, pose): discreted pose list to given timestamp
+        l_u(timestamp, u): input list to given timestamp
+    """
+    assert nextTimestamp_s > lastPose.timestamp_s
+
+    step = int((nextTimestamp_s - lastPose.timestamp_s)/param._dT)
+    vx = lastPose.vdy.vx_ms
+    dyaw = lastPose.vdy.dyaw_rads
+    l_pose = {}
+    for i in range(1, step+1, 1):
+        dT = i * param._dT
+        current_vx = vx + u_in * (dT - param._dT)
+        current_yaw_rad = lastPose.yaw_rad + (dT - param._dT) * dyaw
+        if abs(dyaw) < 0.0001:
+            dX = current_vx * dT * np.cos(current_yaw_rad)
+            dY = current_vx * dT * np.sin(current_yaw_rad)
+        else:
+            dX = (current_vx / dyaw) * np.sin(dyaw*dT + current_yaw_rad) \
+                - (current_vx / dyaw) * np.sin(current_yaw_rad)
+            dY = (-current_vx / dyaw) * np.cos(dyaw*dT + current_yaw_rad) \
+                + (current_vx / dyaw) * np.cos(current_yaw_rad)
+        next_vdy = VehicleDynamic(current_vx, dyaw)
+        # update covariance matrix from the nearest pose
+        next_covLatLong = 0
+        if not l_pose:
+            next_covLatLong = updateCovLatlong(lastPose.covLatLong,
+                                               param._dT, current_vx * dT, 0)
+        else:
+            nearestPose = l_pose[max(l_pose)]
+            next_covLatLong = updateCovLatlong(nearestPose.covLatLong,
+                                               param._dT, current_vx * dT, 0)
+        nextPose = Pose(x_m=lastPose.x_m + dX, y_m=lastPose.y_m + dY,
+                        yaw_rad=lastPose.yaw_rad + dyaw*dT, vdy=next_vdy,
+                        covLatLong=next_covLatLong,
+                        timestamp_s=lastPose.timestamp_s + dT)
+        l_pose[lastPose.timestamp_s + dT] = nextPose
+    return l_pose
+
+
+def line_intersection(line1_1, line1_2, line2_1, line2_2):
+
+    def line(p1, p2):
+        A = (p1[1] - p2[1])
+        B = (p2[0] - p1[0])
+        C = (p1[0]*p2[1] - p2[0]*p1[1])
+        return A, B, -C
+
+    L1 = line(line1_1, line1_2)
+    L2 = line(line2_1, line2_2)
+
+    D = L1[0] * L2[1] - L1[1] * L2[0]
+    Dx = L1[2] * L2[1] - L1[1] * L2[2]
+    Dy = L1[0] * L2[2] - L1[2] * L2[0]
+
+    if D != 0:
+        x = Dx / D
+        y = Dy / D
+        if (onSegment(line1_1, line1_2, [x, y]) and
+           onSegment(line2_1, line2_2, [x, y])):
+            return np.array([[x, y]])
+    else:
+        return None
+
+
+def getFOV(pose, polys, angle, radius=param._SCAN_RADIUS, nrRays=50):
+
+    l1_1 = np.array([pose.x_m, pose.y_m])
+    l_fov = np.empty((0, 2))
+    direction = np.array([np.cos(pose.yaw_rad), np.sin(pose.yaw_rad)])
+
+    left_ray = l1_1 + np.array([np.cos(-angle), np.sin(-angle)]) * radius
+    right_ray = l1_1 + np.array([np.cos(angle), np.sin(angle)]) * radius
+
+    ip_left = np.array([left_ray])
+    ip_right = np.array([right_ray])
+
+    for poly in polys:
+        for i in range(0, poly.shape[0], 1):
+            # intersect of left and right ray
+            tmp_left = seg_intersect(l1_1, left_ray, poly[i-1], poly[i])
+            tmp_right = seg_intersect(l1_1, right_ray, poly[i-1], poly[i])
+            if tmp_left is not None:
+                if np.linalg.norm(tmp_left-l1_1) < np.linalg.norm(ip_left-l1_1):
+                    ip_left = tmp_left
+            if tmp_right is not None:
+                if np.linalg.norm(tmp_right-l1_1) < np.linalg.norm(ip_right-l1_1):
+                    ip_right = tmp_right
+
+            # angle between ego and vertex
+            p2v = np.array([poly[i][0] - pose.x_m, poly[i][1] - pose.y_m])
+            p2v = p2v / np.linalg.norm(p2v)
+            angle1 = np.arccos(np.dot(direction, p2v))
+
+            # ray from ego to poly vertex
+            if abs(angle1) < angle:
+                l1_2 = l1_1 + np.array([np.cos(angle), np.sin(angle)]) * radius
+                ip = np.array([l1_2])
+                # find closest intersect
+                for poly1 in polys:
+                    for k in range(0, poly1.shape[0], 1):
+                        ip_tmp = seg_intersect(l1_1, l1_2, poly1[k-1], poly1[k])
+                        if ip_tmp is not None:
+                            if np.linalg.norm(ip_tmp-l1_1) < np.linalg.norm(ip-l1_1):
+                                ip = ip_tmp
+                l_fov = np.append(l_fov, ip, axis=0)
+        l_fov = np.append(l_fov, ip_left, axis=0)
+        l_fov = np.append(l_fov, ip_right, axis=0)
+        
+    return l_fov
