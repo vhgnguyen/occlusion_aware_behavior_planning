@@ -1,8 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+import pose_functions as pfnc
 from pose import Pose, VehicleDynamic
-from objects import StaticObject, RoadBoundary, PedestrianCross
+from objects import (StaticObject, RoadBoundary,
+                     PedestrianCross, Vehicle, Pedestrian)
 import _param as param
 
 
@@ -26,22 +28,22 @@ class Environment(object):
     def countStaticObject(self):
         return len(self._l_staticObject)
 
-    def addRoadBoundary(self, roadBoundary):
+    def addRoadBoundary(self, roadBoundary: RoadBoundary):
         self._l_road.append(roadBoundary)
 
-    def addVehicle(self, otherVehicle):
+    def addVehicle(self, otherVehicle: Vehicle):
         self._l_vehicle.append(otherVehicle)
 
-    def addStaticObject(self, staticObject):
+    def addStaticObject(self, staticObject: StaticObject):
         self._l_staticObject.append(staticObject)
 
-    def addPedestrian(self, pedestrian):
+    def addPedestrian(self, pedestrian: Pedestrian):
         self._l_pedestrian.append(pedestrian)
 
-    def addPedestrianCross(self, cross):
+    def addPedestrianCross(self, cross: PedestrianCross):
         self._l_cross.append(cross)
 
-    def move(self, currentTime, dT=param._dT):
+    def move(self, currentTime: float, dT=param._dT):
         """
         Move objects in environment to next step
         """
@@ -52,7 +54,8 @@ class Environment(object):
             if currentTime >= pedestrian._startTime:
                 pedestrian.move()
 
-    def updateAt(self, x_m, y_m, timestamp_s, radius=param._SCAN_RADIUS):
+    def updateAt(self, x_m: float, y_m: float, timestamp_s,
+                 radius=param._SCAN_RADIUS):
         """
         Get environment around a given position
         """
@@ -89,7 +92,7 @@ class Environment(object):
 
         return l_update
 
-    def update(self, x_m, y_m, from_timestamp,
+    def update(self, pose: Pose, from_timestamp: float,
                radius=param._SCAN_RADIUS):
         """
         Get environment around a given position
@@ -97,37 +100,63 @@ class Environment(object):
         l_vehicle = []
         l_object = []
         l_pedestrian = []
-
-        currentPos = np.array([x_m, y_m])
+        l_polys = []
+        currentPos = np.array([pose.x_m, pose.y_m])
 
         # find static object
         for sObj in self._l_staticObject:
-            d2ego = np.linalg.norm(sObj._poly - currentPos, axis=1)
+            objPoly = sObj._poly
+            d2ego = np.linalg.norm(objPoly - currentPos, axis=1)
             if ((d2ego) < radius).any():
                 l_object.append(sObj)
+                l_polys.append(objPoly)
 
-        # find vehicle
+        # find static vehicle
         for veh in self._l_vehicle:
-            # if object doesn't appear at current time
             vehPose = veh.getCurrentPose()
             if vehPose.timestamp_s == from_timestamp:
                 vehPos = np.array([vehPose.x_m, vehPose.y_m])
                 if np.linalg.norm(vehPos - currentPos) < radius:
-                    l_vehicle.append(veh)
+                    if vehPose.vdy.vx_ms < 2:
+                        l_polys.append(veh.getPoly(from_timestamp))
+        
+        # generate field of view
+        fov = pfnc.FOV(
+            pose=pose, polys=l_polys, angle=param._FOV_ANGLE,
+            radius=radius, nrRays=param._FOV_RAYS)
+        
+        # check other moving vehicle in FOV
+        for veh in self._l_vehicle:
+            vehPose = veh.getCurrentPose()
+            if vehPose.timestamp_s == from_timestamp:
+                vehPos = np.array([vehPose.x_m, vehPose.y_m])
+                if np.linalg.norm(vehPos - currentPos) < radius:
+                    if vehPose.vdy.vx_ms < 2:
+                        veh.setDetected(True)
+                        l_vehicle.append(veh)
+                    elif pfnc.inPolygon(vehPos, fov):
+                        veh.setDetected(True)
+                        l_vehicle.append(veh)
+                    else:
+                        veh.setDetected(False)
 
-        # find pedestrian
+        # check pedestrian in FOV
         for pedes in self._l_pedestrian:
             pedesPose = pedes.getCurrentPose()
             if pedesPose.timestamp_s == from_timestamp:
                 pedesPos = np.array([pedesPose.x_m, pedesPose.y_m])
                 if np.linalg.norm(pedesPos - currentPos) < radius:
-                    l_pedestrian.append(pedes)
+                    if pfnc.inPolygon(pedesPos, fov):
+                        pedes.setDetected(True)
+                        l_pedestrian.append(pedes)
+                    else:
+                        pedes.setDetected(False)
 
         l_update = {'vehicle': l_vehicle,
                     'staticObject': l_object,
                     'pedestrian': l_pedestrian}
 
-        return l_update
+        return l_update, fov
 
     def plot(self, timestamp_s, plotHistory=False, ax=plt):
         """

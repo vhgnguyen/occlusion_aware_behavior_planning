@@ -171,12 +171,21 @@ class BirdEyeView(QOpenGLWidget):
 
     def drawOtherVehicle(self):
         gl.glColor4f(0.0, 0.8, 0.2, 0.6)  # green
-        gl.glBegin(gl.GL_QUADS)
         vehiclePoly = self.core.currentVehiclePoly()
         for vehicle in vehiclePoly:
+            gl.glBegin(gl.GL_QUADS)
             for vertex in vehicle:
                 gl.glVertex2f(vertex[0], vertex[1])
-        gl.glEnd()
+            gl.glEnd()
+            if vehicle.isVisible():
+                gl.glColor4f(0.8, 0., 0., 0.5)
+            else:
+                gl.glColor4f(0., 0., 0., 0.5)
+            egoPos = self.core.getCurrentEgoPos()
+            gl.glBegin(gl.GL_LINES)
+            gl.glVertex2f(egoPos[0], egoPos[1])
+            gl.glVertex2f(vertex[0], vertex[1])
+            gl.glEnd()
 
     def drawEgoVehicle(self):
         gl.glColor4f(0.8, 0.2, 0.2, 0.6)  # red

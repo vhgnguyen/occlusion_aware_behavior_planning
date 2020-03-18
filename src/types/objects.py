@@ -97,6 +97,7 @@ class Vehicle(object):
         self._idx = idx
         self._length = length
         self._width = width
+        self._isDetected = False
         self._startTime = startTime
         self._p_pose = {}
 
@@ -114,9 +115,15 @@ class Vehicle(object):
             x_m=from_x_m, y_m=from_y_m, yaw_rad=theta,
             covLatLong=np.diag([covLong, covLat]),
             vdy=VehicleDynamic(vx_ms, 0), timestamp_s=startTime)
-            
+
         self._currentPose = startPose
         self._l_pose = {startPose.timestamp_s: startPose}
+
+    def isVisible(self):
+        return self._isDetected
+
+    def setDetected(self, a0: bool):
+        self._isDetected = a0
 
     def getCurrentPose(self):
         return self._currentPose
@@ -166,7 +173,7 @@ class Vehicle(object):
         Update vehicle state to next timestamp
         """
         lastPose = self.getCurrentPose()
-        nextTimestamp_s = lastPose.timestamp_s + dT
+        nextTimestamp_s = round(lastPose.timestamp_s + dT, 3)
         nextPose = pfnc.updatePose(
             lastPose=lastPose,
             u_in=self._u,
@@ -174,6 +181,7 @@ class Vehicle(object):
             )
         self._currentPose = nextPose
         self._l_pose.update({nextTimestamp_s: nextPose})
+        self._isDetected = False
 
     def getPoly(self, timestamp_s):
         """
@@ -231,6 +239,7 @@ class Pedestrian(object):
         self._idx = idx
         self._length = 1
         self._width = 1
+        self._isDetected = False
         self._startTime = startTime
         self._u = 0
         self._p_pose = {}
@@ -251,6 +260,12 @@ class Pedestrian(object):
 
         self._currentPose = startPose
         self._l_pose = {startPose.timestamp_s: startPose}
+
+    def isVisible(self):
+        return self._isDetected
+
+    def setDetected(self, a0: bool):
+        self._isDetected = a0
 
     def getCurrentPose(self):
         return self._currentPose
@@ -293,7 +308,7 @@ class Pedestrian(object):
         Update vehicle state to next timestamp
         """
         lastPose = self.getCurrentPose()
-        nextTimestamp_s = lastPose.timestamp_s + dT
+        nextTimestamp_s = round(lastPose.timestamp_s + dT, 3)
         if nextTimestamp_s < self._stopTimestamp_s:
             nextPose = pfnc.updatePose(
                 lastPose=lastPose,
@@ -307,6 +322,7 @@ class Pedestrian(object):
                 timestamp_s=nextTimestamp_s)
         self._currentPose = nextPose
         self._l_pose.update({nextTimestamp_s: nextPose})
+        self._isDetected = False
 
     def getPoly(self, timestamp_s):
         """

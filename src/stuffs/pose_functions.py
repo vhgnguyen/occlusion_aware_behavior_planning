@@ -93,9 +93,6 @@ def updateCovLatlong(lastCovLatLong, dT, dX, dY):
                     lastCovLatLong[1, 1] + (param._ALPHA_V_LAT*(dY+0.05))**2])
 
 
-
-
-
 def rectangle(x_m, y_m, yaw_rad, length, width):
     """
         Return rectangle centered at given position

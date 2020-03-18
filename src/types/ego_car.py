@@ -82,12 +82,10 @@ class EgoVehicle:
         Scan environment at current state
         """
         currentPose = self.getCurrentPose()
-        self._l_currentObject = self._env.update(
-            x_m=currentPose.x_m,
-            y_m=currentPose.y_m,
+        self._l_currentObject, self._fov = self._env.update(
+            pose=currentPose,
             from_timestamp=currentPose.timestamp_s
             )
-        self._fov = self.getFOV()
 
     def _predict(self, u_in, predictTime=param._PREDICT_TIME):
         """
@@ -265,25 +263,6 @@ class EgoVehicle:
 
         self._p_u = val
         self._move()
-
-    # ------------------- Export function ---------------------
-
-    def getFOV(self):
-        l_poly = []
-        if len(self._l_currentObject) != 0:
-            for veh in self._l_currentObject['vehicle']:
-                vehPoly = veh.getPoly(self.getCurrentTimestamp())
-                if vehPoly is not None and veh.getCurrentPose().vdy.vx_ms < 2:
-                    l_poly.append(veh.getPoly(self.getCurrentTimestamp()))
-            for staticObject in self._l_currentObject['staticObject']:
-                l_poly.append(staticObject._poly)
-            return pfnc.FOV(
-                pose=self.getCurrentPose(), polys=l_poly,
-                angle=np.pi/2 - 0.3,
-                radius=param._SCAN_RADIUS,
-                nrRays=50)
-        else:
-            return None
 
     # ------------------- Test function ---------------------
 

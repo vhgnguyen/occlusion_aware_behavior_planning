@@ -119,8 +119,8 @@ class Core(object):
     def getCurrentFOV(self):
         if self._egoCar is None:
             return None
-        
-        return self._egoCar.getFOV()
+
+        return self._egoCar._fov
 
     
     def getCurrentEgoPos(self):
