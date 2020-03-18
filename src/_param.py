@@ -10,7 +10,7 @@ _SIMULATION_TIME = 20.
 # ------------------------------
 _SCAN_RADIUS = 35.
 _FOV_ANGLE = 5 * 3.14159 / 12
-_FOV_RAYS = 50
+_FOV_RAYS = 100
 
 # ------------------------------
 # Vehicle

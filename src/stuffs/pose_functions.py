@@ -130,13 +130,13 @@ def minFOVAngle(x_m, y_m, yaw_rad, poly):
 def distanceToMergePoint(pose, poly, dThres=1):
     """
     EGO ------------------------ MP
-            `  alpha/               ^
+         `  alpha/               ^
             `   /                |
                 `                |
-        o-------------`o <--dThres->| visibleDistance
-        |   obstacle   |  `         |
-        |   polygon    |      `     |
-        o--------------o          ` V
+     o-------------`o <--dThres->| visibleDistance
+     |   obstacle   |  `         |
+     |   polygon    |      `     |
+     o--------------o          ` V
     """
     randVertex, alpha = minFOVAngle(
         x_m=pose.x_m,
@@ -200,10 +200,15 @@ def FOV(pose, polys, angle, radius, nrRays=50):
                 ip_tmp = seg_intersect(l1_1, l1_2, poly[i-1], poly[i])
                 if ip_tmp is not None:
                     if np.linalg.norm(ip_tmp-l1_1) < np.linalg.norm(ip-l1_1):
-                        ip = ip_tmp
+                        ip = ip_tmp + np.array([np.cos(alpha), np.sin(alpha)])*0.1
         l_fov = np.append(l_fov, ip, axis=0)
 
     return l_fov
+
+
+def inPolygonPoint(point, poly):
+    poly = Delaunay(poly)
+    return poly.find_simplex(point) >= 0
 
 
 def inPolygon(point, poly):
@@ -211,7 +216,7 @@ def inPolygon(point, poly):
     Test if points list p in poly
     """
     poly = Delaunay(poly)
-    return poly.find_simplex(point) >= 0
+    return np.count_nonzero(poly.find_simplex(point) >= 0) > 0
 
 
 # ---------------------- BACK UP FUNCTIONS -----------------------------

@@ -161,31 +161,50 @@ class BirdEyeView(QOpenGLWidget):
         gl.glEnd()
 
     def drawPedestrian(self):
-        gl.glColor4f(0.0, 0.2, 0.8, 0.6)  # blue
-        gl.glBegin(gl.GL_QUADS)
-        pedestrianPoly = self.core.currentPedestrianPoly()
-        for pedestrian in pedestrianPoly:
-            for vertex in pedestrian:
-                gl.glVertex2f(vertex[0], vertex[1])
-        gl.glEnd()
-
-    def drawOtherVehicle(self):
-        gl.glColor4f(0.0, 0.8, 0.2, 0.6)  # green
-        vehiclePoly = self.core.currentVehiclePoly()
-        for vehicle in vehiclePoly:
+        pedesList = self.core.exportCurrentPedestrian()
+        for pedes in pedesList:
+            # draw poly
+            gl.glColor4f(0.0, 0.2, 0.8, 0.6)  # blue
             gl.glBegin(gl.GL_QUADS)
-            for vertex in vehicle:
+            for vertex in pedes['poly']:
                 gl.glVertex2f(vertex[0], vertex[1])
             gl.glEnd()
-            if vehicle.isVisible():
+
+            # draw detection line
+            if pedes['visible']:
                 gl.glColor4f(0.8, 0., 0., 0.5)
             else:
                 gl.glColor4f(0., 0., 0., 0.5)
             egoPos = self.core.getCurrentEgoPos()
             gl.glBegin(gl.GL_LINES)
             gl.glVertex2f(egoPos[0], egoPos[1])
-            gl.glVertex2f(vertex[0], vertex[1])
+            gl.glVertex2f(pedes['pos'][0], pedes['pos'][1])
             gl.glEnd()
+
+            # draw covariance
+
+    def drawOtherVehicle(self):
+        vehicleList = self.core.exportCurrentVehicle()
+        for vehicle in vehicleList:
+            # draw poly
+            gl.glColor4f(0.0, 0.8, 0.2, 0.6)  # green
+            gl.glBegin(gl.GL_QUADS)
+            for vertex in vehicle['poly']:
+                gl.glVertex2f(vertex[0], vertex[1])
+            gl.glEnd()
+
+            # draw detection line
+            if vehicle['visible']:
+                gl.glColor4f(0.8, 0., 0., 0.5)
+            else:
+                gl.glColor4f(0., 0., 0., 0.5)
+            egoPos = self.core.getCurrentEgoPos()
+            gl.glBegin(gl.GL_LINES)
+            gl.glVertex2f(egoPos[0], egoPos[1])
+            gl.glVertex2f(vehicle['pos'][0], vehicle['pos'][1])
+            gl.glEnd()
+
+            # draw covariance
 
     def drawEgoVehicle(self):
         gl.glColor4f(0.8, 0.2, 0.2, 0.6)  # red

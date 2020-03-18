@@ -1,2 +1,1 @@
-check object in FOV poly, add visible to export in core function
 create virtual hypothesis

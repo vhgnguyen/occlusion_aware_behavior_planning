@@ -66,6 +66,11 @@ class EgoVehicle:
             print("Ego: No state at: ", timestamp_s)
             return None
 
+    def getCurrentPoly(self):
+        return pfnc.rectangle(
+            self._currentPose.x_m, self._currentPose.y_m,
+            self._currentPose.yaw_rad, self.length, self.width)
+
     def getPredictPoly(self, timestamp_s):
         if timestamp_s in self._p_pose:
             pose = self._p_pose[timestamp_s]

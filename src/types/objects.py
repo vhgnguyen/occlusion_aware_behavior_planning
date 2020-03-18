@@ -137,6 +137,23 @@ class Vehicle(object):
         else:
             return self._l_pose[timestamp_s]
 
+    def getPoly(self, timestamp_s):
+        """
+        Return the bounding polygon of vehicle
+        """
+        pose = self.getPoseAt(timestamp_s)
+        if pose is None:
+            return None
+        return pfnc.rectangle(pose.x_m, pose.y_m, pose.yaw_rad,
+                              self._length, self._width)
+    
+    def getCurrentPoly(self):
+        return pfnc.rectangle(self._currentPose.x_m,
+                              self._currentPose.y_m,
+                              self._currentPose.yaw_rad,
+                              self._length,
+                              self._width)
+
     def predict(self, const_vx=False, pT=param._PREDICT_TIME):
         """
         Predict the vehicle motion from current state
@@ -167,7 +184,7 @@ class Vehicle(object):
         posePoly = pfnc.rectangle(pose.x_m, pose.y_m, pose.yaw_rad,
                                   self._length, self._width)
         return pose, posePoly
-               
+
     def move(self, dT=param._dT):
         """
         Update vehicle state to next timestamp
@@ -181,17 +198,17 @@ class Vehicle(object):
             )
         self._currentPose = nextPose
         self._l_pose.update({nextTimestamp_s: nextPose})
-        self._isDetected = False
 
-    def getPoly(self, timestamp_s):
-        """
-        Return the bounding polygon of vehicle
-        """
-        pose = self.getPoseAt(timestamp_s)
-        if pose is None:
-            return None
-        return pfnc.rectangle(pose.x_m, pose.y_m, pose.yaw_rad,
-                              self._length, self._width)
+    # -------------------- Export functions -----------------------------------
+
+    def exportCurrent(self):
+        exportVehicle = {
+            'pos': [self._currentPose.x_m, self._currentPose.y_m],
+            'cov': self._currentPose.covUtm,
+            'poly': self.getCurrentPoly(),
+            'visible': self.isVisible()
+            }
+        return exportVehicle
 
     def plotAt(self, timestamp_s, ax=plt):
         if timestamp_s in self._l_pose:
@@ -279,6 +296,26 @@ class Pedestrian(object):
         else:
             return self._l_pose[timestamp_s]
 
+    def getPoly(self, timestamp_s):
+        """
+        Return the bounding polygon of vehicle
+        """
+        pose = self.getPoseAt(timestamp_s)
+        if pose is None:
+            return None
+        return pfnc.rectangle(pose.x_m,
+                              pose.y_m,
+                              pose.yaw_rad,
+                              self._length,
+                              self._width)
+
+    def getCurrentPoly(self):
+        return pfnc.rectangle(self._currentPose.x_m,
+                              self._currentPose.y_m,
+                              self._currentPose.yaw_rad,
+                              self._length,
+                              self._width)
+
     def predict(self, pT=param._PREDICT_TIME):
         """
         Predict the vehicle motion from current state
@@ -322,20 +359,17 @@ class Pedestrian(object):
                 timestamp_s=nextTimestamp_s)
         self._currentPose = nextPose
         self._l_pose.update({nextTimestamp_s: nextPose})
-        self._isDetected = False
 
-    def getPoly(self, timestamp_s):
-        """
-        Return the bounding polygon of vehicle
-        """
-        pose = self.getPoseAt(timestamp_s)
-        if pose is None:
-            return None
-        return pfnc.rectangle(pose.x_m,
-                              pose.y_m,
-                              pose.yaw_rad,
-                              self._length,
-                              self._width)
+    # -------------------- Export functions -----------------------------------
+
+    def exportCurrent(self):
+        exportPedes = {
+            'pos': [self._currentPose.x_m, self._currentPose.y_m],
+            'cov': self._currentPose.covUtm,
+            'poly': self.getCurrentPoly(),
+            'visible': self.isVisible()
+            }
+        return exportPedes
 
     def plotAt(self, timestamp_s, ax=plt):
         if timestamp_s in self._l_pose:

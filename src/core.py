@@ -91,29 +91,28 @@ class Core(object):
         self._env.addStaticObject(staticObject)
 
 
-    def currentPedestrianPoly(self):
-        polyList = []
+    def exportCurrentPedestrian(self):
+        pedesList = []
         for pedes in self._env._l_pedestrian:
-            poly = pedes.getPoly(self.timestamp_s)
-            if poly is not None:
-                polyList.append(poly)
-        return polyList
-    
-    
-    def currentVehiclePoly(self):
-        polyList = []
+            if pedes.getCurrentTimestamp() == self.timestamp_s:
+                pedesExport = pedes.exportCurrent()
+                pedesList.append(pedesExport)
+        return pedesList
+
+
+    def exportCurrentVehicle(self):
+        vehList = []
         for vehicle in self._env._l_vehicle:
-            poly = vehicle.getPoly(self.timestamp_s)
-            if poly is not None:
-                polyList.append(poly)
-        return polyList
+            if vehicle.getCurrentTimestamp() == self.timestamp_s:
+                vehExport = vehicle.exportCurrent()
+                vehList.append(vehExport)
+        return vehList
 
     
     def currentEgoPoly(self):
         if self._egoCar is None:
             return None
-        
-        return self._egoCar.getPoly(self.timestamp_s)
+        return self._egoCar.getCurrentPoly()
 
     
     def getCurrentFOV(self):

@@ -97,6 +97,7 @@ class Environment(object):
         """
         Get environment around a given position
         """
+        l_staticVehicle = []
         l_vehicle = []
         l_object = []
         l_pedestrian = []
@@ -119,6 +120,7 @@ class Environment(object):
                 if np.linalg.norm(vehPos - currentPos) < radius:
                     if vehPose.vdy.vx_ms < 2:
                         l_polys.append(veh.getPoly(from_timestamp))
+                        l_staticVehicle.append(veh)
         
         # generate field of view
         fov = pfnc.FOV(
@@ -131,14 +133,12 @@ class Environment(object):
             if vehPose.timestamp_s == from_timestamp:
                 vehPos = np.array([vehPose.x_m, vehPose.y_m])
                 if np.linalg.norm(vehPos - currentPos) < radius:
-                    if vehPose.vdy.vx_ms < 2:
+                    vehPoly = veh.getCurrentPoly()
+                    if pfnc.inPolygon(vehPoly, fov):
                         veh.setDetected(True)
                         l_vehicle.append(veh)
-                    elif pfnc.inPolygon(vehPos, fov):
-                        veh.setDetected(True)
-                        l_vehicle.append(veh)
-                    else:
-                        veh.setDetected(False)
+                        continue
+            veh.setDetected(False)
 
         # check pedestrian in FOV
         for pedes in self._l_pedestrian:
@@ -146,11 +146,11 @@ class Environment(object):
             if pedesPose.timestamp_s == from_timestamp:
                 pedesPos = np.array([pedesPose.x_m, pedesPose.y_m])
                 if np.linalg.norm(pedesPos - currentPos) < radius:
-                    if pfnc.inPolygon(pedesPos, fov):
+                    if pfnc.inPolygonPoint(pedesPos, fov):
                         pedes.setDetected(True)
                         l_pedestrian.append(pedes)
-                    else:
-                        pedes.setDetected(False)
+                        continue
+            pedes.setDetected(False)
 
         l_update = {'vehicle': l_vehicle,
                     'staticObject': l_object,
@@ -382,4 +382,6 @@ class Environment(object):
             # road boundary
             road1 = RoadBoundary(scenario=2)
             self.addRoadBoundary(road1)
-        
+    
+    def generateHypothesis(pose, staticObject):
+        MP, visib
