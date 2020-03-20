@@ -97,6 +97,7 @@ class BirdEyeView(QOpenGLWidget):
         self.drawOtherVehicle()
         self.drawPedestrian()
         self.drawFOV()
+        self.drawHypothesis()
 
     def drawRoadBoundary(self):
         road = self.core._env._l_road
@@ -229,6 +230,19 @@ class BirdEyeView(QOpenGLWidget):
                 gl.glVertex2f(pt[0], pt[1])
             gl.glEnd()
         gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_FILL)
+
+    def drawHypothesis(self):
+        coord = self.core._env._l_hypoCoord
+        gl.glColor4f(1.0, 1.0, 0, 0.7)
+        gl.glPointSize(5)
+        gl.glBegin(gl.GL_POINTS)
+        for pos in coord:
+            if pos[0] is not None:
+                gl.glVertex2f(pos[0][0], pos[0][1])
+            if pos[1] is not None:
+                gl.glVertex2f(pos[1][0], pos[1][1])
+            gl.glVertex2f(pos[2][0], pos[2][1])
+        gl.glEnd()
 
     def drawAxis(self):
 

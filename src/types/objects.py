@@ -1,8 +1,9 @@
 from matplotlib.patches import Ellipse, Polygon
+import math
+import numpy as np
 import matplotlib.pyplot as plt
 
 from pose import Pose, VehicleDynamic
-import numpy as np
 import pose_functions as pfnc
 import _param as param
 
@@ -102,7 +103,7 @@ class Vehicle(object):
         self._p_pose = {}
 
         startTime = round(int(startTime/param._dT) * param._dT, 3)
-        theta = np.arctan2(to_y_m-from_y_m, to_x_m-from_x_m)
+        theta = math.atan2(to_y_m-from_y_m, to_x_m-from_x_m)
 
         if isStop:
             self._u = pfnc.computeAccToStop(
@@ -144,15 +145,10 @@ class Vehicle(object):
         pose = self.getPoseAt(timestamp_s)
         if pose is None:
             return None
-        return pfnc.rectangle(pose.x_m, pose.y_m, pose.yaw_rad,
-                              self._length, self._width)
-    
+        return pfnc.rectangle(pose, self._length, self._width)
+
     def getCurrentPoly(self):
-        return pfnc.rectangle(self._currentPose.x_m,
-                              self._currentPose.y_m,
-                              self._currentPose.yaw_rad,
-                              self._length,
-                              self._width)
+        return pfnc.rectangle(self._currentPose, self._length, self._width)
 
     def predict(self, const_vx=False, pT=param._PREDICT_TIME):
         """
@@ -162,17 +158,16 @@ class Vehicle(object):
                       else with current acceleration
         """
         self._p_pose = {}
-        lastPose = self.getCurrentPose()
         nextTimestamp_s = self.getCurrentTimestamp() + pT
         if const_vx:
             self._p_pose = pfnc.updatePoseList(
-                lastPose=lastPose,
+                lastPose=self._currentPose,
                 u_in=0,
                 nextTimestamp_s=nextTimestamp_s
             )
         else:
             self._p_pose = pfnc.updatePoseList(
-                lastPose=lastPose,
+                lastPose=self._currentPose,
                 u_in=self._u,
                 nextTimestamp_s=nextTimestamp_s
             )
@@ -181,8 +176,7 @@ class Vehicle(object):
         if timestamp_s not in self._p_pose:
             self.predict()
         pose = self._p_pose[timestamp_s]
-        posePoly = pfnc.rectangle(pose.x_m, pose.y_m, pose.yaw_rad,
-                                  self._length, self._width)
+        posePoly = pfnc.rectangle(pose, self._length, self._width)
         return pose, posePoly
 
     def move(self, dT=param._dT):
@@ -262,7 +256,7 @@ class Pedestrian(object):
         self._p_pose = {}
 
         startTime = round(int(startTime/param._dT) * param._dT, 3)
-        theta = np.arctan2(to_y_m-from_y_m, to_x_m-from_x_m)
+        theta = math.atan2(to_y_m-from_y_m, to_x_m-from_x_m)
 
         if isStop:
             s = np.sqrt((from_x_m-to_x_m)**2 + (from_y_m-to_y_m)**2)
@@ -303,18 +297,10 @@ class Pedestrian(object):
         pose = self.getPoseAt(timestamp_s)
         if pose is None:
             return None
-        return pfnc.rectangle(pose.x_m,
-                              pose.y_m,
-                              pose.yaw_rad,
-                              self._length,
-                              self._width)
+        return pfnc.rectangle(pose, self._length, self._width)
 
     def getCurrentPoly(self):
-        return pfnc.rectangle(self._currentPose.x_m,
-                              self._currentPose.y_m,
-                              self._currentPose.yaw_rad,
-                              self._length,
-                              self._width)
+        return pfnc.rectangle(self._currentPose, self._length, self._width)
 
     def predict(self, pT=param._PREDICT_TIME):
         """
@@ -324,10 +310,9 @@ class Pedestrian(object):
                       else with current acceleration
         """
         self._p_pose = {}
-        lastPose = self.getCurrentPose()
-        nextTimestamp_s = round(lastPose.timestamp_s + pT, 3)
+        nextTimestamp_s = self._currentPose.timestamp_s + pT
         self._p_pose = pfnc.updatePoseList(
-            lastPose=lastPose,
+            lastPose=self._currentPose,
             u_in=self._u,
             nextTimestamp_s=nextTimestamp_s
         )
@@ -336,8 +321,7 @@ class Pedestrian(object):
         if timestamp_s not in self._p_pose:
             self.predict()
         pose = self._p_pose[timestamp_s]
-        posePoly = pfnc.rectangle(pose.x_m, pose.y_m, pose.yaw_rad,
-                                  self._length, self._width)
+        posePoly = pfnc.rectangle(pose, self._length, self._width)
         return pose, posePoly
 
     def move(self, dT=param._dT):

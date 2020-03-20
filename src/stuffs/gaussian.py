@@ -33,6 +33,32 @@ def minkowskiSum(obj1, obj2):
     return poly, bound
 
 
+def minkowskiSumOrthogonal(obj1, obj2):
+    """
+        Minkowski sum of two orthogonal rectangle objects
+        Args:
+            obj1, obj2: (n,2) array of corner point
+        Return:
+            poly: (n,2) array of minkowski polygon vertices centered at (0, 0)
+            bound: [min_x, min_y] max/min signed distances from vertices
+                   [max_x, max_y] to center of polygon
+    """
+    # assert obj1.ndim == 2 and obj1.shape[1] == 2
+    # assert obj2.ndim == 2 and obj2.shape[1] == 2
+    
+    poly = np.array([], dtype=np.float).reshape(0, 2)
+    for p1 in obj1:
+        for p2 in obj2:
+            poly = np.vstack([poly, np.array([p1+p2])])
+    poly00 = poly - np.mean(obj1, axis=0) - np.mean(obj2, axis=0)
+    bound = {'max': np.array([np.max(poly00[:, 0], axis=0), np.max(poly00[:, 1], axis=0)]),
+             'min': np.array([np.min(poly00[:, 0], axis=0), np.min(poly00[:, 1], axis=0)])}
+
+    # assert poly.ndim == 2 and poly.shape[1] == 2
+
+    return poly00, bound
+
+
 def pdfExplicit(point2D, mean, cov):
     """
         Explicit non-matrix multiplication

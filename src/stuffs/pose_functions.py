@@ -1,5 +1,5 @@
 import numpy as np
-
+import math
 from pose import Pose, VehicleDynamic
 from scipy.spatial import Delaunay
 
@@ -16,8 +16,8 @@ def updatePose(lastPose, u_in, dT=param._dT):
     vx = lastPose.vdy.vx_ms
     dP = vx * dT + 0.5 * u_in * (dT**2)
     dP = max(dP, 0)
-    dX = dP * np.cos(lastPose.yaw_rad)
-    dY = dP * np.sin(lastPose.yaw_rad)
+    dX = dP * math.cos(lastPose.yaw_rad)
+    dY = dP * math.sin(lastPose.yaw_rad)
     nextVDY = VehicleDynamic(vx + u_in * dT, 0)
     next_covLatLong = updateCovLatlong(lastPose.covLatLong, dT, dP, 0)
     nextPose = Pose(
@@ -30,51 +30,48 @@ def updatePose(lastPose, u_in, dT=param._dT):
 
 
 def updatePoseList(lastPose, u_in, nextTimestamp_s,
-                   dT=param._dT, straight=True):
+                   dT=param._dT):
     """
     Update vehicle pose with given longtitude acceleration and timestamp
     Args:
         lastPose: the lastest pose
         u_in: current acceleration as input
         nextTimestamp_s: next timestamp
-        straight: bool presents if vehicle go straight
     Return:
         l_pose(timestamp: pose): discreted pose list to given timestamp
         l_u(timestamp: u): input list to given timestamp
     """
     assert nextTimestamp_s > lastPose.timestamp_s
 
-    if not straight:
-        return updatePoseTurn(lastPose, u_in, nextTimestamp_s)
-    else:
-        step = int((nextTimestamp_s - lastPose.timestamp_s)/dT)
-        vx = lastPose.vdy.vx_ms
-        dyaw = 0
-        l_pose = {}
-        for k in range(1, step+1, 1):
-            dTime = k * dT
-            nextT = round(lastPose.timestamp_s + dTime, 3)
-            dP = vx * dTime + 0.5 * u_in * (dTime**2)
-            dP = max(dP, 0)
-            dX = dP * np.cos(lastPose.yaw_rad)
-            dY = dP * np.sin(lastPose.yaw_rad)
-            next_vdy = VehicleDynamic(vx + u_in * dTime, dyaw)
-            # update covariance matrix from the nearest pose
-            next_covLatLong = 0
-            if not l_pose:
-                next_covLatLong = updateCovLatlong(lastPose.covLatLong,
-                                                   dT, dP, 0)
-            else:
-                nearestPose = l_pose[max(l_pose)]
-                dPNearest = np.linalg.norm([lastPose.x_m+dX-nearestPose.x_m,
-                                            lastPose.y_m+dY-nearestPose.y_m])
-                next_covLatLong = updateCovLatlong(nearestPose.covLatLong,
-                                                   dT, dPNearest, 0)
-            nextPose = Pose(x_m=lastPose.x_m + dX, y_m=lastPose.y_m + dY,
-                            yaw_rad=lastPose.yaw_rad, vdy=next_vdy,
-                            covLatLong=next_covLatLong,
-                            timestamp_s=nextT)
-            l_pose[nextT] = nextPose
+    step = int((nextTimestamp_s - lastPose.timestamp_s)/dT)
+    vx = lastPose.vdy.vx_ms
+    dyaw = 0
+    l_pose = {}
+    for k in range(1, step+1, 1):
+        dTime = k * dT
+        nextT = round(lastPose.timestamp_s + dTime, 3)
+        dP = vx * dTime + 0.5 * u_in * (dTime**2)
+        dP = max(dP, 0)
+        dX = dP * math.cos(lastPose.yaw_rad)
+        dY = dP * math.sin(lastPose.yaw_rad)
+        next_vdy = VehicleDynamic(vx + u_in * dTime, dyaw)
+        # update covariance matrix from the nearest pose
+        next_covLatLong = 0
+        if not l_pose:
+            next_covLatLong = updateCovLatlong(
+                lastPose.covLatLong, dT, dP, 0)
+        else:
+            nearestPose = l_pose[max(l_pose)]
+            dPNearest = np.linalg.norm([lastPose.x_m+dX-nearestPose.x_m,
+                                        lastPose.y_m+dY-nearestPose.y_m])
+            next_covLatLong = updateCovLatlong(nearestPose.covLatLong,
+                                               dT, dPNearest, 0)
+        nextPose = Pose(x_m=lastPose.x_m + dX, y_m=lastPose.y_m + dY,
+                        yaw_rad=lastPose.yaw_rad, vdy=next_vdy,
+                        covLatLong=next_covLatLong,
+                        timestamp_s=nextT)
+        l_pose[nextT] = nextPose
+
     return l_pose
 
 
@@ -93,29 +90,26 @@ def updateCovLatlong(lastCovLatLong, dT, dX, dY):
                     lastCovLatLong[1, 1] + (param._ALPHA_V_LAT*(dY+0.05))**2])
 
 
-def rectangle(x_m, y_m, yaw_rad, length, width):
+def rectangle(pose, length, width):
     """
         Return rectangle centered at given position
     """
-    rot = np.array([[np.cos(yaw_rad), np.sin(yaw_rad)],
-                    [-np.sin(yaw_rad), np.cos(yaw_rad)]])
-    trans = np.array([x_m, y_m])
     poly = np.array([[-length/2, -width/2],
                      [length/2, -width/2],
                      [length/2, width/2],
                      [-length/2, width/2]])
-    return np.dot(poly, rot) + trans
+    return np.dot(poly, pose.getRotation()) + pose.getTranslation()
 
 
-def minFOVAngle(x_m, y_m, yaw_rad, poly):
+def minFOVAngle(pose, poly):
     """
     Minimum facing angle of pose(x,y,theta) to a polygon
     """
-    vector = np.array([np.cos(yaw_rad), np.sin(yaw_rad)])
+    vector = np.array([np.cos(pose.yaw_rad), np.sin(pose.yaw_rad)])
     min_angle = 10
     min_vertex = None
     for i, vertex in enumerate(poly):
-        p2v = np.array([vertex[0] - x_m, vertex[1] - y_m])
+        p2v = np.array([vertex[0] - pose.x_m, vertex[1] - pose.y_m])
         p2v = p2v / np.linalg.norm(p2v)
         # angle = np.arccos(np.clip(np.dot(vector, p2v), -1.0, 1.0))
         angle = np.arccos(np.dot(vector, p2v))
@@ -148,8 +142,8 @@ def distanceToMergePoint(pose, poly, dThres=1):
         return None, None, None, None
     else:
         dS = np.sqrt((randVertex[0]-pose.x_m)**2 + (randVertex[1]-pose.y_m)**2)
-        heading = np.array([np.cos(pose.yaw_rad), np.sin(pose.yaw_rad)])
-        dToMergePoint = dS * np.cos(alpha) + dThres
+        heading = np.array([math.cos(pose.yaw_rad), math.sin(pose.yaw_rad)])
+        dToMergePoint = dS * math.cos(alpha) + dThres
         MP = heading * dToMergePoint + np.array([pose.x_m, pose.y_m])
         visibleDistance = dToMergePoint * np.tan(alpha)
     return dToMergePoint, MP, visibleDistance, randVertex
@@ -178,7 +172,7 @@ def seg_intersect(a1, a2, b1, b2):
     num = np.dot(dap, dp)
     cross = (num / denom)*db + b1
     if onSegment(a1, a2, cross) and onSegment(b1, b2, cross):
-        return np.array([cross])
+        return cross
     else:
         return None
 
@@ -193,15 +187,16 @@ def FOV(pose, polys, angle, radius, nrRays=50):
     l_fov = np.append(l_fov, np.array([l1_1]), axis=0)
 
     for k, alpha in enumerate(l_alpha):
-        l1_2 = l1_1 + np.array([np.cos(alpha), np.sin(alpha)]) * radius
-        ip = np.array([l1_2])
+        direction = np.array([math.cos(alpha), math.sin(alpha)])
+        l1_2 = l1_1 + direction * radius
+        ip = l1_2
         for poly in polys:
             for i in range(0, poly.shape[0], 1):
                 ip_tmp = seg_intersect(l1_1, l1_2, poly[i-1], poly[i])
                 if ip_tmp is not None:
                     if np.linalg.norm(ip_tmp-l1_1) < np.linalg.norm(ip-l1_1):
-                        ip = ip_tmp + np.array([np.cos(alpha), np.sin(alpha)])*0.1
-        l_fov = np.append(l_fov, ip, axis=0)
+                        ip = ip_tmp + direction * 0.1
+        l_fov = np.append(l_fov, np.array([ip]), axis=0)
 
     return l_fov
 
@@ -243,13 +238,13 @@ def updatePoseTurn(lastPose, u_in, nextTimestamp_s):
         current_vx = vx + u_in * (dT - param._dT)
         current_yaw_rad = lastPose.yaw_rad + (dT - param._dT) * dyaw
         if abs(dyaw) < 0.0001:
-            dX = current_vx * dT * np.cos(current_yaw_rad)
-            dY = current_vx * dT * np.sin(current_yaw_rad)
+            dX = current_vx * dT * math.cos(current_yaw_rad)
+            dY = current_vx * dT * math.sin(current_yaw_rad)
         else:
-            dX = (current_vx / dyaw) * np.sin(dyaw*dT + current_yaw_rad) \
-                - (current_vx / dyaw) * np.sin(current_yaw_rad)
-            dY = (-current_vx / dyaw) * np.cos(dyaw*dT + current_yaw_rad) \
-                + (current_vx / dyaw) * np.cos(current_yaw_rad)
+            dX = (current_vx / dyaw) * math.sin(dyaw*dT + current_yaw_rad) \
+                - (current_vx / dyaw) * math.sin(current_yaw_rad)
+            dY = (-current_vx / dyaw) * math.cos(dyaw*dT + current_yaw_rad) \
+                + (current_vx / dyaw) * math.cos(current_yaw_rad)
         next_vdy = VehicleDynamic(current_vx, dyaw)
         # update covariance matrix from the nearest pose
         next_covLatLong = 0
@@ -297,10 +292,10 @@ def getFOV(pose, polys, angle, radius=param._SCAN_RADIUS, nrRays=50):
 
     l1_1 = np.array([pose.x_m, pose.y_m])
     l_fov = np.empty((0, 2))
-    direction = np.array([np.cos(pose.yaw_rad), np.sin(pose.yaw_rad)])
+    direction = np.array([math.cos(pose.yaw_rad), math.sin(pose.yaw_rad)])
 
-    left_ray = l1_1 + np.array([np.cos(-angle), np.sin(-angle)]) * radius
-    right_ray = l1_1 + np.array([np.cos(angle), np.sin(angle)]) * radius
+    left_ray = l1_1 + np.array([math.cos(-angle), math.sin(-angle)]) * radius
+    right_ray = l1_1 + np.array([math.cos(angle), math.sin(angle)]) * radius
 
     ip_left = np.array([left_ray])
     ip_right = np.array([right_ray])
@@ -324,7 +319,7 @@ def getFOV(pose, polys, angle, radius=param._SCAN_RADIUS, nrRays=50):
 
             # ray from ego to poly vertex
             if abs(angle1) < angle:
-                l1_2 = l1_1 + np.array([np.cos(angle), np.sin(angle)]) * radius
+                l1_2 = l1_1 + np.array([math.cos(angle), math.sin(angle)]) * radius
                 ip = np.array([l1_2])
                 # find closest intersect
                 for poly1 in polys:

@@ -1,4 +1,5 @@
 import numpy as np
+import math
 
 
 class Pose(object):
@@ -14,6 +15,8 @@ class Pose(object):
         self.x_m = x_m
         self.y_m = y_m
         self.yaw_rad = yaw_rad
+        self._s = np.sin(self.yaw_rad)
+        self._c = np.cos(self.yaw_rad)
         self.vdy = vdy
         self.covLatLong = covLatLong
         self.covUtm = self._latlongToUTM()
@@ -24,13 +27,20 @@ class Pose(object):
         if self.covLatLong is None:
             return None
         else:
-            T = np.array([[np.cos(self.yaw_rad), np.sin(self.yaw_rad)],
-                          [-np.sin(self.yaw_rad), np.cos(self.yaw_rad)]])
+            T = np.array([[self._c, self._s], [-self._s, self._c]])
             return np.dot(np.dot(T, self.covLatLong), np.transpose(T))
 
     def _vxToUTM(self):
-        vxUtm = np.array([np.cos(self.yaw_rad), np.sin(self.yaw_rad)])
-        return vxUtm * self.vdy.vx_ms
+        return np.array([self._c, self._s]) * self.vdy.vx_ms
+
+    def getRotation(self):
+        return np.array([[self._c, self._s], [-self._s, self._c]])
+
+    def getTranslation(self):
+        return np.array([self.x_m, self.y_m])
+
+    def heading(self):
+        return np.array([self._c, self._s])
 
 
 class VehicleDynamic(object):

@@ -9,7 +9,7 @@ _SIMULATION_TIME = 20.
 # Environment
 # ------------------------------
 _SCAN_RADIUS = 35.
-_FOV_ANGLE = 5 * 3.14159 / 12
+_FOV_ANGLE = 3.14159 / 2 - 0.1
 _FOV_RAYS = 100
 
 # ------------------------------

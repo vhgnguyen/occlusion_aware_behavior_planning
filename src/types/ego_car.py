@@ -60,22 +60,18 @@ class EgoVehicle:
         """
         if timestamp_s in self._l_pose:
             pose = self._l_pose[timestamp_s]
-            return pfnc.rectangle(pose.x_m, pose.y_m, pose.yaw_rad,
-                                  self.length, self.width)
+            return pfnc.rectangle(pose, self.length, self.width)
         else:
             print("Ego: No state at: ", timestamp_s)
             return None
 
     def getCurrentPoly(self):
-        return pfnc.rectangle(
-            self._currentPose.x_m, self._currentPose.y_m,
-            self._currentPose.yaw_rad, self.length, self.width)
+        return pfnc.rectangle(self._currentPose, self.length, self.width)
 
     def getPredictPoly(self, timestamp_s):
         if timestamp_s in self._p_pose:
             pose = self._p_pose[timestamp_s]
-            return pfnc.rectangle(pose.x_m, pose.y_m, pose.yaw_rad,
-                                  self.length, self.width)
+            return pfnc.rectangle(pose, self.length, self.width)
         else:
             print("Ego: No predict state at: ", timestamp_s)
             return None
@@ -139,20 +135,20 @@ class EgoVehicle:
             total_risk += vcol_risk
             total_eventRate += vcol_rate
 
-        for sobj in l_obj['staticObject']:
-            dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
-                pose=egoPose,
-                poly=sobj._poly
-                )
-            if MP is not None:
-                indicator, rate, risk = rfnc.unseenEventRisk(
-                    d2MP=dMerge,
-                    ego_vx=egoPose.vdy.vx_ms,
-                    ego_acc=self._p_u,
-                    dVis=dVis
-                )
-                total_risk += risk
-                total_eventRate += rate
+        # for sobj in l_obj['staticObject']:
+        #     dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
+        #         pose=egoPose,
+        #         poly=sobj._poly
+        #         )
+        #     if MP is not None:
+        #         indicator, rate, risk = rfnc.unseenEventRisk(
+        #             d2MP=dMerge,
+        #             ego_vx=egoPose.vdy.vx_ms,
+        #             ego_acc=self._p_u,
+        #             dVis=dVis
+        #         )
+        #         total_risk += risk
+        #         total_eventRate += rate
 
         for pedes in l_obj['pedestrian']:
             pedesPose, pedesPoly = pedes.getPredictAt(timestamp_s)

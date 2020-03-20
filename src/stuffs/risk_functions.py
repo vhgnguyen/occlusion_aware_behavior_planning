@@ -19,7 +19,7 @@ def collisionEventSeverity(ego_vx, obj_vx, method="sigmoid"):
     Return:
         severity: collision event severity
     """
-    assert ego_vx.shape == (2,) and obj_vx.shape == (2,)
+    # assert ego_vx.shape == (2,) and obj_vx.shape == (2,)
 
     relativeVelocity = ego_vx - obj_vx
     severity = 0.0
@@ -53,9 +53,9 @@ def collisionIndicatorComputeSimple(bound, dMean, dCov):
     Return:
         I: (float) value of collision indicator
     """
-    assert bound['max'].shape == (2,) and bound['min'].shape == (2,)
-    assert dMean.shape == (2,)
-    assert dCov.shape == (2, 2)
+    # assert bound['max'].shape == (2,) and bound['min'].shape == (2,)
+    # assert dMean.shape == (2,)
+    # assert dCov.shape == (2, 2)
 
     # quick check for long distance
     if (abs(dMean) > (abs(bound['max']) + np.diag(dCov))).all():
@@ -77,9 +77,9 @@ def collisionIndicatorCompute(poly, bound, dMean, dCov):
     Return:
         I: (float) value of collision indicator
     """
-    assert poly.ndim == 2 and poly.shape[1] == 2
-    assert dMean.shape == (2,)
-    assert dCov.shape == (2, 2)
+    # assert poly.ndim == 2 and poly.shape[1] == 2
+    # assert dMean.shape == (2,)
+    # assert dCov.shape == (2, 2)
 
     # quick check for long distance
     if (abs(dMean) > (abs(bound['max']) + np.diag(dCov))).all():
@@ -99,9 +99,9 @@ def collisionEventRate(collisionIndicator,
         collisionIndicator: indicator factor between [0,1]
     Return: (float) collision event rate
     """
-    assert np.isscalar(eventRate_max) and eventRate_max >= 1.0
-    assert np.isscalar(eventRate_beta) and eventRate_beta > 0.0
-    assert np.isscalar(collisionIndicator) and 0.0 <= collisionIndicator <= 1.0
+    # assert np.isscalar(eventRate_max) and eventRate_max >= 1.0
+    # assert np.isscalar(eventRate_beta) and eventRate_beta > 0.0
+    # assert np.isscalar(collisionIndicator) and 0.0 <= collisionIndicator <= 1.0
     return eventRate_max \
         * (1.0 - np.exp(-eventRate_beta*collisionIndicator)) \
         / (1.0 - np.exp(-eventRate_beta))
@@ -118,7 +118,6 @@ def collisionRisk(egoPose, egoPoly, objPose, objPoly):
         col_rate: (float) collision rate of the event
         col_indicator: (float) collision indicator between two object
     """
-    poly, bound = gaussian.minkowskiSum(egoPoly, objPoly)
     dMean = np.array([egoPose.x_m-objPose.x_m,
                       egoPose.y_m-objPose.y_m])
     dCov = egoPose.covUtm + objPose.covUtm
@@ -127,9 +126,11 @@ def collisionRisk(egoPose, egoPoly, objPose, objPoly):
 
     # handle parallel and orthogonal case
     if abs(math.remainder(diff_yaw, np.pi/2)) < param._COLLISION_ORTHO_THRES:
+        poly, bound = gaussian.minkowskiSumOrthogonal(egoPoly, objPoly)
         col_indicator = collisionIndicatorComputeSimple(bound, dMean, dCov)
     # handle general case
     else:
+        poly, bound = gaussian.minkowskiSum(egoPoly, objPoly)
         col_indicator = collisionIndicatorCompute(
             poly=poly,
             bound=bound,

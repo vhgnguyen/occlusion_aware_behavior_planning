@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import math
 
 import pose_functions as pfnc
 from pose import Pose, VehicleDynamic
@@ -18,6 +19,7 @@ class Environment(object):
         self._l_vehicle = []
         self._l_pedestrian = []
         self._l_cross = []
+        self._l_hypoCoord = []
 
     def countPedestrian(self):
         return len(self._l_pedestrian)
@@ -97,6 +99,7 @@ class Environment(object):
         """
         Get environment around a given position
         """
+        self._l_hypoCoord = []
         l_staticVehicle = []
         l_vehicle = []
         l_object = []
@@ -111,6 +114,7 @@ class Environment(object):
             if ((d2ego) < radius).any():
                 l_object.append(sObj)
                 l_polys.append(objPoly)
+                self.generateHypothesis(pose, sObj)
 
         # find static vehicle
         for veh in self._l_vehicle:
@@ -121,12 +125,12 @@ class Environment(object):
                     if vehPose.vdy.vx_ms < 2:
                         l_polys.append(veh.getPoly(from_timestamp))
                         l_staticVehicle.append(veh)
-        
+
         # generate field of view
         fov = pfnc.FOV(
             pose=pose, polys=l_polys, angle=param._FOV_ANGLE,
             radius=radius, nrRays=param._FOV_RAYS)
-        
+
         # check other moving vehicle in FOV
         for veh in self._l_vehicle:
             vehPose = veh.getCurrentPose()
@@ -232,7 +236,8 @@ class Environment(object):
 
             obs3 = StaticObject(
                 idx=3,
-                poly=np.array([[-40, 8], [-20, 8], [-10, 15], [-10, 20], [-40, 20]]))
+                poly=np.array([[-40, 8], [-20, 8], [-10, 15],
+                              [-10, 20], [-40, 20]]))
             self.addStaticObject(obs3)
 
             # pedestrian cross
@@ -246,6 +251,38 @@ class Environment(object):
         # road boundary
         self._l_road = RoadBoundary(scenario=scenario)
 
+    def generateHypothesis(self, pose, obj, dThres=1, radius=param._SCAN_RADIUS+5):
+        randVertex, alpha = pfnc.minFOVAngle(pose, poly=obj._poly)
+
+        if alpha is None:
+            return
+        l1_1 = np.array([pose.x_m, pose.y_m])
+
+        dS = np.sqrt((randVertex[0]-pose.x_m)**2 + (randVertex[1]-pose.y_m)**2)
+        d2MP = dS * math.cos(alpha)
+        MP = pose.heading() * d2MP + l1_1
+
+        p2r = randVertex - l1_1
+        p2r /= p2r / np.linalg.norm(p2r)
+        l1_2 = p2r * radius + l1_1
+
+        # find intersection with pedestrian cross
+        for c in self._l_cross:
+            ip_l = pfnc.seg_intersect(l1_1, l1_2, c.left[0], c.left[1])
+            ip_r = pfnc.seg_intersect(l1_1, l1_2, c.right[0], c.right[1])
+            # if ip_l is not None:
+            self._l_hypoCoord.append([ip_l, ip_r, l1_2])
+
+
+        # heading = np.array([math.cos(pose.yaw_rad), math.sin(pose.yaw_rad)])
+        # dS = np.sqrt((randVertex[0]-pose.x_m)**2 + (randVertex[1]-pose.y_m)**2)
+        # dToMergePoint = dS * math.cos(alpha) + dThres
+        # MP = heading * dToMergePoint + np.array([pose.x_m, pose.y_m])
+        # visibleDistance = dToMergePoint * np.tan(alpha)
+
+        
+# ---------------------- BACK UP FUNCTIONS -----------------------------
+        
     def setupScenario1(self, scenario):
 
         if scenario == 1:
@@ -382,6 +419,4 @@ class Environment(object):
             # road boundary
             road1 = RoadBoundary(scenario=2)
             self.addRoadBoundary(road1)
-    
-    def generateHypothesis(pose, staticObject):
-        MP, visib
+        
