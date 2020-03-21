@@ -27,6 +27,12 @@ class StaticObject(object):
             )
         ax.add_patch(poly)
 
+class Road(object):
+    def __init__(self, left, right, lane):
+        self.left = left
+        self.right = right
+        self.lane = lane
+        self.heading = math.atan2(left[1][1]-left[0][1], left[1][0]-left[0][0])
 
 class RoadBoundary(object):
     """
@@ -34,51 +40,63 @@ class RoadBoundary(object):
         with UTM coordinate in ^-> direction
     """
     def __init__(self, scenario):
-        self.left = None
-        self.right = None
-        self.lane = None
+        self.l_road = []
         self.setup(scenario)
 
     def setup(self, scenario):
         if scenario == 1:
-            self.left = np.array([[[-100, 4], [100, 4]]])
-            self.right = np.array([[[-100, -4], [100, -4]]])
-            self.lane = np.array([[[-100, 0], [100, 0]]])
+            road = Road(
+                left=np.array([[-100, 4], [100, 4]]),
+                right=np.array([[-100, -4], [100, -4]]),
+                lane=np.array([[-100, 0], [100, 0]])
+            )
+            self.l_road.append(road)
 
         if scenario == 2:
-            self.left = np.array((
-                [[-100, 4], [100, 4]],
-                [[-4, -100], [-4, -4]]
-            ))
-            self.right = np.array((
-                [[-100, -4], [-4, -4]],
-                [[4, -4], [100, -4]],
-                [[4, -100], [4, -4]]
-            ))
-            self.lane = np.array((
-                [[-100, 0], [100, 0]],
-                [[0, -100], [0, -4]]
-            ))
+            road1 = Road(
+                left=np.array([[-100, 4], [-4, 4]]),
+                right=np.array([[-100, -4], [-4, -4]]),
+                lane=np.array([[-100, 0], [-4, 0]])
+            )
+            road2 = Road(
+                left=np.array([[-4, 4], [4, 4]]),
+                right=None,
+                lane=np.array([[-4, 0], [4, 0]])
+            )
+            road3 = Road(
+                left=np.array([[4, 4], [100, 4]]),
+                right=np.array([[4, -4], [100, -4]]),
+                lane=np.array([[4, 0], [100, 0]])
+            )
+            road4 = Road(
+                left=np.array([[-4, -100], [-4, -4]]),
+                right=np.array([[4, -100], [4, -4]]),
+                lane=np.array([[0, -100], [0, -4]])
+            )
+            self.l_road.extend([road1, road2, road3, road4])
 
         if scenario == 3:
-            self.left = np.array((
-                [[-100, 4], [-4, 4]],
-                [[4, 4], [100, 4]],
-                [[4, 100], [4, 4]],
-                [[4, -100], [4, -4]]
-            ))
-            self.right = np.array((
-                [[-100, -4], [-4, -4]],
-                [[4, -4], [100, -4]],
-                [[-4, 100], [-4, 4]],
-                [[-4, -100], [-4, -4]]
-            ))
-            self.lane = np.array((
-                [[-100, 0], [-4, 0]],
-                [[4, 0], [100, -0]],
-                [[0, 100], [0, 4]],
-                [[0, -100], [0, -4]]
-            ))
+            road1 = Road(
+                left=np.array([[-100, 4], [-4, 4]]),
+                right=np.array([[-100, -4], [-4, -4]]),
+                lane=np.array([[-100, 0], [-4, 0]])
+            )
+            road2 = Road(
+                left=np.array([[-4, 100], [-4, 4]]),
+                right=np.array([[4, 100], [4, 4]]),
+                lane=np.array([[0, 100], [0, 4]])
+            )
+            road3 = Road(
+                left=np.array([[4, 4], [100, 4]]),
+                right=np.array([[4, -4], [100, -4]]),
+                lane=np.array([[4, 0], [100, 0]])
+            )
+            road4 = Road(
+                left=np.array([[-4, -100], [-4, -4]]),
+                right=np.array([[4, -100], [4, -4]]),
+                lane=np.array([[0, -100], [0, -4]])
+            )
+            self.l_road.extend([road1, road2, road3, road4])
 
     def plot(self, ax=plt):
         nrRoad = self.lane.shape[0]
@@ -102,8 +120,8 @@ class Vehicle(object):
         self._startTime = startTime
         self._p_pose = {}
 
-        startTime = round(int(startTime/param._dT) * param._dT, 3)
-        theta = math.atan2(to_y_m-from_y_m, to_x_m-from_x_m)
+        startTime = round(round(startTime/param._dT, 2) * param._dT, 2)
+        self.heading = math.atan2(to_y_m-from_y_m, to_x_m-from_x_m)
 
         if isStop:
             self._u = pfnc.computeAccToStop(
@@ -113,7 +131,7 @@ class Vehicle(object):
             self._u = 0
 
         startPose = Pose(
-            x_m=from_x_m, y_m=from_y_m, yaw_rad=theta,
+            x_m=from_x_m, y_m=from_y_m, yaw_rad=self.heading,
             covLatLong=np.diag([covLong, covLat]),
             vdy=VehicleDynamic(vx_ms, 0), timestamp_s=startTime)
 
@@ -173,6 +191,7 @@ class Vehicle(object):
             )
 
     def getPredictAt(self, timestamp_s):
+        timestamp_s = round(timestamp_s, 2)
         if timestamp_s not in self._p_pose:
             self.predict()
         pose = self._p_pose[timestamp_s]
@@ -184,7 +203,7 @@ class Vehicle(object):
         Update vehicle state to next timestamp
         """
         lastPose = self.getCurrentPose()
-        nextTimestamp_s = round(lastPose.timestamp_s + dT, 3)
+        nextTimestamp_s = round(lastPose.timestamp_s + dT, 2)
         nextPose = pfnc.updatePose(
             lastPose=lastPose,
             u_in=self._u,
@@ -255,8 +274,8 @@ class Pedestrian(object):
         self._u = 0
         self._p_pose = {}
 
-        startTime = round(int(startTime/param._dT) * param._dT, 3)
-        theta = math.atan2(to_y_m-from_y_m, to_x_m-from_x_m)
+        startTime = round(round(startTime/param._dT, 2) * param._dT, 2)
+        self.heading = math.atan2(to_y_m-from_y_m, to_x_m-from_x_m)
 
         if isStop:
             s = np.sqrt((from_x_m-to_x_m)**2 + (from_y_m-to_y_m)**2)
@@ -265,7 +284,7 @@ class Pedestrian(object):
             self._stopTimestamp_s = 99999
 
         startPose = Pose(
-            x_m=from_x_m, y_m=from_y_m, yaw_rad=theta,
+            x_m=from_x_m, y_m=from_y_m, yaw_rad=self.heading,
             covLatLong=np.diag([covLong, covLat]),
             vdy=VehicleDynamic(vx_ms, 0), timestamp_s=startTime)
 
@@ -310,7 +329,7 @@ class Pedestrian(object):
                       else with current acceleration
         """
         self._p_pose = {}
-        nextTimestamp_s = self._currentPose.timestamp_s + pT
+        nextTimestamp_s = self.getCurrentTimestamp() + pT
         self._p_pose = pfnc.updatePoseList(
             lastPose=self._currentPose,
             u_in=self._u,
@@ -318,6 +337,7 @@ class Pedestrian(object):
         )
 
     def getPredictAt(self, timestamp_s):
+        timestamp_s = round(timestamp_s, 2)
         if timestamp_s not in self._p_pose:
             self.predict()
         pose = self._p_pose[timestamp_s]
@@ -329,7 +349,7 @@ class Pedestrian(object):
         Update vehicle state to next timestamp
         """
         lastPose = self.getCurrentPose()
-        nextTimestamp_s = round(lastPose.timestamp_s + dT, 3)
+        nextTimestamp_s = round(lastPose.timestamp_s + dT, 2)
         if nextTimestamp_s < self._stopTimestamp_s:
             nextPose = pfnc.updatePose(
                 lastPose=lastPose,
@@ -406,3 +426,5 @@ class PedestrianCross(object):
         self.left = left
         self.right = right
         self.density = density
+        self.center = 0.5*(np.mean(left, axis=0) + np.mean(right, axis=0))
+        self.heading = math.atan2(left[1][1]-left[0][1], left[1][0]-left[0][0])

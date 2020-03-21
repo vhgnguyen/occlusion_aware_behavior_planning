@@ -100,34 +100,35 @@ class BirdEyeView(QOpenGLWidget):
         self.drawHypothesis()
 
     def drawRoadBoundary(self):
-        road = self.core._env._l_road
-        if road == 0:
-            return
-        gl.glColor4f(0., 0., 0., 1.0)  # gray
-        gl.glLineWidth(4.0)
-        # draw left boundary
-        gl.glBegin(gl.GL_LINES)
-        for l in road.left:
-            gl.glVertex2f(l[0][0], l[0][1])
-            gl.glVertex2f(l[1][0], l[1][1])
-        gl.glEnd()
-        # draw right boundary
-        gl.glBegin(gl.GL_LINES)
-        for l in road.right:
-            gl.glVertex2f(l[0][0], l[0][1])
-            gl.glVertex2f(l[1][0], l[1][1])
-        gl.glEnd()
-        # draw lane in dashed
-        gl.glColor4f(0.6, 0.6, 0.6, 1.0)  # gray
-        gl.glLineWidth(2.0)
-        gl.glLineStipple(1, 0xAAAA)  # [1]
-        gl.glEnable(gl.GL_LINE_STIPPLE)
-        gl.glBegin(gl.GL_LINES)
-        for l in road.lane:
-            gl.glVertex2f(l[0][0], l[0][1])
-            gl.glVertex2f(l[1][0], l[1][1])
-        gl.glEnd()
-        gl.glDisable(gl.GL_LINE_STIPPLE)
+        for road in self.core._env._l_road:
+            gl.glColor4f(0., 0., 0., 1.0)  # gray
+            gl.glLineWidth(4.0)
+            # draw left boundary
+            le = road.left
+            if le is not None:
+                gl.glBegin(gl.GL_LINES)
+                gl.glVertex2f(le[0][0], le[0][1])
+                gl.glVertex2f(le[1][0], le[1][1])
+                gl.glEnd()
+            # draw right boundary
+            ri = road.right
+            if ri is not None:
+                gl.glBegin(gl.GL_LINES)
+                gl.glVertex2f(ri[0][0], ri[0][1])
+                gl.glVertex2f(ri[1][0], ri[1][1])
+                gl.glEnd()
+            # draw lane in dashed
+            gl.glColor4f(0.6, 0.6, 0.6, 1.0)  # gray
+            gl.glLineWidth(2.0)
+            gl.glLineStipple(1, 0xAAAA)  # [1]
+            gl.glEnable(gl.GL_LINE_STIPPLE)
+            la = road.lane
+            if la is not None:
+                gl.glBegin(gl.GL_LINES)
+                gl.glVertex2f(la[0][0], la[0][1])
+                gl.glVertex2f(la[1][0], la[1][1])
+                gl.glEnd()
+            gl.glDisable(gl.GL_LINE_STIPPLE)
 
     def drawStaticObject(self):
         objectList = self.core._env._l_staticObject
@@ -163,6 +164,7 @@ class BirdEyeView(QOpenGLWidget):
 
     def drawPedestrian(self):
         pedesList = self.core.exportCurrentPedestrian()
+        hypoList = self.core.exportHypoPedestrian()
         for pedes in pedesList:
             # draw poly
             gl.glColor4f(0.0, 0.2, 0.8, 0.6)  # blue
@@ -182,7 +184,14 @@ class BirdEyeView(QOpenGLWidget):
             gl.glVertex2f(pedes['pos'][0], pedes['pos'][1])
             gl.glEnd()
 
-            # draw covariance
+        for hypo in hypoList:
+            # draw poly
+            gl.glColor4f(0.8, 0.8, 0.0, 0.6)  # yellow
+            gl.glBegin(gl.GL_QUADS)
+            for vertex in hypo['poly']:
+                gl.glVertex2f(vertex[0], vertex[1])
+            gl.glEnd()
+
 
     def drawOtherVehicle(self):
         vehicleList = self.core.exportCurrentVehicle()
@@ -241,7 +250,8 @@ class BirdEyeView(QOpenGLWidget):
                 gl.glVertex2f(pos[0][0], pos[0][1])
             if pos[1] is not None:
                 gl.glVertex2f(pos[1][0], pos[1][1])
-            gl.glVertex2f(pos[2][0], pos[2][1])
+            if pos[2] is not None:
+                gl.glVertex2f(pos[2][0], pos[2][1])
         gl.glEnd()
 
     def drawAxis(self):

@@ -8,18 +8,21 @@ from objects import (StaticObject, RoadBoundary,
                      PedestrianCross, Vehicle, Pedestrian)
 import _param as param
 
+import OpenGL.GL as gl
 
 class Environment(object):
     """
         Class define environment
     """
     def __init__(self):
-        self._l_road = 0
+        self._l_road = []
         self._l_staticObject = []
         self._l_vehicle = []
         self._l_pedestrian = []
         self._l_cross = []
         self._l_hypoCoord = []
+        self._l_hypoPedes = []
+        self._l_hypoVehicle = []
 
     def countPedestrian(self):
         return len(self._l_pedestrian)
@@ -100,6 +103,9 @@ class Environment(object):
         Get environment around a given position
         """
         self._l_hypoCoord = []
+        self._l_hypoPedes = []
+        self._l_hypoVehicle = []
+        
         l_staticVehicle = []
         l_vehicle = []
         l_object = []
@@ -158,7 +164,8 @@ class Environment(object):
 
         l_update = {'vehicle': l_vehicle,
                     'staticObject': l_object,
-                    'pedestrian': l_pedestrian}
+                    'pedestrian': l_pedestrian,
+                    'hypoPedestrian': self._l_hypoPedes}
 
         return l_update, fov
 
@@ -204,7 +211,7 @@ class Environment(object):
             # static object
             obs1 = StaticObject(
                 idx=1,
-                poly=np.array([[-40, -20], [-10, -20], [-10, -10],
+                poly=np.array([[-40, -20], [-10, -20], [-10, -6],
                                [-20, -5], [-40, -5]]))
             self.addStaticObject(obs1)
 
@@ -236,9 +243,15 @@ class Environment(object):
 
             obs3 = StaticObject(
                 idx=3,
-                poly=np.array([[-40, 8], [-20, 8], [-10, 15],
+                poly=np.array([[-40, 5], [-20, 5], [-10, 8],
                               [-10, 20], [-40, 20]]))
             self.addStaticObject(obs3)
+
+            obs4 = StaticObject(
+                idx=4,
+                poly=np.array([[5, 5], [10, 5], [10, 20],
+                              [5, 20]]))
+            self.addStaticObject(obs4)
 
             # pedestrian cross
             cross1 = PedestrianCross(
@@ -249,36 +262,106 @@ class Environment(object):
             self.addPedestrianCross(cross1)
 
         # road boundary
-        self._l_road = RoadBoundary(scenario=scenario)
+        road = RoadBoundary(scenario=scenario)
+        self._l_road = road.l_road
 
-    def generateHypothesis(self, pose, obj, dThres=1, radius=param._SCAN_RADIUS+5):
+    def generateHypothesis(self, pose, obj, dThres=2, radius=param._SCAN_RADIUS):
         randVertex, alpha = pfnc.minFOVAngle(pose, poly=obj._poly)
-
         if alpha is None:
             return
+
         l1_1 = np.array([pose.x_m, pose.y_m])
-
-        dS = np.sqrt((randVertex[0]-pose.x_m)**2 + (randVertex[1]-pose.y_m)**2)
-        d2MP = dS * math.cos(alpha)
-        MP = pose.heading() * d2MP + l1_1
-
         p2r = randVertex - l1_1
-        p2r /= p2r / np.linalg.norm(p2r)
-        l1_2 = p2r * radius + l1_1
+        p2r_l2 = np.linalg.norm(p2r)
+        p2r_norm = p2r / p2r_l2
+        l1_2 = p2r_norm * radius + l1_1
 
         # find intersection with pedestrian cross
         for c in self._l_cross:
             ip_l = pfnc.seg_intersect(l1_1, l1_2, c.left[0], c.left[1])
             ip_r = pfnc.seg_intersect(l1_1, l1_2, c.right[0], c.right[1])
-            # if ip_l is not None:
-            self._l_hypoCoord.append([ip_l, ip_r, l1_2])
+            d2MP_l, d2MP_r = 9999, 9999
+            if ip_l is not None:
+                l1_ip_l = np.linalg.norm(ip_l-l1_1)
+                if l1_ip_l < p2r_l2:
+                    continue
+                d2MP_l = l1_ip_l * math.cos(alpha) + dThres
+                MP_l = d2MP_l * pose.heading() + l1_1
 
+            if ip_r is not None:
+                l1_ip_r = np.linalg.norm(ip_r-l1_1)
+                if l1_ip_r < p2r_l2:
+                    continue
+                d2MP_r = l1_ip_r * math.cos(alpha) + dThres
+                MP_r = d2MP_r * pose.heading() + l1_1
 
-        # heading = np.array([math.cos(pose.yaw_rad), math.sin(pose.yaw_rad)])
-        # dS = np.sqrt((randVertex[0]-pose.x_m)**2 + (randVertex[1]-pose.y_m)**2)
-        # dToMergePoint = dS * math.cos(alpha) + dThres
-        # MP = heading * dToMergePoint + np.array([pose.x_m, pose.y_m])
-        # visibleDistance = dToMergePoint * np.tan(alpha)
+            # if ip_l is not None and ip_r is not None:
+            if d2MP_l < d2MP_r:
+                ip_l += p2r_norm * dThres
+                hypoPedes = Pedestrian(
+                    idx=99, from_x_m=ip_l[0], from_y_m=ip_l[1],
+                    to_x_m=MP_l[0], to_y_m=MP_l[1], covLong=0.1, covLat=0.1,
+                    vx_ms=2, startTime=pose.timestamp_s)
+                if abs(abs(hypoPedes.heading) - abs(c.heading)) < np.pi/3:
+                    self._l_hypoPedes.append(hypoPedes)
+            elif d2MP_l > d2MP_r:
+                ip_r += p2r_norm * dThres
+                hypoPedes = Pedestrian(
+                    idx=99, from_x_m=ip_r[0], from_y_m=ip_r[1],
+                    to_x_m=MP_r[0], to_y_m=MP_r[1], covLong=0.1, covLat=0.1,
+                    vx_ms=2, startTime=pose.timestamp_s)
+                if abs(abs(hypoPedes.heading) - abs(c.heading)) < np.pi/3:
+                    self._l_hypoPedes.append(hypoPedes)
+                self._l_hypoPedes.append(hypoPedes)
+
+            # elif ip_r is None and ip_l is not None:
+            #     ip_l += p2r_norm * dThres
+            #     hypoPedes = Pedestrian(
+            #         idx=99, from_x_m=ip_l[0], from_y_m=ip_l[1],
+            #         to_x_m=MP_l[0], to_y_m=MP_l[1], covLong=0.2, covLat=0.1,
+            #         vx_ms=2, startTime=pose.timestamp_s)
+            #     self._l_hypoPedes.append(hypoPedes)
+
+            # elif ip_l is None and ip_r is not None:
+            #     ip_r += p2r_norm * dThres
+            #     hypoPedes = Pedestrian(
+            #         idx=99, from_x_m=ip_r[0], from_y_m=ip_r[1],
+            #         to_x_m=MP_r[0], to_y_m=MP_r[1], covLong=0.2, covLat=0.1,
+            #         vx_ms=2, startTime=pose.timestamp_s)
+            #     self._l_hypoPedes.append(hypoPedes)
+            # self._l_hypoCoord.append([MP_l, MP_r, randVertex])
+    
+        for road in self._l_road:
+            M_l, M_m, M_r = None, None, None
+            d2l, d2m, d2r = 9999, 9999, 9999
+            if road.left is not None:
+                ip_l = pfnc.seg_intersect(l1_1, l1_2, road.left[0], road.left[1])
+                if ip_l is not None:
+                    l1_ip_l = np.linalg.norm(l1_1 - ip_l)
+                    if l1_ip_l < p2r_l2:
+                        continue
+                    d2l = l1_ip_l * math.cos(alpha)
+                    M_l = d2l * pose.heading() + l1_1
+            if road.lane is not None:
+                ip_m = pfnc.seg_intersect(l1_1, l1_2, road.lane[0], road.lane[1])
+                if ip_m is not None:
+                    l1_ip_m = np.linalg.norm(l1_1 - ip_m)
+                    if l1_ip_m < p2r_l2:
+                        continue
+                    d2m = l1_ip_m * math.cos(alpha)
+                    M_m = d2m * pose.heading() + l1_1
+
+            if road.right is not None:
+                ip_r = pfnc.seg_intersect(l1_1, l1_2, road.right[0], road.right[1])
+                if ip_r is not None:
+                    l1_ip_r = np.linalg.norm(l1_1 - ip_r)
+                    if l1_ip_r < p2r_l2:
+                        continue
+                    d2r = l1_ip_r * math.cos(alpha)
+                    M_r = d2r * pose.heading() + l1_1
+            
+
+            self._l_hypoCoord.append([M_l, M_m, M_r])
 
         
 # ---------------------- BACK UP FUNCTIONS -----------------------------

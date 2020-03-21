@@ -117,7 +117,7 @@ class EgoVehicle:
         """
         Compute collision risk & event rate at given predict timestamp
         """
-        timestamp_s = round(timestamp_s, 3)
+        timestamp_s = round(timestamp_s, 2)
         egoPose = self._p_pose[timestamp_s]
         egoPoly = self.getPredictPoly(timestamp_s)
         l_obj = self._l_currentObject
@@ -160,6 +160,17 @@ class EgoVehicle:
                 )
             total_risk += pcol_risk
             total_eventRate += pcol_rate
+        
+        for hypoPedes in l_obj['hypoPedestrian']:
+            hPose, hPoly = hypoPedes.getPredictAt(timestamp_s)
+            hcol_risk, hcol_rate, hcol_ind = rfnc.collisionRisk(
+                egoPose=egoPose,
+                egoPoly=egoPoly,
+                objPose=hPose,
+                objPoly=hPoly
+                )
+            total_risk += hcol_risk
+            total_eventRate += hcol_rate
 
         self._p_eventRate.update({timestamp_s: total_eventRate})
         return total_risk
@@ -210,7 +221,7 @@ class EgoVehicle:
 
     def _move(self, dT=param._dT):
         lastPose = self.getCurrentPose()
-        nextTimestamp_s = round(lastPose.timestamp_s + dT, 3)
+        nextTimestamp_s = round(lastPose.timestamp_s + dT, 2)
         if self._p_u is not None:
             nextPose = pfnc.updatePose(
                 lastPose=lastPose,

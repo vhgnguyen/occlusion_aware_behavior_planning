@@ -120,6 +120,13 @@ class Core(object):
             return None
 
         return self._egoCar._fov
+    
+    def exportHypoPedestrian(self):
+        hypoList = []
+        for pedes in self._env._l_hypoPedes:
+            pedesExport = pedes.exportCurrent()
+            hypoList.append(pedesExport)
+        return hypoList
 
     
     def getCurrentEgoPos(self):

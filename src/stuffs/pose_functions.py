@@ -12,7 +12,7 @@ def computeAccToStop(from_x_m, from_y_m, to_x_m, to_y_m, vx_ms):
 
 
 def updatePose(lastPose, u_in, dT=param._dT):
-    nextTimestamp_s = round(lastPose.timestamp_s + dT, 3)
+    nextTimestamp_s = round(lastPose.timestamp_s + dT, 2)
     vx = lastPose.vdy.vx_ms
     dP = vx * dT + 0.5 * u_in * (dT**2)
     dP = max(dP, 0)
@@ -29,8 +29,7 @@ def updatePose(lastPose, u_in, dT=param._dT):
     return nextPose
 
 
-def updatePoseList(lastPose, u_in, nextTimestamp_s,
-                   dT=param._dT):
+def updatePoseList(lastPose, u_in, nextTimestamp_s, dT=param._dT):
     """
     Update vehicle pose with given longtitude acceleration and timestamp
     Args:
@@ -49,7 +48,7 @@ def updatePoseList(lastPose, u_in, nextTimestamp_s,
     l_pose = {}
     for k in range(1, step+1, 1):
         dTime = k * dT
-        nextT = round(lastPose.timestamp_s + dTime, 3)
+        nextT = round(lastPose.timestamp_s + dTime, 2)
         dP = vx * dTime + 0.5 * u_in * (dTime**2)
         dP = max(dP, 0)
         dX = dP * math.cos(lastPose.yaw_rad)
