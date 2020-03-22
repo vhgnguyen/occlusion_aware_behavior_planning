@@ -280,6 +280,7 @@ class EgoVehicle:
             list((self._p_eventRate[k]) for k in self._p_eventRate))
         max_eventRate = max(self._p_eventRate.values())
         if max_eventRate > 5:
+            print(self.getCurrentTimestamp())
         # if total_eventRate > 5:
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(u_in=x, dT=param._dT),
