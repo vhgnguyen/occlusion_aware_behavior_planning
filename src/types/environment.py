@@ -121,7 +121,7 @@ class Environment(object):
             if ((d2ego) < radius).any():
                 l_object.append(sObj)
                 l_polys.append(objPoly)
-                self.generateHypothesis(pose, sObj)
+                self.generateHypothesis(pose, objPoly)
 
         # find static vehicle
         for veh in self._l_vehicle:
@@ -130,8 +130,10 @@ class Environment(object):
                 vehPos = np.array([vehPose.x_m, vehPose.y_m])
                 if np.linalg.norm(vehPos - currentPos) < radius:
                     if vehPose.vdy.vx_ms < 2:
-                        l_polys.append(veh.getPoly(from_timestamp))
+                        vehPoly = veh.getPoly(from_timestamp)
+                        l_polys.append(vehPoly)
                         l_staticVehicle.append(veh)
+                        # self.generateHypothesis(pose, vehPoly)
 
         # generate field of view
         fov = pfnc.FOV(
@@ -271,13 +273,52 @@ class Environment(object):
                 density=0.8
             )
             self.addPedestrianCross(cross1)
+        
+        elif scenario == 4:
+            # static object
+            obs1 = StaticObject(
+                idx=1,
+                poly=np.array([[-40, -20], [-6, -20], [-6, -8],
+                               [-20, -6], [-40, -6]]))
+            self.addStaticObject(obs1)
+
+            obs2 = StaticObject(
+                idx=2,
+                poly=np.array([[8, -20], [30, -20], [30, -5], [8, -5]]))
+            self.addStaticObject(obs2)
+
+            obs3 = StaticObject(
+                idx=3,
+                poly=np.array([[-40, 5], [-20, 5], [-10, 8],
+                              [-10, 20], [-40, 20]]))
+            self.addStaticObject(obs3)
+
+            obs4 = StaticObject(
+                idx=4,
+                poly=np.array([[5, 5], [10, 5], [10, 20],
+                              [5, 20]]))
+            self.addStaticObject(obs4)
+
+            # pedestrian cross
+            cross1 = PedestrianCross(
+                left=np.array([[-6, -10], [-6, 10]]),
+                right=np.array([[-4, -10], [-4, 10]]),
+                density=0.8
+            )
+            cross2 = PedestrianCross(
+                left=np.array([[-4, 8], [-4, 8]]),
+                right=np.array([[-4, 6], [-4, 6]]),
+                density=0.8
+            )
+            self.addPedestrianCross(cross1)
+            self.addPedestrianCross(cross2)
 
         # road boundary
         road = RoadBoundary(scenario=scenario)
         self._l_road = road.l_road
 
-    def generateHypothesis(self, pose, obj, dThres=2, radius=param._SCAN_RADIUS):
-        randVertex, alpha = pfnc.minFOVAngle(pose, poly=obj._poly)
+    def generateHypothesis(self, pose, objPoly, dThres=2, radius=param._SCAN_RADIUS):
+        randVertex, alpha = pfnc.minFOVAngle(pose, poly=objPoly)
         if alpha is None:
             return
 
@@ -311,16 +352,16 @@ class Environment(object):
                 ip_l += p2r_norm * dThres
                 hypoPedes = Pedestrian(
                     idx=99, from_x_m=ip_l[0], from_y_m=ip_l[1],
-                    to_x_m=MP_l[0], to_y_m=MP_l[1], covLong=0.1, covLat=0.1,
-                    vx_ms=2, startTime=pose.timestamp_s)
+                    to_x_m=MP_l[0], to_y_m=MP_l[1], covLong=0.3, covLat=0.1,
+                    vx_ms=param._PEDESTRIAN_VX, startTime=pose.timestamp_s)
                 if abs(abs(hypoPedes.theta) - abs(c.theta)) < np.pi/3:
                     self._l_hypoPedes.append(hypoPedes)
             elif d2MP_l > d2MP_r:
                 ip_r += p2r_norm * dThres
                 hypoPedes = Pedestrian(
                     idx=99, from_x_m=ip_r[0], from_y_m=ip_r[1],
-                    to_x_m=MP_r[0], to_y_m=MP_r[1], covLong=0.1, covLat=0.1,
-                    vx_ms=2, startTime=pose.timestamp_s)
+                    to_x_m=MP_r[0], to_y_m=MP_r[1], covLong=0.3, covLat=0.1,
+                    vx_ms=param._PEDESTRIAN_VX, startTime=pose.timestamp_s)
                 if abs(abs(hypoPedes.theta) - abs(c.theta)) < np.pi/3:
                     self._l_hypoPedes.append(hypoPedes)
                 self._l_hypoPedes.append(hypoPedes)
@@ -367,13 +408,13 @@ class Environment(object):
             if ip_l is not None and ip_m is not None:
                 lane_heading = np.array([np.cos(road.theta), np.sin(road.theta)])
                 endPos = (ip_l + ip_m) / 2
-                startPos = endPos + lane_heading * 2 * dThres
+                startPos = endPos + lane_heading * 2
                 if np.linalg.norm(endPos-l1_1) < np.linalg.norm(startPos-l1_1):
                     hypoVeh = Vehicle(
                         idx=99, length=param._CAR_LENGTH, width=param._CAR_WIDTH,
                         from_x_m=startPos[0], from_y_m=startPos[1],
-                        to_x_m=endPos[0], to_y_m=endPos[1], covLong=0.2, covLat=0.1,
-                        vx_ms=8, startTime=pose.timestamp_s)
+                        to_x_m=endPos[0], to_y_m=endPos[1], covLong=0.1, covLat=0.1,
+                        vx_ms=param._VEHICLE_VX, startTime=pose.timestamp_s)
                     self._l_hypoVehicle.append(hypoVeh)
 
                 # self._l_hypoCoord.append([startPos, endPos, ip_m])
@@ -382,13 +423,13 @@ class Environment(object):
             if ip_r is not None and ip_m is not None:
                 lane_heading = np.array([np.cos(road.theta), np.sin(road.theta)])
                 endPos = (ip_r + ip_m) / 2
-                startPos = endPos - lane_heading * 2 * dThres
+                startPos = endPos - lane_heading * 2
                 if np.linalg.norm(endPos-l1_1) < np.linalg.norm(startPos-l1_1):
                     hypoVeh = Vehicle(
                         idx=99, length=param._CAR_LENGTH, width=param._CAR_WIDTH,
                         from_x_m=startPos[0], from_y_m=startPos[1],
-                        to_x_m=endPos[0], to_y_m=endPos[1], covLong=0.2, covLat=0.1,
-                        vx_ms=8, startTime=pose.timestamp_s)
+                        to_x_m=endPos[0], to_y_m=endPos[1], covLong=0.1, covLat=0.1,
+                        vx_ms=param._VEHICLE_VX, startTime=pose.timestamp_s)
                     self._l_hypoVehicle.append(hypoVeh)
 
                 # self._l_hypoCoord.append([startPos, endPos, ip_m])

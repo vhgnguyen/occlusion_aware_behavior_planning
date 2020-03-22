@@ -98,6 +98,29 @@ class RoadBoundary(object):
             )
             self.l_road.extend([road1, road2, road3, road4])
 
+        if scenario == 4:
+            road1 = Road(
+                left=np.array([[-100, 4], [-4, 4]]),
+                right=np.array([[-100, -4], [-4, -4]]),
+                lane=np.array([[-100, 0], [-4, 0]])
+            )
+            road2 = Road(
+                left=np.array([[-4, 4], [-4, 100]]),
+                right=np.array([[4, 4], [4, 100]]),
+                lane=np.array([[0, 4], [0, 100]])
+            )
+            road3 = Road(
+                left=np.array([[4, 4], [100, 4]]),
+                right=np.array([[4, -4], [100, -4]]),
+                lane=np.array([[4, 0], [100, 0]])
+            )
+            road4 = Road(
+                left=np.array([[-4, -100], [-4, -4]]),
+                right=np.array([[4, -100], [4, -4]]),
+                lane=np.array([[0, -100], [0, -4]])
+            )
+            self.l_road.extend([road1, road2, road3, road4])
+
     def plot(self, ax=plt):
         nrRoad = self.lane.shape[0]
         for i in nrRoad:

@@ -257,16 +257,21 @@ class EgoVehicle:
         self._searchEnvironment()
 
         # handle stop case
-        if self.getCurrentPose().vdy.vx_ms < 0.5:
+        if self.getCurrentPose().vdy.vx_ms < 0.3:
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(u_in=x, dT=param._dT),
                 bounds=(0, param._A_MAX), method='bounded',
                 options={"maxiter": 5}
                 ).x
         else:
+            lowBound = max(self._u - 0.5, -3)
+            upBound = min(self._u + 0.5, 3)
+            if lowBound >= upBound:
+                lowBound = -3
+                upBound = 3
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(u_in=x, dT=param._dT),
-                bounds=(self._u - 0.5, self._u + 0.5), method='bounded',
+                bounds=(lowBound, upBound), method='bounded',
                 options={"maxiter": 5}
                 ).x
 

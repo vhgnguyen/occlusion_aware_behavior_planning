@@ -14,6 +14,10 @@ _FOV_RAYS = 100
 _CAR_LENGTH = 3.5
 _CAR_WIDTH = 2
 
+# hypothesen
+_PEDESTRIAN_VX = 2.0
+_VEHICLE_VX = 8
+
 # ------------------------------
 # Vehicle
 # ------------------------------
@@ -25,7 +29,7 @@ _A_MAX_BRAKE = -6.0
 
 # velocity
 _ALPHA_V_LONG = 0.05
-_ALPHA_V_LAT = 0.0
+_ALPHA_V_LAT = 0.01
 
 # ------------------------------
 # Risk model

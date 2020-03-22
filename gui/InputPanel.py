@@ -42,18 +42,23 @@ class InputWidget(QWidget):
         self.scenarioButton2.setMaximumWidth(50)
         self.scenarioButton3 = QRadioButton("3")
         self.scenarioButton3.setMaximumWidth(50)
+        self.scenarioButton4 = QRadioButton("4")
+        self.scenarioButton4.setMaximumWidth(50)
 
         self.scenarioButtonGroup.addButton(self.scenarioButton1)
         self.scenarioButtonGroup.addButton(self.scenarioButton2)
         self.scenarioButtonGroup.addButton(self.scenarioButton3)
+        self.scenarioButtonGroup.addButton(self.scenarioButton4)
 
         self.scenarioButton1.clicked.connect(self.on_chooseScenario_checked)
         self.scenarioButton2.clicked.connect(self.on_chooseScenario_checked)
         self.scenarioButton3.clicked.connect(self.on_chooseScenario_checked)
+        self.scenarioButton4.clicked.connect(self.on_chooseScenario_checked)
 
         self.scenarioGrid.addWidget(self.scenarioButton1, 0, 0)
         self.scenarioGrid.addWidget(self.scenarioButton2, 0, 1)
         self.scenarioGrid.addWidget(self.scenarioButton3, 0, 2)
+        self.scenarioGrid.addWidget(self.scenarioButton4, 0, 3)
 
         # generate button
         self.scenarioGenerateButton = QPushButton("Generate")
@@ -235,6 +240,8 @@ class InputWidget(QWidget):
             self.core._env.setScenario(scenario=2)
         elif self.scenarioButton3.isChecked():
             self.core._env.setScenario(scenario=3)
+        elif self.scenarioButton4.isChecked():
+            self.core._env.setScenario(scenario=4)
 
     def on_generateButton_clicked(self):
         self.scenarioGenerateButton.setEnabled(False)
