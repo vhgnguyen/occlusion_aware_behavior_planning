@@ -224,7 +224,7 @@ class Environment(object):
             # static object
             obs1 = StaticObject(
                 idx=1,
-                poly=np.array([[-40, -20], [-10, -20], [-10, -6],
+                poly=np.array([[-40, -20], [-10, -20], [-10, -8],
                                [-20, -5], [-40, -5]]))
             self.addStaticObject(obs1)
 

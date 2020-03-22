@@ -160,6 +160,7 @@ class EgoVehicle:
                 )
             total_risk += pcol_risk
             total_eventRate += pcol_rate
+     
 
         for hypoPedes in l_obj['hypoPedestrian']:
             hPose, hPoly = hypoPedes.getPredictAt(timestamp_s)
@@ -171,6 +172,8 @@ class EgoVehicle:
                 )
             total_risk += hcol_risk
             total_eventRate += hcol_rate
+            if timestamp_s - self.getCurrentTimestamp() > 1.4:
+                print(hcol_rate)
         
         for hypoVeh in l_obj['hypoVehicle']:
             hvPose, hvPoly = hypoVeh.getPredictAt(timestamp_s)
@@ -257,18 +260,20 @@ class EgoVehicle:
         self._searchEnvironment()
 
         # handle stop case
-        if self.getCurrentPose().vdy.vx_ms < 0.3:
+        if self.getCurrentPose().vdy.vx_ms == 0:
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(u_in=x, dT=param._dT),
-                bounds=(0, param._A_MAX), method='bounded',
+                bounds=(0, 1), method='bounded',
                 options={"maxiter": 5}
                 ).x
         else:
-            lowBound = max(self._u - 0.5, -3)
-            upBound = min(self._u + 0.5, 3)
+            # lowBound = max(self._u - 0.5, -3)
+            lowBound = self._u - 0.5
+            # upBound = min(self._u + 0.5, 3)
+            upBound = self._u + 0.5
             if lowBound >= upBound:
-                lowBound = -3
-                upBound = 3
+                lowBound = param._A_MIN
+                upBound = param._A_MAX
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(u_in=x, dT=param._dT),
                 bounds=(lowBound, upBound), method='bounded',
@@ -276,12 +281,11 @@ class EgoVehicle:
                 ).x
 
         # check if critical event occur
-        total_eventRate = sum(
-            list((self._p_eventRate[k]) for k in self._p_eventRate))
+        # total_eventRate = sum(
+            # list((self._p_eventRate[k]) for k in self._p_eventRate))
         max_eventRate = max(self._p_eventRate.values())
-        if max_eventRate > 5:
-            print(self.getCurrentTimestamp())
-        # if total_eventRate > 5:
+        if max_eventRate > 5 and self.getCurrentPose().vdy.vx_ms > 4: 
+            print(max_eventRate)
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(u_in=x, dT=param._dT),
                 bounds=(-8, param._A_MIN), method='bounded',
