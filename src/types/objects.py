@@ -32,7 +32,7 @@ class Road(object):
         self.left = left
         self.right = right
         self.lane = lane
-        self.heading = math.atan2(left[1][1]-left[0][1], left[1][0]-left[0][0])
+        self.theta = math.atan2(left[1][1]-left[0][1], left[1][0]-left[0][0])
 
 class RoadBoundary(object):
     """
@@ -82,9 +82,9 @@ class RoadBoundary(object):
                 lane=np.array([[-100, 0], [-4, 0]])
             )
             road2 = Road(
-                left=np.array([[-4, 100], [-4, 4]]),
-                right=np.array([[4, 100], [4, 4]]),
-                lane=np.array([[0, 100], [0, 4]])
+                left=np.array([[-4, 4], [-4, 100]]),
+                right=np.array([[4, 4], [4, 100]]),
+                lane=np.array([[0, 4], [0, 100]])
             )
             road3 = Road(
                 left=np.array([[4, 4], [100, 4]]),
@@ -121,7 +121,7 @@ class Vehicle(object):
         self._p_pose = {}
 
         startTime = round(round(startTime/param._dT, 2) * param._dT, 2)
-        self.heading = math.atan2(to_y_m-from_y_m, to_x_m-from_x_m)
+        self.theta = math.atan2(to_y_m-from_y_m, to_x_m-from_x_m)
 
         if isStop:
             self._u = pfnc.computeAccToStop(
@@ -131,7 +131,7 @@ class Vehicle(object):
             self._u = 0
 
         startPose = Pose(
-            x_m=from_x_m, y_m=from_y_m, yaw_rad=self.heading,
+            x_m=from_x_m, y_m=from_y_m, yaw_rad=self.theta,
             covLatLong=np.diag([covLong, covLat]),
             vdy=VehicleDynamic(vx_ms, 0), timestamp_s=startTime)
 
@@ -275,7 +275,7 @@ class Pedestrian(object):
         self._p_pose = {}
 
         startTime = round(round(startTime/param._dT, 2) * param._dT, 2)
-        self.heading = math.atan2(to_y_m-from_y_m, to_x_m-from_x_m)
+        self.theta = math.atan2(to_y_m-from_y_m, to_x_m-from_x_m)
 
         if isStop:
             s = np.sqrt((from_x_m-to_x_m)**2 + (from_y_m-to_y_m)**2)
@@ -284,7 +284,7 @@ class Pedestrian(object):
             self._stopTimestamp_s = 99999
 
         startPose = Pose(
-            x_m=from_x_m, y_m=from_y_m, yaw_rad=self.heading,
+            x_m=from_x_m, y_m=from_y_m, yaw_rad=self.theta,
             covLatLong=np.diag([covLong, covLat]),
             vdy=VehicleDynamic(vx_ms, 0), timestamp_s=startTime)
 
@@ -427,4 +427,4 @@ class PedestrianCross(object):
         self.right = right
         self.density = density
         self.center = 0.5*(np.mean(left, axis=0) + np.mean(right, axis=0))
-        self.heading = math.atan2(left[1][1]-left[0][1], left[1][0]-left[0][0])
+        self.theta = math.atan2(left[1][1]-left[0][1], left[1][0]-left[0][0])

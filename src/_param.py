@@ -11,6 +11,8 @@ _SIMULATION_TIME = 20.
 _SCAN_RADIUS = 35.
 _FOV_ANGLE = 3.14159 / 2 - 0.1
 _FOV_RAYS = 100
+_CAR_LENGTH = 3.5
+_CAR_WIDTH = 2
 
 # ------------------------------
 # Vehicle

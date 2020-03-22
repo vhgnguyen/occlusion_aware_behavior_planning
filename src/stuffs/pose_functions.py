@@ -1,8 +1,9 @@
 import numpy as np
 import math
-from pose import Pose, VehicleDynamic
+from shapely.geometry import Polygon, Point
 from scipy.spatial import Delaunay
 
+from pose import Pose, VehicleDynamic
 import _param as param
 
 
@@ -11,7 +12,7 @@ def computeAccToStop(from_x_m, from_y_m, to_x_m, to_y_m, vx_ms):
     return - 0.5 * vx_ms**2 / s
 
 
-def updatePose(lastPose, u_in, dT=param._dT):
+def updatePose(lastPose, u_in, dT=param._dT, updateCov=False):
     nextTimestamp_s = round(lastPose.timestamp_s + dT, 2)
     vx = lastPose.vdy.vx_ms
     dP = vx * dT + 0.5 * u_in * (dT**2)
@@ -19,7 +20,10 @@ def updatePose(lastPose, u_in, dT=param._dT):
     dX = dP * math.cos(lastPose.yaw_rad)
     dY = dP * math.sin(lastPose.yaw_rad)
     nextVDY = VehicleDynamic(vx + u_in * dT, 0)
-    next_covLatLong = updateCovLatlong(lastPose.covLatLong, dT, dP, 0)
+    if updateCov:
+        next_covLatLong = updateCovLatlong(lastPose.covLatLong, dT, dP, 0)
+    else:
+        next_covLatLong = lastPose.covLatLong
     nextPose = Pose(
         x_m=lastPose.x_m + dX, y_m=lastPose.y_m + dY,
         yaw_rad=lastPose.yaw_rad, vdy=nextVDY,
@@ -192,6 +196,7 @@ def FOV(pose, polys, angle, radius, nrRays=50):
         for poly in polys:
             for i in range(0, poly.shape[0], 1):
                 ip_tmp = seg_intersect(l1_1, l1_2, poly[i-1], poly[i])
+                # ip_tmp = intersect(l1_1, l1_2, poly[i-1], poly[i])  # use Shapely
                 if ip_tmp is not None:
                     if np.linalg.norm(ip_tmp-l1_1) < np.linalg.norm(ip-l1_1):
                         ip = ip_tmp + direction * 0.1
@@ -199,6 +204,20 @@ def FOV(pose, polys, angle, radius, nrRays=50):
 
     return l_fov
 
+
+def inPolyPoint(point, poly):  # use Shapely
+    point = Point(point)
+    return point.within(poly)
+
+
+def inPolyPointList(pointList, poly):  # use Shapely
+    for pt in pointList:
+        point = Point(pt)
+        if point.within(poly):
+            return True
+    return False
+
+# ---------------------- BACK UP FUNCTIONS -----------------------------
 
 def inPolygonPoint(point, poly):
     poly = Delaunay(poly)
@@ -212,8 +231,6 @@ def inPolygon(point, poly):
     poly = Delaunay(poly)
     return np.count_nonzero(poly.find_simplex(point) >= 0) > 0
 
-
-# ---------------------- BACK UP FUNCTIONS -----------------------------
 
 def updatePoseTurn(lastPose, u_in, nextTimestamp_s):
     """

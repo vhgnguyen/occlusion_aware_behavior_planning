@@ -58,6 +58,11 @@ class MainWindow(QMainWindow):
         self.stopSimulationButton.clicked.connect(self.on_stopSimulation_clicked)
         self.glLayout.addWidget(self.stopSimulationButton)
 
+        # plot button
+        self.plotButton = QPushButton("Show plot")
+        self.plotButton.clicked.connect(self.on_plot_clicked)
+        self.glLayout.addWidget(self.plotButton)
+
         # control box
         self.simulationControlBox = SimulationControlBox(self.core)
         self.glLayout.addWidget(self.simulationControlBox)
@@ -101,3 +106,5 @@ class MainWindow(QMainWindow):
         else:
             self.plots_refresh_timer.stop()
 
+    def on_plot_clicked(self):
+        self.core.plot()

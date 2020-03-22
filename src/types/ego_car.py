@@ -160,7 +160,7 @@ class EgoVehicle:
                 )
             total_risk += pcol_risk
             total_eventRate += pcol_rate
-        
+
         for hypoPedes in l_obj['hypoPedestrian']:
             hPose, hPoly = hypoPedes.getPredictAt(timestamp_s)
             hcol_risk, hcol_rate, hcol_ind = rfnc.collisionRisk(
@@ -171,6 +171,17 @@ class EgoVehicle:
                 )
             total_risk += hcol_risk
             total_eventRate += hcol_rate
+        
+        for hypoVeh in l_obj['hypoVehicle']:
+            hvPose, hvPoly = hypoVeh.getPredictAt(timestamp_s)
+            hvcol_risk, hvcol_rate, hvcol_ind = rfnc.collisionRisk(
+                egoPose=egoPose,
+                egoPoly=egoPoly,
+                objPose=hvPose,
+                objPoly=hvPoly
+                )
+            total_risk += hvcol_risk
+            total_eventRate += hvcol_rate
 
         self._p_eventRate.update({timestamp_s: total_eventRate})
         return total_risk
@@ -241,32 +252,30 @@ class EgoVehicle:
 
     def optimize(self):
         val = 0
-        lowBound = max(self._u - 0.5, param._A_MIN)
-        upBound = min(self._u + 0.5, param._A_MAX)
 
         # search environment
         self._searchEnvironment()
 
         # handle stop case
-        if self.getCurrentPose().vdy.vx_ms < 0.1:
+        if self.getCurrentPose().vdy.vx_ms < 0.5:
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(u_in=x, dT=param._dT),
                 bounds=(0, param._A_MAX), method='bounded',
-                options={"maxiter": 3}
+                options={"maxiter": 5}
                 ).x
         else:
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(u_in=x, dT=param._dT),
                 bounds=(self._u - 0.5, self._u + 0.5), method='bounded',
-                options={"maxiter": 3}
+                options={"maxiter": 5}
                 ).x
 
         # check if critical event occur
         total_eventRate = sum(
             list((self._p_eventRate[k]) for k in self._p_eventRate))
-        # max_eventRate = max(self._p_eventRate.values())
-        # if max_eventRate > 1:
-        if total_eventRate > 2:
+        max_eventRate = max(self._p_eventRate.values())
+        if max_eventRate > 5:
+        # if total_eventRate > 5:
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(u_in=x, dT=param._dT),
                 bounds=(-8, param._A_MIN), method='bounded',
@@ -344,6 +353,7 @@ class EgoVehicle:
         fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(14, 6))
         self._plotVelocity(ax=ax[0])
         self._plotAcceleration(ax=ax[1])
+        plt.show()
 
     def _plotVelocity(self, ax=plt):
         l_vdy = np.empty((0, 2))

@@ -128,6 +128,14 @@ class Core(object):
             hypoList.append(pedesExport)
         return hypoList
 
+
+    def exportHypoVehicle(self):
+        hypoList = []
+        for veh in self._env._l_hypoVehicle:
+            vehExport = veh.exportCurrent()
+            hypoList.append(vehExport)
+        return hypoList
+
     
     def getCurrentEgoPos(self):
         if self._egoCar is None:
@@ -135,3 +143,10 @@ class Core(object):
         
         return [self._egoCar.getCurrentPose().x_m,
                 self._egoCar.getCurrentPose().y_m]
+
+
+    def plot(self):
+        if self._egoCar is None:
+            return
+        
+        self._egoCar.plotDynamic()

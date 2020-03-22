@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import math
+from shapely.geometry import Polygon
 
 import pose_functions as pfnc
 from pose import Pose, VehicleDynamic
@@ -136,6 +137,7 @@ class Environment(object):
         fov = pfnc.FOV(
             pose=pose, polys=l_polys, angle=param._FOV_ANGLE,
             radius=radius, nrRays=param._FOV_RAYS)
+        fov_poly = Polygon(fov)
 
         # check other moving vehicle in FOV
         for veh in self._l_vehicle:
@@ -144,11 +146,15 @@ class Environment(object):
                 vehPos = np.array([vehPose.x_m, vehPose.y_m])
                 if np.linalg.norm(vehPos - currentPos) < radius:
                     vehPoly = veh.getCurrentPoly()
-                    if pfnc.inPolygon(vehPoly, fov):
+                    # if pfnc.inPolygon(vehPoly, fov):
+                    if pfnc.inPolyPointList(vehPoly, fov_poly):
                         veh.setDetected(True)
                         l_vehicle.append(veh)
                         continue
-            veh.setDetected(False)
+                    else:
+                        veh.setDetected(False)
+                        continue
+            veh.setDetected(None)
 
         # check pedestrian in FOV
         for pedes in self._l_pedestrian:
@@ -156,16 +162,21 @@ class Environment(object):
             if pedesPose.timestamp_s == from_timestamp:
                 pedesPos = np.array([pedesPose.x_m, pedesPose.y_m])
                 if np.linalg.norm(pedesPos - currentPos) < radius:
-                    if pfnc.inPolygonPoint(pedesPos, fov):
+                    # if pfnc.inPolygonPoint(pedesPos, fov):
+                    if pfnc.inPolyPoint(pedesPos, fov_poly):
                         pedes.setDetected(True)
                         l_pedestrian.append(pedes)
                         continue
-            pedes.setDetected(False)
+                    else:
+                        pedes.setDetected(False)
+                        continue
+            pedes.setDetected(None)
 
         l_update = {'vehicle': l_vehicle,
                     'staticObject': l_object,
                     'pedestrian': l_pedestrian,
-                    'hypoPedestrian': self._l_hypoPedes}
+                    'hypoPedestrian': self._l_hypoPedes,
+                    'hypoVehicle': self._l_hypoVehicle}
 
         return l_update, fov
 
@@ -302,7 +313,7 @@ class Environment(object):
                     idx=99, from_x_m=ip_l[0], from_y_m=ip_l[1],
                     to_x_m=MP_l[0], to_y_m=MP_l[1], covLong=0.1, covLat=0.1,
                     vx_ms=2, startTime=pose.timestamp_s)
-                if abs(abs(hypoPedes.heading) - abs(c.heading)) < np.pi/3:
+                if abs(abs(hypoPedes.theta) - abs(c.theta)) < np.pi/3:
                     self._l_hypoPedes.append(hypoPedes)
             elif d2MP_l > d2MP_r:
                 ip_r += p2r_norm * dThres
@@ -310,7 +321,7 @@ class Environment(object):
                     idx=99, from_x_m=ip_r[0], from_y_m=ip_r[1],
                     to_x_m=MP_r[0], to_y_m=MP_r[1], covLong=0.1, covLat=0.1,
                     vx_ms=2, startTime=pose.timestamp_s)
-                if abs(abs(hypoPedes.heading) - abs(c.heading)) < np.pi/3:
+                if abs(abs(hypoPedes.theta) - abs(c.theta)) < np.pi/3:
                     self._l_hypoPedes.append(hypoPedes)
                 self._l_hypoPedes.append(hypoPedes)
 
@@ -332,24 +343,19 @@ class Environment(object):
             # self._l_hypoCoord.append([MP_l, MP_r, randVertex])
     
         for road in self._l_road:
-            M_l, M_m, M_r = None, None, None
-            d2l, d2m, d2r = 9999, 9999, 9999
             if road.left is not None:
                 ip_l = pfnc.seg_intersect(l1_1, l1_2, road.left[0], road.left[1])
                 if ip_l is not None:
                     l1_ip_l = np.linalg.norm(l1_1 - ip_l)
                     if l1_ip_l < p2r_l2:
                         continue
-                    d2l = l1_ip_l * math.cos(alpha)
-                    M_l = d2l * pose.heading() + l1_1
+
             if road.lane is not None:
                 ip_m = pfnc.seg_intersect(l1_1, l1_2, road.lane[0], road.lane[1])
                 if ip_m is not None:
                     l1_ip_m = np.linalg.norm(l1_1 - ip_m)
                     if l1_ip_m < p2r_l2:
                         continue
-                    d2m = l1_ip_m * math.cos(alpha)
-                    M_m = d2m * pose.heading() + l1_1
 
             if road.right is not None:
                 ip_r = pfnc.seg_intersect(l1_1, l1_2, road.right[0], road.right[1])
@@ -357,11 +363,35 @@ class Environment(object):
                     l1_ip_r = np.linalg.norm(l1_1 - ip_r)
                     if l1_ip_r < p2r_l2:
                         continue
-                    d2r = l1_ip_r * math.cos(alpha)
-                    M_r = d2r * pose.heading() + l1_1
             
+            if ip_l is not None and ip_m is not None:
+                lane_heading = np.array([np.cos(road.theta), np.sin(road.theta)])
+                endPos = (ip_l + ip_m) / 2
+                startPos = endPos + lane_heading * 2 * dThres
+                if np.linalg.norm(endPos-l1_1) < np.linalg.norm(startPos-l1_1):
+                    hypoVeh = Vehicle(
+                        idx=99, length=param._CAR_LENGTH, width=param._CAR_WIDTH,
+                        from_x_m=startPos[0], from_y_m=startPos[1],
+                        to_x_m=endPos[0], to_y_m=endPos[1], covLong=0.2, covLat=0.1,
+                        vx_ms=8, startTime=pose.timestamp_s)
+                    self._l_hypoVehicle.append(hypoVeh)
 
-            self._l_hypoCoord.append([M_l, M_m, M_r])
+                # self._l_hypoCoord.append([startPos, endPos, ip_m])
+
+
+            if ip_r is not None and ip_m is not None:
+                lane_heading = np.array([np.cos(road.theta), np.sin(road.theta)])
+                endPos = (ip_r + ip_m) / 2
+                startPos = endPos - lane_heading * 2 * dThres
+                if np.linalg.norm(endPos-l1_1) < np.linalg.norm(startPos-l1_1):
+                    hypoVeh = Vehicle(
+                        idx=99, length=param._CAR_LENGTH, width=param._CAR_WIDTH,
+                        from_x_m=startPos[0], from_y_m=startPos[1],
+                        to_x_m=endPos[0], to_y_m=endPos[1], covLong=0.2, covLat=0.1,
+                        vx_ms=8, startTime=pose.timestamp_s)
+                    self._l_hypoVehicle.append(hypoVeh)
+
+                # self._l_hypoCoord.append([startPos, endPos, ip_m])
 
         
 # ---------------------- BACK UP FUNCTIONS -----------------------------

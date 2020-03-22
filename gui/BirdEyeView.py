@@ -24,8 +24,8 @@ class BirdEyeView(QOpenGLWidget):
 
         # world coordinate 
         self._rulerScale = 20
-        self._sizeX = 100
-        self._sizeY = 100
+        self._sizeX = 80
+        self._sizeY = 80
         self._x_center = -20
         self._y_center = -20
 
@@ -174,15 +174,16 @@ class BirdEyeView(QOpenGLWidget):
             gl.glEnd()
 
             # draw detection line
-            if pedes['visible']:
-                gl.glColor4f(0.8, 0., 0., 0.5)
-            else:
-                gl.glColor4f(0., 0., 0., 0.5)
-            egoPos = self.core.getCurrentEgoPos()
-            gl.glBegin(gl.GL_LINES)
-            gl.glVertex2f(egoPos[0], egoPos[1])
-            gl.glVertex2f(pedes['pos'][0], pedes['pos'][1])
-            gl.glEnd()
+            if pedes['visible'] is not None:
+                if pedes['visible']:
+                    gl.glColor4f(0.8, 0., 0., 0.1)
+                else:
+                    gl.glColor4f(0., 0., 0., 0.1)
+                egoPos = self.core.getCurrentEgoPos()
+                gl.glBegin(gl.GL_LINES)
+                gl.glVertex2f(egoPos[0], egoPos[1])
+                gl.glVertex2f(pedes['pos'][0], pedes['pos'][1])
+                gl.glEnd()
 
         for hypo in hypoList:
             # draw poly
@@ -192,9 +193,9 @@ class BirdEyeView(QOpenGLWidget):
                 gl.glVertex2f(vertex[0], vertex[1])
             gl.glEnd()
 
-
     def drawOtherVehicle(self):
         vehicleList = self.core.exportCurrentVehicle()
+        hypoList = self.core.exportHypoVehicle()
         for vehicle in vehicleList:
             # draw poly
             gl.glColor4f(0.0, 0.8, 0.2, 0.6)  # green
@@ -204,17 +205,24 @@ class BirdEyeView(QOpenGLWidget):
             gl.glEnd()
 
             # draw detection line
-            if vehicle['visible']:
-                gl.glColor4f(0.8, 0., 0., 0.5)
-            else:
-                gl.glColor4f(0., 0., 0., 0.5)
-            egoPos = self.core.getCurrentEgoPos()
-            gl.glBegin(gl.GL_LINES)
-            gl.glVertex2f(egoPos[0], egoPos[1])
-            gl.glVertex2f(vehicle['pos'][0], vehicle['pos'][1])
-            gl.glEnd()
+            if vehicle['visible'] is not None:
+                if vehicle['visible']:
+                    gl.glColor4f(0.8, 0., 0., 0.1)
+                else:
+                    gl.glColor4f(0., 0., 0., 0.1)
+                egoPos = self.core.getCurrentEgoPos()
+                gl.glBegin(gl.GL_LINES)
+                gl.glVertex2f(egoPos[0], egoPos[1])
+                gl.glVertex2f(vehicle['pos'][0], vehicle['pos'][1])
+                gl.glEnd()
 
-            # draw covariance
+        for hypo in hypoList:
+            # draw poly
+            gl.glColor4f(0.8, 0.8, 0.0, 0.6)  # yellow
+            gl.glBegin(gl.GL_QUADS)
+            for vertex in hypo['poly']:
+                gl.glVertex2f(vertex[0], vertex[1])
+            gl.glEnd()
 
     def drawEgoVehicle(self):
         gl.glColor4f(0.8, 0.2, 0.2, 0.6)  # red
@@ -247,8 +255,10 @@ class BirdEyeView(QOpenGLWidget):
         gl.glBegin(gl.GL_POINTS)
         for pos in coord:
             if pos[0] is not None:
+                gl.glColor4f(1.0, 0.0, 0, 0.7)
                 gl.glVertex2f(pos[0][0], pos[0][1])
             if pos[1] is not None:
+                gl.glColor4f(1.0, 1.0, 0, 0.7)
                 gl.glVertex2f(pos[1][0], pos[1][1])
             if pos[2] is not None:
                 gl.glVertex2f(pos[2][0], pos[2][1])
