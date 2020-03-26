@@ -204,13 +204,15 @@ class Vehicle(object):
             self._p_pose = pfnc.updatePoseList(
                 lastPose=self._currentPose,
                 u_in=0,
-                nextTimestamp_s=nextTimestamp_s
+                nextTimestamp_s=nextTimestamp_s,
+                dT=param._PREDICT_STEP
             )
         else:
             self._p_pose = pfnc.updatePoseList(
                 lastPose=self._currentPose,
                 u_in=self._u,
-                nextTimestamp_s=nextTimestamp_s
+                nextTimestamp_s=nextTimestamp_s,
+                dT=param._PREDICT_STEP
             )
 
     def getPredictAt(self, timestamp_s):
@@ -288,11 +290,13 @@ class Vehicle(object):
 class Pedestrian(object):
 
     def __init__(self, idx, from_x_m, from_y_m, to_x_m, to_y_m,
-                 covLong, covLat, vx_ms, startTime, isStop=False):
+                 covLong, covLat, vx_ms, startTime, isStop=False,
+                 appearRate=1):
         self._idx = idx
         self._length = 1
         self._width = 1
         self._isDetected = False
+        self._appearRate = appearRate
         self._startTime = startTime
         self._u = 0
         self._p_pose = {}
@@ -356,7 +360,8 @@ class Pedestrian(object):
         self._p_pose = pfnc.updatePoseList(
             lastPose=self._currentPose,
             u_in=self._u,
-            nextTimestamp_s=nextTimestamp_s
+            nextTimestamp_s=nextTimestamp_s,
+            dT=param._PREDICT_STEP
         )
 
     def getPredictAt(self, timestamp_s):

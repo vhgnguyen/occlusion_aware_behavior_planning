@@ -1,1 +1,4 @@
-create virtual hypothesis
+fix pedestrian covariance!!!
+severity of collision with two low speed profile about zero - fix with condition of collision based on event rate and velocity
+plot event
+object prediction to get prior collision

@@ -12,7 +12,7 @@ def computeAccToStop(from_x_m, from_y_m, to_x_m, to_y_m, vx_ms):
     return - 0.5 * vx_ms**2 / s
 
 
-def updatePose(lastPose, u_in, dT=param._dT, updateCov=False):
+def updatePose(lastPose, u_in, dT, updateCov=False):
     nextTimestamp_s = round(lastPose.timestamp_s + dT, 2)
     vx = lastPose.vdy.vx_ms
     dP = vx * dT + 0.5 * u_in * (dT**2)
@@ -33,7 +33,7 @@ def updatePose(lastPose, u_in, dT=param._dT, updateCov=False):
     return nextPose
 
 
-def updatePoseList(lastPose, u_in, nextTimestamp_s, dT=param._dT):
+def updatePoseList(lastPose, u_in, nextTimestamp_s, dT):
     """
     Update vehicle pose with given longtitude acceleration and timestamp
     Args:
@@ -89,8 +89,14 @@ def updateCovLatlong(lastCovLatLong, dT, dX, dY):
         Return:
             covariance matrix of next pose in latlong
     """
-    return np.diag([lastCovLatLong[0, 0] + (param._ALPHA_V_LONG*dX)**2,
-                    lastCovLatLong[1, 1] + (param._ALPHA_V_LAT*(dY+0.05))**2])
+    x = (param._ALPHA_V_LONG*dX)**2
+    y = (param._ALPHA_V_LAT*(dY+0.05))**2
+    if dX == 0 and dY == 0:
+        x = -0.1
+        y = -0.1
+    covX = max(lastCovLatLong[0, 0] + x, 0)
+    covY = max(lastCovLatLong[0, 0] + y, 0)
+    return np.diag([covX, covY])
 
 
 def rectangle(pose, length, width):

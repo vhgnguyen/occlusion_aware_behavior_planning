@@ -1,9 +1,7 @@
 from matplotlib.patches import Ellipse, Polygon
-import matplotlib.pyplot as plt
 from scipy import optimize
-
+import matplotlib.pyplot as plt
 import numpy as np
-import time
 
 import pose_functions as pfnc
 import risk_functions as rfnc
@@ -44,15 +42,14 @@ class EgoVehicle:
     def getCurrentPose(self):
         return self._currentPose
 
+    def getCurrentLongtitudeVelocity(self):
+        return self._currentPose.vdy.vx_ms
+
+    def getCurrentLongtitudeAcceleration(self):
+        return self._u
+
     def getCurrentTimestamp(self):
         return self._currentPose.timestamp_s
-
-    def getPoseAt(self, timestamp_s):
-        if timestamp_s in self._l_pose:
-            return self._l_pose[timestamp_s]
-        else:
-            print("Ego: No pose at: ", timestamp_s)
-            return None
 
     def getPoly(self, timestamp_s):
         """
@@ -76,6 +73,13 @@ class EgoVehicle:
             print("Ego: No predict state at: ", timestamp_s)
             return None
 
+    def getPoseAt(self, timestamp_s):
+        if timestamp_s in self._l_pose:
+            return self._l_pose[timestamp_s]
+        else:
+            print("Ego: No pose at: ", timestamp_s)
+            return None
+
     # ------------------- Opt function ---------------------
 
     def _searchEnvironment(self):
@@ -85,10 +89,11 @@ class EgoVehicle:
         currentPose = self.getCurrentPose()
         self._l_currentObject, self._fov = self._env.update(
             pose=currentPose,
-            from_timestamp=currentPose.timestamp_s
+            from_timestamp=currentPose.timestamp_s,
+            u_in=self._u
             )
 
-    def _predict(self, u_in, predictTime=param._PREDICT_TIME):
+    def _predict(self, u_in, dT, predictTime=param._PREDICT_TIME):
         """
         Predict the vehicle motion
         Args:
@@ -103,7 +108,8 @@ class EgoVehicle:
         self._p_pose = pfnc.updatePoseList(
             lastPose=lastPose,
             u_in=u_in,
-            nextTimestamp_s=lastPose.timestamp_s + predictTime
+            nextTimestamp_s=lastPose.timestamp_s + predictTime,
+            dT=dT
             )
         self._p_u = u_in
 
@@ -113,7 +119,7 @@ class EgoVehicle:
         """
         return param._ESCAPE_RATE
 
-    def _riskCost(self, timestamp_s):
+    def _riskCost(self, timestamp_s, u_in):
         """
         Compute collision risk & event rate at given predict timestamp
         """
@@ -126,12 +132,21 @@ class EgoVehicle:
 
         for veh in l_obj['vehicle']:
             vehPose, vehPoly = veh.getPredictAt(timestamp_s)
-            vcol_risk, vcol_rate, vcol_ind = rfnc.collisionRisk(
-                egoPose=egoPose,
-                egoPoly=egoPoly,
-                objPose=vehPose,
-                objPoly=vehPoly
-                )
+
+            vcol_indicator = rfnc.collisionIndicator(
+                egoPose=egoPose, egoPoly=egoPoly,
+                objPose=vehPose, objPoly=vehPoly)
+
+            vcol_rate = rfnc.collisionEventRate(
+                collisionIndicator=vcol_indicator)
+
+            vcol_severity = rfnc.collisionEventSeverity(
+                ego_vx=egoPose.vdy.vx_ms, obj_vx=vehPose.vdy.vx_ms)
+
+            vcol_risk = rfnc.collisionRisk(
+                col_severity=vcol_severity,
+                col_rate=vcol_rate)
+
             total_risk += vcol_risk
             total_eventRate += vcol_rate
 
@@ -151,45 +166,72 @@ class EgoVehicle:
         #         total_eventRate += rate
 
         for pedes in l_obj['pedestrian']:
-            pedesPose, pedesPoly = pedes.getPredictAt(timestamp_s)
-            pcol_risk, pcol_rate, pcol_ind = rfnc.collisionRisk(
-                egoPose=egoPose,
-                egoPoly=egoPoly,
-                objPose=pedesPose,
-                objPoly=pedesPoly
-                )
+            pPose, pPoly = pedes.getPredictAt(timestamp_s)
+
+            pcol_indicator = rfnc.collisionIndicator(
+                egoPose=egoPose, egoPoly=egoPoly,
+                objPose=pPose, objPoly=pPoly)
+
+            pcol_rate = rfnc.collisionEventRate(
+                collisionIndicator=pcol_indicator)
+
+            pcol_severity = rfnc.collisionEventSeverity(
+                ego_vx=egoPose.vdy.vx_ms, obj_vx=pPose.vdy.vx_ms)
+
+            pcol_risk = rfnc.collisionRisk(
+                col_severity=pcol_severity,
+                col_rate=pcol_rate)
+
             total_risk += pcol_risk
             total_eventRate += pcol_rate
-     
 
         for hypoPedes in l_obj['hypoPedestrian']:
             hPose, hPoly = hypoPedes.getPredictAt(timestamp_s)
-            hcol_risk, hcol_rate, hcol_ind = rfnc.collisionRisk(
-                egoPose=egoPose,
-                egoPoly=egoPoly,
-                objPose=hPose,
-                objPoly=hPoly
-                )
-            total_risk += hcol_risk
-            total_eventRate += hcol_rate
-            if timestamp_s - self.getCurrentTimestamp() > 1.4:
-                print(hcol_rate)
-        
+
+            hpcol_indicator = rfnc.collisionIndicator(
+                egoPose=egoPose, egoPoly=egoPoly,
+                objPose=hPose, objPoly=hPoly)
+
+            hpcol_rate = rfnc.collisionEventRate(
+                collisionIndicator=hpcol_indicator*hypoPedes._appearRate)
+
+            # hpcol_severity = rfnc.collisionEventSeverity(
+            #     ego_vx=egoPose.vdy.vx_ms, obj_vx=hPose.vdy.vx_ms,
+            #     method='gompertz', gom_rate=hypoPedes._appearRate)
+
+            hpcol_severity = rfnc.collisionEventSeverity(
+                ego_vx=egoPose.vdy.vx_ms, obj_vx=hPose.vdy.vx_ms)
+
+            hpcol_risk = rfnc.collisionRisk(
+                col_severity=hpcol_severity,
+                col_rate=hpcol_rate)
+
+            total_risk += hpcol_risk
+            total_eventRate += hpcol_rate
+
         for hypoVeh in l_obj['hypoVehicle']:
             hvPose, hvPoly = hypoVeh.getPredictAt(timestamp_s)
-            hvcol_risk, hvcol_rate, hvcol_ind = rfnc.collisionRisk(
-                egoPose=egoPose,
-                egoPoly=egoPoly,
-                objPose=hvPose,
-                objPoly=hvPoly
-                )
+            hvcol_indicator = rfnc.collisionIndicator(
+                egoPose=egoPose, egoPoly=egoPoly,
+                objPose=hvPose, objPoly=hvPoly)
+
+            hvcol_rate = rfnc.collisionEventRate(
+                collisionIndicator=hvcol_indicator)
+
+            hvcol_severity = rfnc.collisionEventSeverity(
+                ego_vx=egoPose.vdy.vx_ms, obj_vx=hvPose.vdy.vx_ms)
+
+            hvcol_risk = rfnc.collisionRisk(
+                col_severity=hvcol_severity,
+                col_rate=hvcol_rate)
+
             total_risk += hvcol_risk
             total_eventRate += hvcol_rate
 
         self._p_eventRate.update({timestamp_s: total_eventRate})
         return total_risk
 
-    def _survivalRate(self, timestamp_s, dT=param._dT):
+    def _survivalRate(self, timestamp_s, dT):
         """
         Compute survival function up to given timestamp_s
         """
@@ -215,20 +257,20 @@ class EgoVehicle:
         Compute total cost at given timestamp
         """
         utilCost = self._utilityCost(timestamp_s, u_in)
-        riskCost = self._riskCost(timestamp_s)
+        riskCost = self._riskCost(timestamp_s, u_in)
         cost = utilCost + riskCost
         return cost
 
-    def _computeTotalCost(self, u_in, dT=param._dT):
+    def _computeTotalCost(self, u_in, dT):
         """
         Predict and compute total cost of prediction
         """
         self._p_eventRate = {}
-        self._predict(u_in)
+        self._predict(u_in, dT=dT)
         cost = 0
         for k in self._p_pose:
             dCost = self._computeCost(k, u_in)
-            s = self._survivalRate(k)
+            s = self._survivalRate(k, dT=dT)
             cost += dCost * s
         cost = cost * s * dT
         return cost
@@ -262,32 +304,34 @@ class EgoVehicle:
         # handle stop case
         if self.getCurrentPose().vdy.vx_ms == 0:
             val = optimize.minimize_scalar(
-                lambda x: self._computeTotalCost(u_in=x, dT=param._dT),
-                bounds=(0, 1), method='bounded',
+                lambda x: self._computeTotalCost(
+                u_in=x, dT=param._PREDICT_STEP),
+                bounds=(0, 0.5), method='bounded',
                 options={"maxiter": 5}
                 ).x
         else:
-            # lowBound = max(self._u - 0.5, -3)
-            lowBound = self._u - 0.5
-            # upBound = min(self._u + 0.5, 3)
-            upBound = self._u + 0.5
+            lowBound = max(self._u - 0.5, -3)
+            # lowBound = self._u - 0.5
+            upBound = min(self._u + 0.5, 3)
+            # upBound = self._u + 0.5
             if lowBound >= upBound:
                 lowBound = param._A_MIN
-                upBound = param._A_MAX
+                upBound = param._A_MIN + 1
             val = optimize.minimize_scalar(
-                lambda x: self._computeTotalCost(u_in=x, dT=param._dT),
+                lambda x: self._computeTotalCost(
+                    u_in=x, dT=param._PREDICT_STEP),
                 bounds=(lowBound, upBound), method='bounded',
                 options={"maxiter": 5}
                 ).x
 
         # check if critical event occur
-        # total_eventRate = sum(
-            # list((self._p_eventRate[k]) for k in self._p_eventRate))
-        max_eventRate = max(self._p_eventRate.values())
-        if max_eventRate > 5 and self.getCurrentPose().vdy.vx_ms > 4: 
-            print(max_eventRate)
+        total_eventRate = sum(
+            list((self._p_eventRate[k]) for k in self._p_eventRate))
+        # max_eventRate = max(self._p_eventRate.values())
+        if total_eventRate > 2 and self.getCurrentPose().vdy.vx_ms > 2:
             val = optimize.minimize_scalar(
-                lambda x: self._computeTotalCost(u_in=x, dT=param._dT),
+                lambda x: self._computeTotalCost(
+                    u_in=x, dT=param._PREDICT_STEP),
                 bounds=(-8, param._A_MIN), method='bounded',
                 options={"maxiter": 5}
             ).x
@@ -386,7 +430,7 @@ class EgoVehicle:
 
     def plotPassedCost(self):
         l_cost = self._getPassedCost()
-        survival = np.exp(- np.cumsum(l_cost[:, 2]) * param._dT)
+        survival = np.exp(- np.cumsum(l_cost[:, 2]) * param._PREDICT_STEP)
         fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(21, 6))
         ax[0].plot(l_cost[:, 0], l_cost[:, 1], 'k-', label='collision risk')
         ax[1].plot(l_cost[:, 0], l_cost[:, 2], 'b-', label='collision rate')
@@ -394,6 +438,7 @@ class EgoVehicle:
         ax[2].plot(l_cost[:, 0], survival, 'r-', label='survival rate')
         for a in ax:
             a.legend()
+        plt.show()
 
     def _getPassedCost(self):
         l_cost = np.empty((0, 3))
@@ -404,43 +449,112 @@ class EgoVehicle:
             l_cost(timestamp: cost)
         """
         for k in self._l_pose:
-            col_risk = 0
-            col_rate = 0
+            total_risk = 0
+            total_rate = 0
+
             egoPose = self._l_pose[k]
             egoPoly = self.getPoly(k)
-            l_obj = self._env.updateAt(x_m=egoPose.x_m,
-                                       y_m=egoPose.y_m,
-                                       timestamp_s=egoPose.timestamp_s)
-            for obj in l_obj['vehicle']:
-                objPose = obj.getPoseAt(k)
-                objPoly = obj.getPoly(k)
-                col_risk1, col_rate1, col_ind1 = rfnc.collisionRisk(
-                    egoPose=egoPose,
-                    egoPoly=egoPoly,
-                    objPose=objPose,
-                    objPoly=objPoly
-                )
-                col_risk += col_risk1
-                col_rate += col_rate1
-            for obj in l_obj['staticObject']:
-                objPoly = obj._poly
-                # define unexpected risk here and add rate and risk
-                dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
-                    pose=egoPose,
-                    poly=objPoly
-                    )
-                if MP is not None:
-                    indicator, rate, risk = rfnc.unseenEventRisk(
-                        d2MP=dMerge,
-                        ego_vx=egoPose.vdy.vx_ms,
-                        ego_acc=self._l_u[k],
-                        dVis=dVis
-                    )
-                    col_risk += risk
-                    col_rate += rate
+            l_obj = self._env.updateAt(egoPose, k, self._l_u[k])
+            
+            for veh in l_obj['vehicle']:
+                vehPose = veh.getPoseAt(k)
+                vehPoly = veh.getPoly(k)
+                vcol_indicator = rfnc.collisionIndicator(
+                    egoPose=egoPose, egoPoly=egoPoly,
+                    objPose=vehPose, objPoly=vehPoly)
+
+                vcol_rate = rfnc.collisionEventRate(
+                    collisionIndicator=vcol_indicator)
+
+                vcol_severity = rfnc.collisionEventSeverity(
+                    ego_vx=egoPose.vdy.vx_ms, obj_vx=vehPose.vdy.vx_ms)
+
+                vcol_risk = rfnc.collisionRisk(
+                    col_severity=vcol_severity,
+                    col_rate=vcol_rate)
+
+                total_rate += vcol_rate
+                total_risk += vcol_risk
+
+            # for obj in l_obj['staticObject']:
+            #     objPoly = obj._poly
+            #     # define unexpected risk here and add rate and risk
+            #     dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
+            #         pose=egoPose,
+            #         poly=objPoly
+            #         )
+            #     if MP is not None:
+            #         indicator, rate, risk = rfnc.unseenEventRisk(
+            #             d2MP=dMerge,
+            #             ego_vx=egoPose.vdy.vx_ms,
+            #             ego_acc=self._l_u[k],
+            #             dVis=dVis
+            #         )
+            #         col_risk += risk
+            #         col_rate += rate
+
+            for veh in l_obj['pedestrian']:
+                vehPose = veh.getPoseAt(k)
+                vehPoly = veh.getPoly(k)
+                vcol_indicator = rfnc.collisionIndicator(
+                    egoPose=egoPose, egoPoly=egoPoly,
+                    objPose=vehPose, objPoly=vehPoly)
+
+                vcol_rate = rfnc.collisionEventRate(
+                    collisionIndicator=vcol_indicator)
+
+                vcol_severity = rfnc.collisionEventSeverity(
+                    ego_vx=egoPose.vdy.vx_ms, obj_vx=vehPose.vdy.vx_ms)
+
+                vcol_risk = rfnc.collisionRisk(
+                    col_severity=vcol_severity,
+                    col_rate=vcol_rate)
+
+                total_rate += vcol_rate
+                total_risk += vcol_risk
+
+            for veh in l_obj['hypoPedestrian']:
+                vehPose = veh.getPoseAt(k)
+                vehPoly = veh.getPoly(k)
+                vcol_indicator = rfnc.collisionIndicator(
+                    egoPose=egoPose, egoPoly=egoPoly,
+                    objPose=vehPose, objPoly=vehPoly)
+
+                vcol_rate = rfnc.collisionEventRate(
+                    collisionIndicator=vcol_indicator)
+
+                vcol_severity = rfnc.collisionEventSeverity(
+                    ego_vx=egoPose.vdy.vx_ms, obj_vx=vehPose.vdy.vx_ms)
+
+                vcol_risk = rfnc.collisionRisk(
+                    col_severity=vcol_severity,
+                    col_rate=vcol_rate)
+
+                total_rate += vcol_rate
+                total_risk += vcol_risk
+
+            for veh in l_obj['hypoVehicle']:
+                vehPose = veh.getPoseAt(k)
+                vehPoly = veh.getPoly(k)
+                vcol_indicator = rfnc.collisionIndicator(
+                    egoPose=egoPose, egoPoly=egoPoly,
+                    objPose=vehPose, objPoly=vehPoly)
+
+                vcol_rate = rfnc.collisionEventRate(
+                    collisionIndicator=vcol_indicator)
+
+                vcol_severity = rfnc.collisionEventSeverity(
+                    ego_vx=egoPose.vdy.vx_ms, obj_vx=vehPose.vdy.vx_ms)
+
+                vcol_risk = rfnc.collisionRisk(
+                    col_severity=vcol_severity,
+                    col_rate=vcol_rate)
+
+                total_rate += vcol_rate
+                total_risk += vcol_risk
 
             l_cost = np.append(
-                l_cost, np.array([[k, col_risk, col_rate]]), axis=0)
+                l_cost, np.array([[k, total_risk, total_rate]]), axis=0)
         return l_cost
 
     def _unseenObjectCost(self):

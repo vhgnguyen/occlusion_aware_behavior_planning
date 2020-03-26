@@ -2,15 +2,14 @@ from PyQt5.QtWidgets import (QVBoxLayout, QGroupBox, QTextEdit,
                              QLineEdit, QGridLayout, QOpenGLWidget,
                              QLabel, QPushButton)
 from PyQt5.QtGui import QColor, QPainter, QPen
-from PyQt5.QtCore import pyqtSignal, QPoint, QSize, Qt
+from PyQt5.QtCore import QSize, Qt
+
 import OpenGL.GL as gl
-import math
 import numpy as np
 
 
 class BirdEyeView(QOpenGLWidget):
-    
-    
+
     def __init__(self, core, parent=None):
         super(BirdEyeView, self).__init__(parent)
 
@@ -23,11 +22,11 @@ class BirdEyeView(QOpenGLWidget):
         self.setMinimumSize(self._width, self._height)
 
         # world coordinate 
-        self._rulerScale = 20
-        self._sizeX = 80
-        self._sizeY = 80
-        self._x_center = -20
-        self._y_center = -20
+        self._rulerScale = 5
+        self._size_x = 100
+        self._size_y = 100
+        self._x_center = 0
+        self._y_center = 0
 
         self.trolltechPurple = QColor.fromCmykF(0.29, 0.29, 0.0, 0.0)
 
@@ -56,6 +55,33 @@ class BirdEyeView(QOpenGLWidget):
         )
         return info
 
+    def setViewSize(self, x, y):
+        self._size_x = x
+        self._size_y = y
+        self.update()
+
+    def wheelEvent(self, event):
+        d = int(event.angleDelta().y() / 120 * 10)
+        dx = self._size_x - d
+        dy = self._size_y - d
+        if dx <= 0 or dy <= 0:
+            return
+        self._size_x = min(dx, 200)
+        self._size_y = min(dy, 200)
+        self.update()
+
+    def keyPressEvent(self, event):
+        key = event.key()
+        if key == Qt.Key_A:
+            self._x_center -= 10
+        elif key == Qt.Key_W:
+            self._y_center += 10
+        elif key == Qt.Key_D:
+            self._x_center += 10
+        elif key == Qt.Key_S:
+            self._y_center -= 10
+        self.update()
+
     def minimumSizeHint(self):
         return QSize(100, 100)
 
@@ -63,6 +89,14 @@ class BirdEyeView(QOpenGLWidget):
         return QSize(900, 900)
 
     def paintGL(self):
+        gl.glMatrixMode(gl.GL_PROJECTION)
+        gl.glLoadIdentity()
+        gl.glOrtho(
+            self._x_center - self._size_x // 2, self._x_center + self._size_x // 2, 
+            self._y_center - self._size_y // 2, self._y_center + self._size_y // 2,
+            -1.0, 1.0)
+        gl.glMatrixMode(gl.GL_MODELVIEW)
+        gl.glLoadIdentity()
         self.setClearColor(self.trolltechPurple.darker())
         gl.glClear(
             gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
@@ -78,8 +112,8 @@ class BirdEyeView(QOpenGLWidget):
         gl.glMatrixMode(gl.GL_PROJECTION)
         gl.glLoadIdentity()
         gl.glOrtho(
-            self._x_center - self._sizeX // 2, self._x_center + self._sizeX // 2, 
-            self._y_center - self._sizeY // 2, self._y_center + self._sizeY // 2,
+            self._x_center - self._size_x // 2, self._x_center + self._size_x // 2, 
+            self._y_center - self._size_y // 2, self._y_center + self._size_y // 2,
             -1.0, 1.0)
         gl.glMatrixMode(gl.GL_MODELVIEW)
         gl.glLoadIdentity()
@@ -227,7 +261,7 @@ class BirdEyeView(QOpenGLWidget):
     def drawEgoVehicle(self):
         gl.glColor4f(0.8, 0.2, 0.2, 0.6)  # red
         gl.glBegin(gl.GL_QUADS)
-        egoPoly = self.core.currentEgoPoly()
+        egoPoly = self.core.getCurrentEgoPoly()
         if egoPoly is not None:
             for vertex in egoPoly:
                 gl.glVertex2f(vertex[0], vertex[1])
@@ -266,13 +300,13 @@ class BirdEyeView(QOpenGLWidget):
 
     def drawAxis(self):
 
-        xAxisMin = self._x_center - self._sizeX // 2
-        xAxisMax = self._x_center + self._sizeX // 2
+        xAxisMin = self._x_center - self._size_x // 2
+        xAxisMax = self._x_center + self._size_x // 2
         startX = int(xAxisMin / self._rulerScale)
         endX = int(xAxisMax / self._rulerScale)
 
-        yAxisMin = self._y_center - self._sizeY // 2
-        yAxisMax = self._y_center + self._sizeY // 2
+        yAxisMin = self._y_center - self._size_y // 2
+        yAxisMax = self._y_center + self._size_y // 2
         startY = int(yAxisMin / self._rulerScale)
         endY = int(yAxisMax / self._rulerScale)
 
@@ -285,12 +319,12 @@ class BirdEyeView(QOpenGLWidget):
         # draw x-Axis
         for i in range(startX, endX + 1, 1):
             posX = self._rulerScale * i
-            x = (posX - xAxisMin) / self._sizeX * self._width
+            x = (posX - xAxisMin) / self._size_x * self._width
             painter.drawText(x - 10, self._height - 10, str(posX))
             painter.drawLine(x, self._height, x, self._height - 5)
         for i in range(startY, endY + 1, 1):
             posY = self._rulerScale * i
-            y = (yAxisMax - posY) / self._sizeY * self._height
+            y = (yAxisMax - posY) / self._size_y * self._height
             painter.drawText(10, y, str(posY))
             painter.drawLine(0, y, 5, y)
         painter.end()

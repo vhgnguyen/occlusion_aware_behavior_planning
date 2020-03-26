@@ -7,7 +7,7 @@ import _param as param
 import gaussian as gaussian
 
 
-def collisionEventSeverity(ego_vx, obj_vx, method="sigmoid"):
+def collisionEventSeverity(ego_vx, obj_vx, method="quadratic", gom_rate=0.1, gom_vx=6):
     """
     Collision event severity of ego vehicle with another object
     Args:
@@ -21,20 +21,25 @@ def collisionEventSeverity(ego_vx, obj_vx, method="sigmoid"):
     """
     # assert ego_vx.shape == (2,) and obj_vx.shape == (2,)
 
-    relativeVelocity = ego_vx - obj_vx
+    dv = ego_vx - obj_vx
     severity = 0.0
     if method == "constant":
         severity = param._SEVERITY_MIN_WEIGHT_CONST
     elif method == "linear":
-        severity = np.linalg.norm(relativeVelocity)
+        severity = np.linalg.norm(dv)
     elif method == "quadratic":
-        severity = np.linalg.norm(relativeVelocity)**2
+        severity = np.linalg.norm(dv)**2
         severity *= param._SEVERITY_QUAD_WEIGHT
         severity += param._SEVERITY_MIN_WEIGHT_CONST
     elif method == "sigmoid":
         severity = param._SEVERITY_SIG_MAX
-        severity /= (1.0 + np.exp(- param._SEVERITY_SIG_AVG_VX
-                     * np.linalg.norm(relativeVelocity)))
+        sig_dv = np.linalg.norm(dv) - param._SEVERITY_SIG_AVG_VX
+        severity /= (1.0 + np.exp(-param._SEVERITY_SIG_B * sig_dv))
+        severity += param._SEVERITY_MIN_WEIGHT_CONST
+    elif method == "gompertz":
+        gom_dv = np.linalg.norm(dv) - gom_vx
+        severity = param._SEVERITY_GOM_MAX*np.exp(-3*np.exp(-gom_rate*(gom_dv)))
+        severity += param._SEVERITY_MIN_WEIGHT_CONST
     else:
         severity = param._SEVERITY_MIN_WEIGHT_CONST
 
@@ -88,34 +93,13 @@ def collisionIndicatorCompute(poly, bound, dMean, dCov):
         return gaussian.polyIntegratePdf(poly, dMean, dCov)
 
 
-def collisionEventRate(collisionIndicator,
-                       eventRate_max=param._COLLISION_RATE_MAX,
-                       eventRate_beta=param._COLLISION_RATE_BETA):
+def collisionIndicator(egoPose, egoPoly, objPose, objPoly):
     """
-    Function to calculate event rate
-    Args:
-        eventRate_max: maximal event rate
-        eventRate_beta: slope weight
-        collisionIndicator: indicator factor between [0,1]
-    Return: (float) collision event rate
-    """
-    # assert np.isscalar(eventRate_max) and eventRate_max >= 1.0
-    # assert np.isscalar(eventRate_beta) and eventRate_beta > 0.0
-    # assert np.isscalar(collisionIndicator) and 0.0 <= collisionIndicator <= 1.0
-    return eventRate_max \
-        * (1.0 - np.exp(-eventRate_beta*collisionIndicator)) \
-        / (1.0 - np.exp(-eventRate_beta))
-
-
-def collisionRisk(egoPose, egoPoly, objPose, objPoly):
-    """
-    Risk function for collision between ego vehicle and moving object
+    Indicator function for collision between ego vehicle and moving object
     Param:
         egoPose: ego vehicle
         objPose: pose of object
     Return:
-        col_risk: (float) collision risk cost in a time point
-        col_rate: (float) collision rate of the event
         col_indicator: (float) collision indicator between two object
     """
     dMean = np.array([egoPose.x_m-objPose.x_m,
@@ -137,15 +121,44 @@ def collisionRisk(egoPose, egoPoly, objPose, objPoly):
             dMean=dMean,
             dCov=dCov)
 
-    col_severity = collisionEventSeverity(
-        ego_vx=egoPose.vxUtm,
-        obj_vx=objPose.vxUtm,
-        method="quadratic")
-    col_rate = collisionEventRate(
-        collisionIndicator=col_indicator)
-    col_risk = col_rate*col_severity
+    return col_indicator
 
-    return col_risk, col_rate, col_indicator
+
+def collisionEventRate(collisionIndicator,
+                       eventRate_max=param._COLLISION_RATE_MAX,
+                       eventRate_beta=param._COLLISION_RATE_BETA):
+    """
+    Function to calculate event rate
+    Args:
+        eventRate_max: maximal event rate
+        eventRate_beta: slope weight
+        collisionIndicator: indicator factor between [0,1]
+    Return: (float) collision event rate
+    """
+    # assert np.isscalar(eventRate_max) and eventRate_max >= 1.0
+    # assert np.isscalar(eventRate_beta) and eventRate_beta > 0.0
+    # assert np.isscalar(collisionIndicator) and 0.0 <= collisionIndicator <= 1.0
+    return eventRate_max \
+        * (1.0 - np.exp(-eventRate_beta*collisionIndicator)) \
+        / (1.0 - np.exp(-eventRate_beta))
+
+
+def collisionRisk(col_severity, col_rate):
+    """
+    Risk function for collision between ego vehicle and moving object
+    Param:
+        col_rate: (float) collision rate of the event
+        col_indicator: (float) collision indicator between two object
+    Return:
+        col_risk: (float) collision risk cost in a time point
+    """
+
+    return col_rate * col_severity
+
+
+def appearProbability(ego_vx, ego_acc, dS, rate):
+    t = min(abs(np.roots([0.5*ego_acc, ego_vx, -dS])))
+    return 1 - np.exp(- rate * t)
 
 
 def unseenEventRate(unseenEventIndicator,

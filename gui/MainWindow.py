@@ -1,7 +1,7 @@
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import (QMainWindow, QWidget, QApplication,
+from PyQt5.QtWidgets import (QMainWindow, QWidget, QGroupBox,
                              QVBoxLayout, QHBoxLayout, QPushButton,
-                             QTextEdit, QGridLayout)
+                             QLineEdit, QGridLayout)
 
 from BirdEyeView import BirdEyeView
 from SimulationControlBox import SimulationControlBox
@@ -38,32 +38,34 @@ class MainWindow(QMainWindow):
         self.birdEyeView = BirdEyeView(self.core)
         self.glLayout.addWidget(self.birdEyeView)
 
+        # Button box
+        self.buttonBox = QGroupBox()
+        self.buttonBox.setTitle("Control buttons")
+        self.buttonGrid = QGridLayout()
+
         # refresh view button
         self.refreshButton = QPushButton("Refresh")
+        self.refreshButton.setMaximumWidth(200)
         self.refreshButton.clicked.connect(self.on_refreshButton_clicked)
-        self.glLayout.addWidget(self.refreshButton)
-
+        self.buttonGrid.addWidget(self.refreshButton, 0, 0)
+        
         # move button
-        self.moveButton = QPushButton("Move to next state")
+        self.moveButton = QPushButton("Next state")
         self.moveButton.clicked.connect(self.on_moveButton_clicked)
-        self.glLayout.addWidget(self.moveButton)
-
+        self.buttonGrid.addWidget(self.moveButton, 1, 1)
         # simulation button
         self.simulationButton = QPushButton("Start simulation")
         self.simulationButton.clicked.connect(self.on_simulationButton_clicked)
-        self.glLayout.addWidget(self.simulationButton)
-
+        self.buttonGrid.addWidget(self.simulationButton, 1, 0)
         # stop button
         self.stopSimulationButton = QPushButton("Pause simulation")
         self.stopSimulationButton.clicked.connect(self.on_stopSimulation_clicked)
-        self.glLayout.addWidget(self.stopSimulationButton)
+        self.buttonGrid.addWidget(self.stopSimulationButton, 1, 2)
 
-        # plot button
-        self.plotButton = QPushButton("Show plot")
-        self.plotButton.clicked.connect(self.on_plot_clicked)
-        self.glLayout.addWidget(self.plotButton)
+        self.buttonBox.setLayout(self.buttonGrid)
+        self.glLayout.addWidget(self.buttonBox)
 
-        # control box
+        """ control box """
         self.simulationControlBox = SimulationControlBox(self.core)
         self.glLayout.addWidget(self.simulationControlBox)
 
@@ -81,7 +83,7 @@ class MainWindow(QMainWindow):
     def on_refreshButton_clicked(self):
         self.birdEyeView.update()
         self.simulationControlBox.update()
-    
+
     def on_moveButton_clicked(self):
         self.core.move()
         self.birdEyeView.update()
@@ -106,5 +108,5 @@ class MainWindow(QMainWindow):
         else:
             self.plots_refresh_timer.stop()
 
-    def on_plot_clicked(self):
-        self.core.plot()
+    def keyPressEvent(self, event):
+        self.birdEyeView.keyPressEvent(event)
