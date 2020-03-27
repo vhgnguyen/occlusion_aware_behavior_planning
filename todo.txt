@@ -2,3 +2,8 @@ fix pedestrian covariance!!!
 severity of collision with two low speed profile about zero - fix with condition of collision based on event rate and velocity
 plot event
 object prediction to get prior collision
+
+27/03
+use risk severity with velocity norm (without reference velocity)
+investigate prediction time 
+change event rate to sigmoid or gompertz type 

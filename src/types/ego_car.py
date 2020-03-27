@@ -193,14 +193,13 @@ class EgoVehicle:
                 objPose=hPose, objPoly=hPoly)
 
             hpcol_rate = rfnc.collisionEventRate(
-                collisionIndicator=hpcol_indicator*hypoPedes._appearRate)
+                collisionIndicator=hpcol_indicator * hypoPedes._appearRate,
+                method='sigmoid')
 
-            # hpcol_severity = rfnc.collisionEventSeverity(
-            #     ego_vx=egoPose.vdy.vx_ms, obj_vx=hPose.vdy.vx_ms,
-            #     method='gompertz', gom_rate=hypoPedes._appearRate)
-
+            # default is 'quadratic'
             hpcol_severity = rfnc.collisionEventSeverity(
-                ego_vx=egoPose.vdy.vx_ms, obj_vx=hPose.vdy.vx_ms)
+                ego_vx=egoPose.vdy.vx_ms, obj_vx=hPose.vdy.vx_ms,
+                method='gompertz', gom_rate=hypoPedes._appearRate)
 
             hpcol_risk = rfnc.collisionRisk(
                 col_severity=hpcol_severity,
@@ -305,7 +304,7 @@ class EgoVehicle:
         if self.getCurrentPose().vdy.vx_ms == 0:
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(
-                u_in=x, dT=param._PREDICT_STEP),
+                    u_in=x, dT=param._PREDICT_STEP),
                 bounds=(0, 0.5), method='bounded',
                 options={"maxiter": 5}
                 ).x
@@ -316,7 +315,7 @@ class EgoVehicle:
             # upBound = self._u + 0.5
             if lowBound >= upBound:
                 lowBound = param._A_MIN
-                upBound = param._A_MIN + 1
+                upBound = param._A_MIN + 0.5
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(
                     u_in=x, dT=param._PREDICT_STEP),
@@ -327,12 +326,12 @@ class EgoVehicle:
         # check if critical event occur
         total_eventRate = sum(
             list((self._p_eventRate[k]) for k in self._p_eventRate))
-        # max_eventRate = max(self._p_eventRate.values())
-        if total_eventRate > 2 and self.getCurrentPose().vdy.vx_ms > 2:
+        max_eventRate = max(self._p_eventRate.values())
+        if max_eventRate > 2 and self.getCurrentPose().vdy.vx_ms > 4:
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(
                     u_in=x, dT=param._PREDICT_STEP),
-                bounds=(-8, param._A_MIN), method='bounded',
+                bounds=(-6, param._A_MIN), method='bounded',
                 options={"maxiter": 5}
             ).x
 
@@ -418,6 +417,7 @@ class EgoVehicle:
         ax.plot(l_vdy[:, 0], l_vdy[:, 1], 'b-', label='velocity')
         ax.set_xlabel("Time [s]")
         ax.set_ylabel("Velocity [m/s]")
+        ax.set_ylim(0, 15)
         ax.legend()
 
     def _plotAcceleration(self, ax=plt):
@@ -426,6 +426,7 @@ class EgoVehicle:
         ax.plot(x, y, 'r-', label='acceleration')
         ax.set_xlabel("Time [s]")
         ax.set_ylabel("Acceleration [$m/s_2$]")
+        ax.set_ylim(-6, 3)
         ax.legend()
 
     def plotPassedCost(self):

@@ -146,9 +146,13 @@ class Core(object):
             hypoList.append(vehExport)
         return hypoList
 
-    def plot(self):
+    def plotDynamic(self):
         if self._egoCar is None:
             return
 
         self._egoCar.plotDynamic()
+
+    def plotRisk(self):
+        if self._egoCar is None:
+            return
         self._egoCar.plotPassedCost()

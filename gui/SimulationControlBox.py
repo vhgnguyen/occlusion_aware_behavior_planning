@@ -56,9 +56,15 @@ class SimulationControlBox(QGroupBox):
         self.egoGrid.addWidget(self.egoAccValue, 1, 1)
 
         # plot button
-        self.plotButton = QPushButton("Show plot")
-        self.plotButton.clicked.connect(self.on_plot_clicked)
-        self.egoGrid.addWidget(self.plotButton, 2, 0)
+        self.plotButton1 = QPushButton("Show dynamic plot")
+        self.plotButton1.clicked.connect(self.on_plot1_clicked)
+        self.plotButton1.setMaximumWidth(200)
+        self.egoGrid.addWidget(self.plotButton1, 2, 0)
+
+        self.plotButton2 = QPushButton("Show risk plot")
+        self.plotButton2.clicked.connect(self.on_plot2_clicked)
+        self.plotButton2.setMaximumWidth(200)
+        self.egoGrid.addWidget(self.plotButton2, 2, 1)
 
         self.egoBox.setLayout(self.egoGrid)
         self.mainLayout.addWidget(self.egoBox)
@@ -70,6 +76,10 @@ class SimulationControlBox(QGroupBox):
             self.egoVelocityValue.setText(str(round(self.core.getCurrentVelocity(), 2)) + " m/s")
             self.egoAccValue.setText(str(round(self.core.getCurrentAcceleration(), 2)) + " m/s<sup>2</sup>")
 
-    def on_plot_clicked(self):
+    def on_plot1_clicked(self):
         if self.core._egoCar is not None:
-            self.core.plot()
+            self.core.plotDynamic()
+
+    def on_plot2_clicked(self):
+        if self.core._egoCar is not None:
+            self.core.plotRisk()

@@ -2,8 +2,8 @@
 # Discreted time interval
 # ------------------------------
 _dT = 0.2
-_PREDICT_TIME = 2
-_PREDICT_STEP = 0.2
+_PREDICT_TIME = 3
+_PREDICT_STEP = 0.5
 _SIMULATION_TIME = 20.0
 
 # ------------------------------
@@ -30,7 +30,7 @@ _A_MAX_BRAKE = -6.0
 
 # velocity
 _ALPHA_V_LONG = 0.2
-_ALPHA_V_LAT = 0.1
+_ALPHA_V_LAT = 0.05
 
 # ------------------------------
 # Risk model
@@ -38,26 +38,28 @@ _ALPHA_V_LAT = 0.1
 
 # static obstacle risk model
 _V_MAX_OBJECT = 4
-_A_MAX_BRAKE = -5
+_A_MAX_BRAKE = -6
 
 # collision orthogonal threshold
 _COLLISION_ORTHO_THRES = 0.3  # 15 degree
 
 # collision severity
-_SEVERITY_MIN_WEIGHT_CONST = 10
+_SEVERITY_MIN_WEIGHT_CONST = 2
 
 _SEVERITY_QUAD_WEIGHT = 0.10
 
-_SEVERITY_SIG_MAX = 10.
+_SEVERITY_SIG_MAX = 1.
 _SEVERITY_SIG_AVG_VX = 6.
 _SEVERITY_SIG_B = 1
 
-_SEVERITY_GOM_MAX = 10.
+_SEVERITY_GOM_MAX = 2.
 
 
 # collision event rate
 _COLLISION_RATE_MAX = 5.
-_COLLISION_RATE_BETA = 2.
+_COLLISION_RATE_EXP_BETA = 1.
+_COLLISION_RATE_SIG_BETA = 10.
+
 # escape rate
 _ESCAPE_RATE = 1.
 
@@ -65,7 +67,7 @@ _ESCAPE_RATE = 1.
 _C_CRUISE = 0.001
 _C_V_CRUISE = 8
 _C_COMFORT = 0.001
-_C_JERK = 0.01
+_C_JERK = 0.005
 
 # unseen event rate
 _UNSEENEVENT_RATE_MAX = 1

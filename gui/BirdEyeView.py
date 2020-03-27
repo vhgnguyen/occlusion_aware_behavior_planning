@@ -25,7 +25,7 @@ class BirdEyeView(QOpenGLWidget):
         self._rulerScale = 5
         self._size_x = 100
         self._size_y = 100
-        self._x_center = 0
+        self._x_center = -10
         self._y_center = 0
 
         self.trolltechPurple = QColor.fromCmykF(0.29, 0.29, 0.0, 0.0)
@@ -101,8 +101,8 @@ class BirdEyeView(QOpenGLWidget):
         gl.glClear(
             gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
         gl.glLoadIdentity()
-        self.drawAxis()
         self.makeObject()
+        self.drawAxis()
         
     def resizeGL(self, width, height):
         side = min(width, height)

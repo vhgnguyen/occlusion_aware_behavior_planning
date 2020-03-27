@@ -7,7 +7,7 @@ import _param as param
 import gaussian as gaussian
 
 
-def collisionEventSeverity(ego_vx, obj_vx, method="quadratic", gom_rate=0.1, gom_vx=6):
+def collisionEventSeverity(ego_vx, obj_vx, method="quadratic", gom_rate=0.1, gom_vx=5):
     """
     Collision event severity of ego vehicle with another object
     Args:
@@ -37,8 +37,9 @@ def collisionEventSeverity(ego_vx, obj_vx, method="quadratic", gom_rate=0.1, gom
         severity /= (1.0 + np.exp(-param._SEVERITY_SIG_B * sig_dv))
         severity += param._SEVERITY_MIN_WEIGHT_CONST
     elif method == "gompertz":
-        gom_dv = np.linalg.norm(dv) - gom_vx
-        severity = param._SEVERITY_GOM_MAX*np.exp(-3*np.exp(-gom_rate*(gom_dv)))
+        # gom_dv = np.linalg.norm(dv) - gom_vx
+        gom_dv = np.linalg.norm(dv)
+        severity = param._SEVERITY_GOM_MAX*np.exp(-5*np.exp(-gom_rate*(gom_dv)))
         severity += param._SEVERITY_MIN_WEIGHT_CONST
     else:
         severity = param._SEVERITY_MIN_WEIGHT_CONST
@@ -124,9 +125,10 @@ def collisionIndicator(egoPose, egoPoly, objPose, objPoly):
     return col_indicator
 
 
-def collisionEventRate(collisionIndicator,
+def collisionEventRate(collisionIndicator, method='exponential',
                        eventRate_max=param._COLLISION_RATE_MAX,
-                       eventRate_beta=param._COLLISION_RATE_BETA):
+                       exp_beta=param._COLLISION_RATE_EXP_BETA,
+                       sig_beta=param._COLLISION_RATE_SIG_BETA):
     """
     Function to calculate event rate
     Args:
@@ -138,9 +140,12 @@ def collisionEventRate(collisionIndicator,
     # assert np.isscalar(eventRate_max) and eventRate_max >= 1.0
     # assert np.isscalar(eventRate_beta) and eventRate_beta > 0.0
     # assert np.isscalar(collisionIndicator) and 0.0 <= collisionIndicator <= 1.0
-    return eventRate_max \
-        * (1.0 - np.exp(-eventRate_beta*collisionIndicator)) \
-        / (1.0 - np.exp(-eventRate_beta))
+    if method == 'exponential':
+        return eventRate_max \
+            * (1.0 - np.exp(-exp_beta*collisionIndicator)) \
+            / (1.0 - np.exp(-exp_beta))
+    if method == 'sigmoid':
+        return eventRate_max / (1.0 + np.exp(- sig_beta * (collisionIndicator - 0.5)))
 
 
 def collisionRisk(col_severity, col_rate):
