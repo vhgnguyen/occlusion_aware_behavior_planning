@@ -14,8 +14,7 @@ def collisionEventSeverity(ego_vx, obj_vx, method="quadratic", gom_rate=0.1, gom
         ego_vx: longtitude velocity vector of vehicle in UTM
         obj_vx: longtitude velocity vector of object in UTM
         method: one of these ["constant", "linear",
-                                "quadratic", "sigmoid",
-                                "mass"]
+                                "quadratic", "sigmoid", "gompertz"]
     Return:
         severity: collision event severity
     """
@@ -37,9 +36,9 @@ def collisionEventSeverity(ego_vx, obj_vx, method="quadratic", gom_rate=0.1, gom
         severity /= (1.0 + np.exp(-param._SEVERITY_SIG_B * sig_dv))
         severity += param._SEVERITY_MIN_WEIGHT_CONST
     elif method == "gompertz":
-        # gom_dv = np.linalg.norm(dv) - gom_vx
-        gom_dv = np.linalg.norm(dv)
-        severity = param._SEVERITY_GOM_MAX*np.exp(-5*np.exp(-gom_rate*(gom_dv)))
+        gom_dv = np.linalg.norm(dv) - gom_vx
+        # gom_dv = np.linalg.norm(dv)
+        severity = param._SEVERITY_GOM_MAX*np.exp(-3*np.exp(-gom_rate*(gom_dv)))
         severity += param._SEVERITY_MIN_WEIGHT_CONST
     else:
         severity = param._SEVERITY_MIN_WEIGHT_CONST
@@ -125,8 +124,9 @@ def collisionIndicator(egoPose, egoPoly, objPose, objPoly):
     return col_indicator
 
 
-def collisionEventRate(collisionIndicator, method='exponential',
+def collisionEventRate(collisionIndicator,
                        eventRate_max=param._COLLISION_RATE_MAX,
+                       method='exponential',
                        exp_beta=param._COLLISION_RATE_EXP_BETA,
                        sig_beta=param._COLLISION_RATE_SIG_BETA):
     """
@@ -145,7 +145,7 @@ def collisionEventRate(collisionIndicator, method='exponential',
             * (1.0 - np.exp(-exp_beta*collisionIndicator)) \
             / (1.0 - np.exp(-exp_beta))
     if method == 'sigmoid':
-        return eventRate_max / (1.0 + np.exp(- sig_beta * (collisionIndicator - 0.5)))
+        return eventRate_max/(1.0+np.exp(-sig_beta*(collisionIndicator-0.5)))
 
 
 def collisionRisk(col_severity, col_rate):

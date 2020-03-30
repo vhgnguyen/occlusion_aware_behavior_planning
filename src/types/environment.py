@@ -222,21 +222,6 @@ class Environment(object):
 
         return l_update, fov
 
-    def plot(self, timestamp_s, plotHistory=False, ax=plt):
-        """
-        Plot the environment at given timestamp
-        """
-        for obj in self._l_staticObject:
-            obj.plot(ax=ax)
-        for road in self._l_road:
-            road.plot(ax=ax)
-        if not plotHistory:
-            for veh in self._l_vehicle:
-                veh.plotAt(timestamp_s, ax)
-        else:
-            for veh in self._l_vehicle:
-                veh.plot(maxTimestamp_s=timestamp_s, ax=ax)
-
     def setScenario(self, scenario):
         self._l_road = 0
         self._l_staticObject = []
@@ -299,8 +284,8 @@ class Environment(object):
 
             # pedestrian cross
             cross1 = PedestrianCross(
-                left=np.array([[-7, -6], [-7, 5]]),
-                right=np.array([[-4, -6], [-4, 5]]),
+                left=np.array([[-7, -10], [-7, 5]]),
+                right=np.array([[-4, -10], [-4, 5]]),
                 density=0.8
             )
             self.addPedestrianCross(cross1)
@@ -332,8 +317,8 @@ class Environment(object):
 
             # pedestrian cross
             cross1 = PedestrianCross(
-                left=np.array([[-10, -20], [-10, 20]]),
-                right=np.array([[-4, -20], [-4, 20]]),
+                left=np.array([[-7, -10], [-7, 10]]),
+                right=np.array([[-4, -10], [-4, 10]]),
                 density=0.8
             )
             self.addPedestrianCross(cross1)
@@ -424,7 +409,7 @@ class Environment(object):
                     idx=99, from_x_m=ip_l[0], from_y_m=ip_l[1],
                     to_x_m=MP_l[0], to_y_m=MP_l[1], covLong=0.5, covLat=0.5,
                     vx_ms=param._PEDESTRIAN_VX, startTime=pose.timestamp_s,
-                    appearRate=0.8)
+                    appearRate=0.4)
                 if abs(abs(hypoPedes.theta) - abs(c.theta)) < np.pi/3:
                     self._l_hypoPedes.append(hypoPedes)
 
@@ -438,7 +423,7 @@ class Environment(object):
                     idx=99, from_x_m=ip_r[0], from_y_m=ip_r[1],
                     to_x_m=MP_r[0], to_y_m=MP_r[1], covLong=0.5, covLat=0.5,
                     vx_ms=param._PEDESTRIAN_VX, startTime=pose.timestamp_s,
-                    appearRate=0.8)
+                    appearRate=0.4)
                 if abs(abs(hypoPedes.theta) - abs(c.theta)) < np.pi/3:
                     self._l_hypoPedes.append(hypoPedes)
             
@@ -472,7 +457,7 @@ class Environment(object):
                     hypoVeh = Vehicle(
                         idx=99, length=param._CAR_LENGTH, width=param._CAR_WIDTH,
                         from_x_m=startPos[0], from_y_m=startPos[1],
-                        to_x_m=endPos[0], to_y_m=endPos[1], covLong=1, covLat=0.5,
+                        to_x_m=endPos[0], to_y_m=endPos[1], covLong=0.5, covLat=0.5,
                         vx_ms=param._VEHICLE_VX, startTime=pose.timestamp_s)
                     self._l_hypoVehicle.append(hypoVeh)
                     crossRoad = True
@@ -484,12 +469,13 @@ class Environment(object):
                     hypoVeh = Vehicle(
                         idx=99, length=param._CAR_LENGTH, width=param._CAR_WIDTH,
                         from_x_m=startPos[0], from_y_m=startPos[1],
-                        to_x_m=endPos[0], to_y_m=endPos[1], covLong=1, covLat=0.5,
+                        to_x_m=endPos[0], to_y_m=endPos[1], covLong=0.5, covLat=0.5,
                         vx_ms=param._VEHICLE_VX, startTime=pose.timestamp_s)
                     self._l_hypoVehicle.append(hypoVeh)
                     crossRoad = True
 
         if not crossPedes and not crossRoad:
+        # if not crossPedes:
             dS = np.sqrt((randVertex[0]-pose.x_m)**2 + (randVertex[1]-pose.y_m)**2)
             d2MP = (dS + dThres) * ca
             MP = pose.heading() * d2MP + l1_1
@@ -502,9 +488,14 @@ class Environment(object):
                         idx=99, from_x_m=startPos[0], from_y_m=startPos[1],
                         to_x_m=MP[0], to_y_m=MP[1], covLong=0.5, covLat=0.5,
                         vx_ms=param._PEDESTRIAN_VX, startTime=pose.timestamp_s,
-                        appearRate=0.1)
+                        appearRate=0.15)
                 self._l_hypoPedes.append(hypoPedes)
-
+    
+    def restart(self):
+        for veh in self._l_vehicle:
+            veh.restart()
+        for pedes in self._l_pedestrian:
+            pedes.restart()
         
 # ---------------------- BACK UP FUNCTIONS -----------------------------
         
@@ -644,4 +635,18 @@ class Environment(object):
             # road boundary
             road1 = RoadBoundary(scenario=2)
             self.addRoadBoundary(road1)
-        
+
+    def plot(self, timestamp_s, plotHistory=False, ax=plt):
+        """
+        Plot the environment at given timestamp
+        """
+        for obj in self._l_staticObject:
+            obj.plot(ax=ax)
+        for road in self._l_road:
+            road.plot(ax=ax)
+        if not plotHistory:
+            for veh in self._l_vehicle:
+                veh.plotAt(timestamp_s, ax)
+        else:
+            for veh in self._l_vehicle:
+                veh.plot(maxTimestamp_s=timestamp_s, ax=ax)

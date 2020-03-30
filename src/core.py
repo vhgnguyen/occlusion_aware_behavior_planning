@@ -156,3 +156,10 @@ class Core(object):
         if self._egoCar is None:
             return
         self._egoCar.plotPassedCost()
+
+    def restart(self):
+        if self._egoCar is None:
+            return
+        self.timestamp_s = 0
+        self._egoCar.restart()
+        self._env.restart()

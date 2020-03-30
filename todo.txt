@@ -4,6 +4,9 @@ plot event
 object prediction to get prior collision
 
 27/03
-use risk severity with velocity norm (without reference velocity)
-investigate prediction time 
-change event rate to sigmoid or gompertz type 
+investigate prediction time | |
+change event rate to sigmoid or gompertz type |V|
+
+28/03
+interpolate acceleration for smooth behaviour
+change max event rate for hypotheses

@@ -48,17 +48,28 @@ class MainWindow(QMainWindow):
         self.refreshButton.setMaximumWidth(200)
         self.refreshButton.clicked.connect(self.on_refreshButton_clicked)
         self.buttonGrid.addWidget(self.refreshButton, 0, 0)
-        
-        # move button
-        self.moveButton = QPushButton("Next state")
-        self.moveButton.clicked.connect(self.on_moveButton_clicked)
-        self.buttonGrid.addWidget(self.moveButton, 1, 1)
+
+        # restart button
+        self.restartButton = QPushButton("Restart")
+        self.restartButton.setMaximumWidth(200)
+        self.restartButton.clicked.connect(self.on_restartButton_clicked)
+        self.buttonGrid.addWidget(self.restartButton, 0, 1)
+
         # simulation button
         self.simulationButton = QPushButton("Start simulation")
+        self.simulationButton.setMaximumWidth(200)
         self.simulationButton.clicked.connect(self.on_simulationButton_clicked)
         self.buttonGrid.addWidget(self.simulationButton, 1, 0)
+
+        # move button
+        self.moveButton = QPushButton("Next state")
+        self.moveButton.setMaximumWidth(200)
+        self.moveButton.clicked.connect(self.on_moveButton_clicked)
+        self.buttonGrid.addWidget(self.moveButton, 1, 1)
+
         # stop button
         self.stopSimulationButton = QPushButton("Pause simulation")
+        self.stopSimulationButton.setMaximumWidth(200)
         self.stopSimulationButton.clicked.connect(self.on_stopSimulation_clicked)
         self.buttonGrid.addWidget(self.stopSimulationButton, 1, 2)
 
@@ -107,6 +118,9 @@ class MainWindow(QMainWindow):
             self.simulationControlBox.update()
         else:
             self.plots_refresh_timer.stop()
+
+    def on_restartButton_clicked(self):
+        self.core.restart()
 
     def keyPressEvent(self, event):
         self.birdEyeView.keyPressEvent(event)

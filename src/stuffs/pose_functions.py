@@ -7,11 +7,6 @@ from pose import Pose, VehicleDynamic
 import _param as param
 
 
-def computeAccToStop(from_x_m, from_y_m, to_x_m, to_y_m, vx_ms):
-    s = np.sqrt((from_x_m-to_x_m)**2 + (from_y_m-to_y_m)**2)
-    return - 0.5 * vx_ms**2 / s
-
-
 def updatePose(lastPose, u_in, dT, updateCov=False):
     nextTimestamp_s = round(lastPose.timestamp_s + dT, 2)
     vx = lastPose.vdy.vx_ms
@@ -193,7 +188,7 @@ def FOV(pose, polys, angle, radius, nrRays=50):
     l_alpha = np.linspace(-angle, angle, nrRays) + pose.yaw_rad
     l1_1 = np.array([pose.x_m, pose.y_m])
     l_fov = np.empty((0, 2))
-    l_fov = np.append(l_fov, np.array([l1_1]), axis=0)
+    l_fov = np.append(l_fov + 2*pose.heading(), np.array([l1_1]), axis=0)
 
     for k, alpha in enumerate(l_alpha):
         direction = np.array([math.cos(alpha), math.sin(alpha)])
@@ -224,7 +219,11 @@ def inPolyPointList(pointList, poly):  # use Shapely
     return False
 
 # ---------------------- BACK UP FUNCTIONS -----------------------------
+def computeAccToStop(from_x_m, from_y_m, to_x_m, to_y_m, vx_ms):
+    s = np.sqrt((from_x_m-to_x_m)**2 + (from_y_m-to_y_m)**2)
+    return - 0.5 * vx_ms**2 / s
 
+    
 def inPolygonPoint(point, poly):
     poly = Delaunay(poly)
     return poly.find_simplex(point) >= 0

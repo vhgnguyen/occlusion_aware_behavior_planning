@@ -14,14 +14,14 @@ def gompertz(t, a, b, c, d):
     return s
 
 t = np.linspace(0, 20, 1000)
-app = [0.05, 0.5, 1]
+app = [0.15, 0.3, 0.5]
 res = np.empty((0, 3))
 for tt in t:
     # r = rate(t, i)
     # r = sigmoid(tt, 1, 1, 8)
-    r1 = gompertz(tt, 5, 5, app[0], 6)
-    r2 = gompertz(tt, 5, 5, app[1], 6)
-    r3 = gompertz(tt, 5, 5, app[2], 6)
+    r1 = gompertz(tt, 5, 4, app[0], 6)
+    r2 = gompertz(tt, 5, 4, app[1], 6)
+    r3 = gompertz(tt, 5, 4, app[2], 6)
     res = np.append(res, np.array([[r1, r2, r3]]), axis=0)
 
 fig = plt.figure()
@@ -32,14 +32,14 @@ plt.legend()
 plt.show()
 
 t = np.linspace(0, 1, 1000)
-b = [7, 10, 20]
+b = [1, 5, 10]
 sig = np.empty((0, 3))
 for tt in t:
     # r = rate(t, i)
     # r = sigmoid(tt, 1, 1, 8)
-    r1 = sigmoid(tt, 5, b[0], 0.5)
-    r2 = sigmoid(tt, 5, b[1], 0.5)
-    r3 = sigmoid(tt, 5, b[2], 0.5)
+    r1 = sigmoid(tt, 3, b[0], 0.5)
+    r2 = sigmoid(tt, 3, b[1], 0.5)
+    r3 = sigmoid(tt, 3, b[2], 0.5)
     sig = np.append(sig, np.array([[r1, r2, r3]]), axis=0)
 
 fig = plt.figure()

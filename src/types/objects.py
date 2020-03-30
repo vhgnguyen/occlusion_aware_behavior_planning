@@ -140,10 +140,10 @@ class Vehicle(object):
         self._length = length
         self._width = width
         self._isDetected = False
-        self._startTime = startTime
         self._p_pose = {}
 
         startTime = round(round(startTime/param._dT, 2) * param._dT, 2)
+        self._startTime = startTime
         self.theta = math.atan2(to_y_m-from_y_m, to_x_m-from_x_m)
 
         if isStop:
@@ -237,6 +237,12 @@ class Vehicle(object):
         self._currentPose = nextPose
         self._l_pose.update({nextTimestamp_s: nextPose})
 
+    def restart(self):
+        t = min(self._l_pose)
+        firstPose = self._l_pose[t]
+        self._l_pose = {t: firstPose}
+        self._currentPose = firstPose
+
     # -------------------- Export functions -----------------------------------
 
     def exportCurrent(self):
@@ -297,11 +303,11 @@ class Pedestrian(object):
         self._width = 1
         self._isDetected = False
         self._appearRate = appearRate
-        self._startTime = startTime
         self._u = 0
         self._p_pose = {}
 
         startTime = round(round(startTime/param._dT, 2) * param._dT, 2)
+        self._startTime = startTime
         self.theta = math.atan2(to_y_m-from_y_m, to_x_m-from_x_m)
 
         if isStop:
@@ -391,6 +397,12 @@ class Pedestrian(object):
                 timestamp_s=nextTimestamp_s)
         self._currentPose = nextPose
         self._l_pose.update({nextTimestamp_s: nextPose})
+
+    def restart(self):
+        t = min(self._l_pose)
+        firstPose = self._l_pose[t]
+        self._l_pose = {t: firstPose}
+        self._currentPose = firstPose
 
     # -------------------- Export functions -----------------------------------
 

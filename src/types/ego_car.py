@@ -194,6 +194,7 @@ class EgoVehicle:
 
             hpcol_rate = rfnc.collisionEventRate(
                 collisionIndicator=hpcol_indicator * hypoPedes._appearRate,
+                eventRate_max=param._COLLISION_HYPOPEDES_RATE_MAX,
                 method='sigmoid')
 
             # default is 'quadratic'
@@ -215,10 +216,14 @@ class EgoVehicle:
                 objPose=hvPose, objPoly=hvPoly)
 
             hvcol_rate = rfnc.collisionEventRate(
-                collisionIndicator=hvcol_indicator)
+                collisionIndicator=hvcol_indicator,
+                method='sigmoid',
+                eventRate_max=param._COLLISION_HYPOVEH_RATE_MAX,
+                sig_beta=10)
 
             hvcol_severity = rfnc.collisionEventSeverity(
-                ego_vx=egoPose.vdy.vx_ms, obj_vx=hvPose.vdy.vx_ms)
+                ego_vx=egoPose.vdy.vx_ms, obj_vx=hvPose.vdy.vx_ms,
+                method='sigmoid')
 
             hvcol_risk = rfnc.collisionRisk(
                 col_severity=hvcol_severity,
@@ -246,7 +251,7 @@ class EgoVehicle:
         """
         p_pose = self._p_pose[timestamp_s]
         utCost = 0
-        utCost += param._C_CRUISE * ((p_pose.vdy.vx_ms - param._C_V_CRUISE)**2)
+        utCost += param._C_CRUISE * (p_pose.vdy.vx_ms-param._C_V_CRUISE)**2
         utCost += param._C_COMFORT * (u_in**2)
         utCost += param._C_JERK * ((u_in - self._u)**2)
         return utCost
@@ -294,7 +299,7 @@ class EgoVehicle:
         self._l_pose.update({nextTimestamp_s: nextPose})
         self._l_u.update({nextTimestamp_s: self._u})
 
-    def optimize(self):
+    def optimize(self, dT=param._dT, predictStep=param._PREDICT_STEP):
         val = 0
 
         # search environment
@@ -304,21 +309,21 @@ class EgoVehicle:
         if self.getCurrentPose().vdy.vx_ms == 0:
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(
-                    u_in=x, dT=param._PREDICT_STEP),
-                bounds=(0, 0.5), method='bounded',
+                    u_in=x, dT=predictStep),
+                bounds=(0, 1), method='bounded',
                 options={"maxiter": 5}
                 ).x
         else:
-            lowBound = max(self._u - 0.5, -3)
+            lowBound = max(self._u - 1, -3)
             # lowBound = self._u - 0.5
-            upBound = min(self._u + 0.5, 3)
+            upBound = min(self._u + 1, 3)
             # upBound = self._u + 0.5
             if lowBound >= upBound:
                 lowBound = param._A_MIN
-                upBound = param._A_MIN + 0.5
+                upBound = param._A_MIN + 1
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(
-                    u_in=x, dT=param._PREDICT_STEP),
+                    u_in=x, dT=predictStep),
                 bounds=(lowBound, upBound), method='bounded',
                 options={"maxiter": 5}
                 ).x
@@ -327,80 +332,29 @@ class EgoVehicle:
         total_eventRate = sum(
             list((self._p_eventRate[k]) for k in self._p_eventRate))
         max_eventRate = max(self._p_eventRate.values())
-        if max_eventRate > 2 and self.getCurrentPose().vdy.vx_ms > 4:
+        if max_eventRate > 3 and self.getCurrentPose().vdy.vx_ms > 4:
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(
-                    u_in=x, dT=param._PREDICT_STEP),
+                    u_in=x, dT=predictStep),
                 bounds=(-6, param._A_MIN), method='bounded',
                 options={"maxiter": 5}
             ).x
 
-        self._p_u = val
+        self._p_u = self._u + (val - self._u) * param._dT / predictStep
+        # self._p_u = val
         self._move()
 
-    # ------------------- Test function ---------------------
+    # ------------------- System function --------------------- 
 
-    def plotPose(self, maxTimestamp_s, ax=plt):
-        for timestamp_s, pose in self._l_pose.items():
-            if timestamp_s <= maxTimestamp_s:
-                plt.scatter(pose.x_m, pose.y_m, s=1, color='r')
-                cov = pose.covLatLong
-                ellipse = Ellipse(
-                    [pose.x_m, pose.y_m],
-                    width=np.sqrt(cov[0, 0])*2,
-                    height=np.sqrt(cov[1, 1])*2,
-                    angle=np.degrees(pose.yaw_rad),
-                    facecolor='mistyrose',
-                    edgecolor='red',
-                    alpha=0.7
-                    )
-                ax.add_patch(ellipse)
-                if timestamp_s == maxTimestamp_s:
-                    poly = self.getPoly(timestamp_s)
-                    poly = Polygon(
-                        poly, facecolor='yellow',
-                        edgecolor='gold', alpha=0.7, label='ego vehicle'
-                    )
-                    ax.add_patch(poly)
-                    l_obj = self._env.update(
-                                x_m=pose.x_m,
-                                y_m=pose.y_m,
-                                timestamp_s=pose.timestamp_s,
-                                from_timestamp=pose.timestamp_s
-                                )
-                    polys = []
-                    for obj in l_obj['staticObject']:
-                        objPoly = obj._poly
-                        d2MP, MP, dVis, randVertex = pfnc.distanceToMergePoint(
-                            pose=pose,
-                            poly=objPoly
-                            )
-                        if MP is not None:
-                            plt.scatter(randVertex[0], randVertex[1], color='r')
-                            plt.scatter(MP[0], MP[1])
-                            indicator, rate, risk = rfnc.unseenEventRisk(
-                                d2MP=d2MP,
-                                ego_vx=pose.vdy.vx_ms,
-                                ego_acc=self._l_u[timestamp_s],
-                                dVis=dVis
-                            )
-                        polys.append(objPoly)
-                    fov = pfnc.FOV(pose, polys, np.pi/6, 25)
-                    for f in fov:
-                        plt.plot([pose.x_m, f[0]], [pose.y_m, f[1]], color='r', alpha=0.3, linewidth=0.5)
-            elif timestamp_s < maxTimestamp_s + param._PREDICT_TIME:
-                plt.scatter(pose.x_m, pose.y_m, s=1, color='m')
-                cov = pose.covLatLong
-                ellipse = Ellipse(
-                    [pose.x_m, pose.y_m],
-                    width=np.sqrt(cov[0, 0])*2,
-                    height=np.sqrt(cov[1, 1])*2,
-                    angle=np.degrees(pose.yaw_rad),
-                    facecolor='wheat',
-                    edgecolor='orange',
-                    alpha=0.4
-                    )
-                ax.add_patch(ellipse)
+    def restart(self):
+        t = min(self._l_pose)
+        firstPose = self._l_pose[t]
+        self._l_pose = {t: firstPose}
+        self._u = self._l_u[t]
+        self._l_u = {t: self._l_u[t]}
+        self._currentPose = firstPose
+
+    # ------------------- Export function ---------------------
 
     def plotDynamic(self):
         fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(14, 6))
@@ -558,6 +512,8 @@ class EgoVehicle:
                 l_cost, np.array([[k, total_risk, total_rate]]), axis=0)
         return l_cost
 
+    # ------------------- Backup function ---------------------
+    
     def _unseenObjectCost(self):
         nrObj = len(self._env._l_staticObject)
         l_cost_list = {}
@@ -946,5 +902,64 @@ class EgoVehicle:
 
         return l_cost_list
 
-    def _getAllPassedCost(self):
-        return
+    def plotPose(self, maxTimestamp_s, ax=plt):
+        for timestamp_s, pose in self._l_pose.items():
+            if timestamp_s <= maxTimestamp_s:
+                plt.scatter(pose.x_m, pose.y_m, s=1, color='r')
+                cov = pose.covLatLong
+                ellipse = Ellipse(
+                    [pose.x_m, pose.y_m],
+                    width=np.sqrt(cov[0, 0])*2,
+                    height=np.sqrt(cov[1, 1])*2,
+                    angle=np.degrees(pose.yaw_rad),
+                    facecolor='mistyrose',
+                    edgecolor='red',
+                    alpha=0.7
+                    )
+                ax.add_patch(ellipse)
+                if timestamp_s == maxTimestamp_s:
+                    poly = self.getPoly(timestamp_s)
+                    poly = Polygon(
+                        poly, facecolor='yellow',
+                        edgecolor='gold', alpha=0.7, label='ego vehicle'
+                    )
+                    ax.add_patch(poly)
+                    l_obj = self._env.update(
+                                x_m=pose.x_m,
+                                y_m=pose.y_m,
+                                timestamp_s=pose.timestamp_s,
+                                from_timestamp=pose.timestamp_s
+                                )
+                    polys = []
+                    for obj in l_obj['staticObject']:
+                        objPoly = obj._poly
+                        d2MP, MP, dVis, randVertex = pfnc.distanceToMergePoint(
+                            pose=pose,
+                            poly=objPoly
+                            )
+                        if MP is not None:
+                            plt.scatter(randVertex[0], randVertex[1], color='r')
+                            plt.scatter(MP[0], MP[1])
+                            indicator, rate, risk = rfnc.unseenEventRisk(
+                                d2MP=d2MP,
+                                ego_vx=pose.vdy.vx_ms,
+                                ego_acc=self._l_u[timestamp_s],
+                                dVis=dVis
+                            )
+                        polys.append(objPoly)
+                    fov = pfnc.FOV(pose, polys, np.pi/6, 25)
+                    for f in fov:
+                        plt.plot([pose.x_m, f[0]], [pose.y_m, f[1]], color='r', alpha=0.3, linewidth=0.5)
+            elif timestamp_s < maxTimestamp_s + param._PREDICT_TIME:
+                plt.scatter(pose.x_m, pose.y_m, s=1, color='m')
+                cov = pose.covLatLong
+                ellipse = Ellipse(
+                    [pose.x_m, pose.y_m],
+                    width=np.sqrt(cov[0, 0])*2,
+                    height=np.sqrt(cov[1, 1])*2,
+                    angle=np.degrees(pose.yaw_rad),
+                    facecolor='wheat',
+                    edgecolor='orange',
+                    alpha=0.4
+                    )
+                ax.add_patch(ellipse)
