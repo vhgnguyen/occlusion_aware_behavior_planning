@@ -6,40 +6,38 @@ from PyQt5.QtCore import QSize, Qt
 
 import OpenGL.GL as gl
 import numpy as np
-
+import helper
 
 class BirdEyeView(QOpenGLWidget):
 
     def __init__(self, core, parent=None):
         super(BirdEyeView, self).__init__(parent)
-
         self.core = core
 
         # widget size
         self._width = 800
-        self._height = 600
-        self.setMaximumSize(self._width * 2, self._height * 2)
+        self._height = 800
+        self.setMaximumSize(self._width, self._height)
         self.setMinimumSize(self._width, self._height)
 
-        # world coordinate 
+        # world coordinate
         self._rulerScale = 5
         self._size_x = 100
         self._size_y = 100
         self._x_center = -10
         self._y_center = 0
 
+        # background color
         self.trolltechPurple = QColor.fromCmykF(0.29, 0.29, 0.0, 0.0)
 
     def initializeGL(self):
         print(self.getOpenglInfo())
-
         self.setClearColor(self.trolltechPurple.darker())
-
         gl.glShadeModel(gl.GL_FLAT)
-        # gl.glEnable(gl.GL_DEPTH_TEST)
         gl.glEnable(gl.GL_POLYGON_SMOOTH)
         gl.glEnable(gl.GL_BLEND)
         gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+        # gl.glEnable(gl.GL_DEPTH_TEST)
 
     def getOpenglInfo(self):
         info = """
@@ -103,7 +101,7 @@ class BirdEyeView(QOpenGLWidget):
         gl.glLoadIdentity()
         self.makeObject()
         self.drawAxis()
-        
+
     def resizeGL(self, width, height):
         side = min(width, height)
         if side < 0:
@@ -131,52 +129,31 @@ class BirdEyeView(QOpenGLWidget):
         self.drawOtherVehicle()
         self.drawPedestrian()
         self.drawFOV()
-        self.drawHypothesis()
 
     def drawRoadBoundary(self):
         for road in self.core._env._l_road:
-            gl.glColor4f(0., 0., 0., 1.0)  # gray
-            gl.glLineWidth(4.0)
             # draw left boundary
             le = road.left
-            if le is not None:
-                gl.glBegin(gl.GL_LINES)
-                gl.glVertex2f(le[0][0], le[0][1])
-                gl.glVertex2f(le[1][0], le[1][1])
-                gl.glEnd()
+            helper.drawLine(
+                line=le, color='black', alpha=1, lineWidth=4)
             # draw right boundary
             ri = road.right
-            if ri is not None:
-                gl.glBegin(gl.GL_LINES)
-                gl.glVertex2f(ri[0][0], ri[0][1])
-                gl.glVertex2f(ri[1][0], ri[1][1])
-                gl.glEnd()
+            helper.drawLine(
+                line=ri, color='black', alpha=1, lineWidth=4)
             # draw lane in dashed
-            gl.glColor4f(0.6, 0.6, 0.6, 1.0)  # gray
-            gl.glLineWidth(2.0)
-            gl.glLineStipple(1, 0xAAAA)  # [1]
-            gl.glEnable(gl.GL_LINE_STIPPLE)
             la = road.lane
-            if la is not None:
-                gl.glBegin(gl.GL_LINES)
-                gl.glVertex2f(la[0][0], la[0][1])
-                gl.glVertex2f(la[1][0], la[1][1])
-                gl.glEnd()
-            gl.glDisable(gl.GL_LINE_STIPPLE)
+            helper.drawLine(
+                line=la, color='gray', alpha=1, lineWidth=2, strip=True)
 
     def drawStaticObject(self):
         objectList = self.core._env._l_staticObject
-        gl.glColor4f(0.5, 0.5, 0.5, 0.8)  # black
-        # poly should be sorted in counter clock-wise
         for obj in objectList:
-            gl.glBegin(gl.GL_POLYGON)
-            for i, pt in enumerate(obj._poly):
-                gl.glVertex2f(pt[0], pt[1])
-            gl.glEnd()
+            helper.drawPoly(obj._poly, color='gray', alpha=0.5)
 
     def drawPedestrianCross(self):
         crossList = self.core._env._l_cross
         gl.glColor4f(0.8, 0.8, 0.8, 0.3)  # off white
+        gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_FILL)
         gl.glBegin(gl.GL_QUADS)
         for cross in crossList:
             v_l = cross.left[1] - cross.left[0]
@@ -200,106 +177,37 @@ class BirdEyeView(QOpenGLWidget):
         pedesList = self.core.exportCurrentPedestrian()
         hypoList = self.core.exportHypoPedestrian()
         for pedes in pedesList:
-            # draw poly
-            gl.glColor4f(0.0, 0.2, 0.8, 0.6)  # blue
-            gl.glBegin(gl.GL_QUADS)
-            for vertex in pedes['poly']:
-                gl.glVertex2f(vertex[0], vertex[1])
-            gl.glEnd()
-
-            # draw detection line
-            if pedes['visible'] is not None:
-                if pedes['visible']:
-                    gl.glColor4f(0.8, 0., 0., 0.1)
-                else:
-                    gl.glColor4f(0., 0., 0., 0.1)
-                egoPos = self.core.getCurrentEgoPos()
-                gl.glBegin(gl.GL_LINES)
-                gl.glVertex2f(egoPos[0], egoPos[1])
-                gl.glVertex2f(pedes['pos'][0], pedes['pos'][1])
-                gl.glEnd()
-
+            if pedes['visible']:
+                helper.drawPoly(pedes['poly'], color='lightGreen', alpha=0.5)
+            else:
+                helper.drawPoly(pedes['poly'], color='lightRed', alpha=0.5)
         for hypo in hypoList:
-            # draw poly
-            gl.glColor4f(0.8, 0.8, 0.0, 0.6)  # yellow
-            gl.glBegin(gl.GL_QUADS)
-            for vertex in hypo['poly']:
-                gl.glVertex2f(vertex[0], vertex[1])
-            gl.glEnd()
+            helper.drawPoly(hypo['poly'], color='pink', alpha=0.3)
 
     def drawOtherVehicle(self):
         vehicleList = self.core.exportCurrentVehicle()
         hypoList = self.core.exportHypoVehicle()
         for vehicle in vehicleList:
-            # draw poly
-            gl.glColor4f(0.0, 0.8, 0.2, 0.6)  # green
-            gl.glBegin(gl.GL_QUADS)
-            for vertex in vehicle['poly']:
-                gl.glVertex2f(vertex[0], vertex[1])
-            gl.glEnd()
-
-            # draw detection line
-            if vehicle['visible'] is not None:
-                if vehicle['visible']:
-                    gl.glColor4f(0.8, 0., 0., 0.1)
-                else:
-                    gl.glColor4f(0., 0., 0., 0.1)
-                egoPos = self.core.getCurrentEgoPos()
-                gl.glBegin(gl.GL_LINES)
-                gl.glVertex2f(egoPos[0], egoPos[1])
-                gl.glVertex2f(vehicle['pos'][0], vehicle['pos'][1])
-                gl.glEnd()
-
+            if vehicle['visible']:
+                helper.drawPoly(vehicle['poly'], color='green', alpha=0.5)
+            else:
+                helper.drawPoly(vehicle['poly'], color='red', alpha=0.5)
         for hypo in hypoList:
-            # draw poly
-            gl.glColor4f(0.8, 0.8, 0.0, 0.6)  # yellow
-            gl.glBegin(gl.GL_QUADS)
-            for vertex in hypo['poly']:
-                gl.glVertex2f(vertex[0], vertex[1])
-            gl.glEnd()
+            helper.drawPoly(hypo['poly'], color='yellow', alpha=0.3)
 
     def drawEgoVehicle(self):
-        gl.glColor4f(0.8, 0.2, 0.2, 0.6)  # red
-        gl.glBegin(gl.GL_QUADS)
         egoPoly = self.core.getCurrentEgoPoly()
-        if egoPoly is not None:
-            for vertex in egoPoly:
-                gl.glVertex2f(vertex[0], vertex[1])
-        gl.glEnd()
+        pos = self.core.getCurrentEgoPos()
+        helper.drawPoly(egoPoly, color='blue', alpha=1)
+        if pos is not None:
+            self._x_center = pos[0]
+            self._y_center = pos[1]
 
     def drawFOV(self):
-        vehPos = self.core.getCurrentEgoPos()
         l_FOV = self.core.getCurrentFOV()
-
-        gl.glColor4f(0.0, 0.0, 0.5, 0.1)  # orange
-        gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_LINE)
-        if (vehPos is not None and l_FOV is not None):
-            gl.glBegin(gl.GL_POLYGON)
-            # gl.glBegin(gl.GL_LINES)
-            for pt in l_FOV:
-                # gl.glVertex2f(vehPos[0], vehPos[1])
-                gl.glVertex2f(pt[0], pt[1])
-            gl.glEnd()
-        gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_FILL)
-
-    def drawHypothesis(self):
-        coord = self.core._env._l_hypoCoord
-        gl.glColor4f(1.0, 1.0, 0, 0.7)
-        gl.glPointSize(5)
-        gl.glBegin(gl.GL_POINTS)
-        for pos in coord:
-            if pos[0] is not None:
-                gl.glColor4f(1.0, 0.0, 0, 0.7)
-                gl.glVertex2f(pos[0][0], pos[0][1])
-            if pos[1] is not None:
-                gl.glColor4f(1.0, 1.0, 0, 0.7)
-                gl.glVertex2f(pos[1][0], pos[1][1])
-            if pos[2] is not None:
-                gl.glVertex2f(pos[2][0], pos[2][1])
-        gl.glEnd()
+        helper.drawPoly(l_FOV, color='lightBlue', alpha=1, fill=False)
 
     def drawAxis(self):
-
         xAxisMin = self._x_center - self._size_x // 2
         xAxisMax = self._x_center + self._size_x // 2
         startX = int(xAxisMin / self._rulerScale)
@@ -316,7 +224,7 @@ class BirdEyeView(QOpenGLWidget):
         font = painter.font()
         font.setPointSize(font.pointSize() / 1.5)
         painter.setFont(font)
-        # draw x-Axis
+
         for i in range(startX, endX + 1, 1):
             posX = self._rulerScale * i
             x = (posX - xAxisMin) / self._size_x * self._width
@@ -334,3 +242,32 @@ class BirdEyeView(QOpenGLWidget):
 
     def setColor(self, c):
         gl.glColor4f(c.redF(), c.greenF(), c.blueF(), c.alphaF())
+
+
+class LegendWidget(QOpenGLWidget):
+
+    def __init__(self, parent=None):
+        super(LegendWidget, self).__init__(parent)
+        # widget size
+        self._width = 300
+        self._height = 200
+        self.setMaximumSize(self._width, self._height)
+        self.setMinimumSize(self._width, self._height)
+        self.trolltechPurple = QColor.fromCmykF(0.29, 0.29, 0.0, 0.0)
+
+    def initializeGL(self):
+        self.setClearColor(self.trolltechPurple.darker())
+
+        gl.glShadeModel(gl.GL_FLAT)
+        # gl.glEnable(gl.GL_DEPTH_TEST)
+        gl.glEnable(gl.GL_POLYGON_SMOOTH)
+        gl.glEnable(gl.GL_BLEND)
+        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+
+    def setClearColor(self, c):
+        gl.glClearColor(c.redF(), c.greenF(), c.blueF(), 0)
+
+    def setColor(self, c):
+        gl.glColor4f(c.redF(), c.greenF(), c.blueF(), c.alphaF())
+
+    # def drawLegend(self):

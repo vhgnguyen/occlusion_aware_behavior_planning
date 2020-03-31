@@ -24,8 +24,8 @@ _VEHICLE_VX = 8
 # ------------------------------
 
 # acceleration
-_A_MAX = 2
-_A_MIN = -2
+_A_MAX = 3
+_A_MIN = -3
 _A_MAX_BRAKE = -6.0
 
 # velocity
@@ -38,7 +38,6 @@ _ALPHA_V_LAT = 0.05
 
 # static obstacle risk model
 _V_MAX_OBJECT = 4
-_A_MAX_BRAKE = -6
 
 # collision orthogonal threshold
 _COLLISION_ORTHO_THRES = 0.3  # 15 degree
@@ -54,12 +53,11 @@ _SEVERITY_SIG_B = 1
 
 _SEVERITY_GOM_MAX = 2.
 
-
 # collision event rate
 _COLLISION_RATE_MAX = 10.
 _COLLISION_HYPOPEDES_RATE_MAX = 2.
 _COLLISION_HYPOVEH_RATE_MAX = 3.
-_COLLISION_RATE_EXP_BETA = 1.
+_COLLISION_RATE_EXP_BETA = 3.
 _COLLISION_RATE_SIG_BETA = 10.
 
 # escape rate

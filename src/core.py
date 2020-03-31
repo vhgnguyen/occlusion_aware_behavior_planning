@@ -149,7 +149,6 @@ class Core(object):
     def plotDynamic(self):
         if self._egoCar is None:
             return
-
         self._egoCar.plotDynamic()
 
     def plotRisk(self):
@@ -163,3 +162,8 @@ class Core(object):
         self.timestamp_s = 0
         self._egoCar.restart()
         self._env.restart()
+
+    def replay(self):
+        if self._egoCar is None:
+            return
+        # bool for replay

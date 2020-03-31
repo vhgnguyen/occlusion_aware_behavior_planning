@@ -15,7 +15,9 @@ def updatePose(lastPose, u_in, dT, updateCov=False):
     dX = dP * math.cos(lastPose.yaw_rad)
     dY = dP * math.sin(lastPose.yaw_rad)
     nextVDY = VehicleDynamic(vx + u_in * dT, 0)
-    if updateCov:
+    if vx == 0:
+        next_covLatLong = updateCovLatlong(lastPose.covLatLong, dT, dP, 0)
+    elif updateCov:
         next_covLatLong = updateCovLatlong(lastPose.covLatLong, dT, dP, 0)
     else:
         next_covLatLong = lastPose.covLatLong
@@ -96,7 +98,7 @@ def updateCovLatlong(lastCovLatLong, dT, dX, dY):
 
 def rectangle(pose, length, width):
     """
-        Return rectangle centered at given position
+    Return rectangle centered at given position
     """
     poly = np.array([[-length/2, -width/2],
                      [length/2, -width/2],
@@ -206,35 +208,37 @@ def FOV(pose, polys, angle, radius, nrRays=50):
     return l_fov
 
 
-def inPolyPoint(point, poly):  # use Shapely
+def inPolyPoint(point, poly):  # use Shapely, non-convex
     point = Point(point)
     return point.within(poly)
 
 
-def inPolyPointList(pointList, poly):  # use Shapely
+def inPolyPointList(pointList, poly):  # use Shapely, non-convex
     for pt in pointList:
         point = Point(pt)
         if point.within(poly):
             return True
     return False
 
-# ---------------------- BACK UP FUNCTIONS -----------------------------
-def computeAccToStop(from_x_m, from_y_m, to_x_m, to_y_m, vx_ms):
-    s = np.sqrt((from_x_m-to_x_m)**2 + (from_y_m-to_y_m)**2)
-    return - 0.5 * vx_ms**2 / s
 
-    
-def inPolygonPoint(point, poly):
+def inPolygonPoint(point, poly):  # use scipy, only convex
     poly = Delaunay(poly)
     return poly.find_simplex(point) >= 0
 
 
-def inPolygon(point, poly):
+def inPolygon(point, poly):  # use scipy, only convex
     """
     Test if points list p in poly
     """
     poly = Delaunay(poly)
     return np.count_nonzero(poly.find_simplex(point) >= 0) > 0
+
+# ---------------------- BACK UP FUNCTIONS -----------------------------
+
+
+def computeAccToStop(from_x_m, from_y_m, to_x_m, to_y_m, vx_ms):
+    s = np.sqrt((from_x_m-to_x_m)**2 + (from_y_m-to_y_m)**2)
+    return - 0.5 * vx_ms**2 / s
 
 
 def updatePoseTurn(lastPose, u_in, nextTimestamp_s):

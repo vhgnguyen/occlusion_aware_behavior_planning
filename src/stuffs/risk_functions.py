@@ -37,7 +37,6 @@ def collisionEventSeverity(ego_vx, obj_vx, method="quadratic", gom_rate=0.1, gom
         severity += param._SEVERITY_MIN_WEIGHT_CONST
     elif method == "gompertz":
         gom_dv = np.linalg.norm(dv) - gom_vx
-        # gom_dv = np.linalg.norm(dv)
         severity = param._SEVERITY_GOM_MAX*np.exp(-3*np.exp(-gom_rate*(gom_dv)))
         severity += param._SEVERITY_MIN_WEIGHT_CONST
     else:

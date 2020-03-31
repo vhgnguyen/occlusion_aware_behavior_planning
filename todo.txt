@@ -8,5 +8,5 @@ investigate prediction time | |
 change event rate to sigmoid or gompertz type |V|
 
 28/03
-interpolate acceleration for smooth behaviour
-change max event rate for hypotheses
+interpolate acceleration for smooth behaviour | |
+change max event rate for hypotheses |V|

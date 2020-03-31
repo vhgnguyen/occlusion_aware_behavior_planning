@@ -1,73 +1,67 @@
-from PyQt5.QtWidgets import (QVBoxLayout, QGroupBox, QTextEdit,
-                             QLineEdit, QGridLayout, QOpenGLWidget,
-                             QLabel, QPushButton)
+from PyQt5 import QtCore
+from PyQt5.QtWidgets import (QMainWindow, QWidget, QGroupBox,
+                             QVBoxLayout, QHBoxLayout, QPushButton,
+                             QLineEdit, QGridLayout, QLabel)
 
-class SimulationControlBox(QGroupBox):
+
+class InfoPanel(QGroupBox):
 
     def __init__(self, core, parent=None):
-        super(SimulationControlBox, self).__init__(parent)
-
+        super(InfoPanel, self).__init__(parent)
         self.core = core
-
         self.setTitle("Information panel")
-        # self.setMaximumSize(500, 400)
-        self.setMinimumSize(250, 200)
-
+        self.setMaximumSize(500, 1080)
+        self.setMinimumSize(500, 1080)
         self.mainLayout = QVBoxLayout()
-
-        self.addBox()
-
+        self.addInfoBox()
         self.mainLayout.addStretch()
         self.setLayout(self.mainLayout)
 
-    def addBox(self):
+    def addInfoBox(self):
+        # information control
+        self.infoBox = QGroupBox()
+        self.infoGrid = QGridLayout()
 
-        # simulation control
-        self.simuBox = QGroupBox()
-        self.simuBox.setTitle("Simulation control")
-        self.simuGrid = QGridLayout()
-
-        self.simuGrid.addWidget(QLabel("Simulation time [s]"), 0, 0)
+        self.infoGrid.addWidget(QLabel("Simulation time [s]"), 0, 0)
         self.simulationTimeValue = QLabel()
         self.simulationTimeValue.setMaximumWidth(100)
-        self.simuGrid.addWidget(self.simulationTimeValue, 0, 1)
+        self.infoGrid.addWidget(self.simulationTimeValue, 0, 1)
 
-        self.simuGrid.addWidget(QLabel("Current simulation timestamp [s]"), 1, 0)
+        self.infoGrid.addWidget(QLabel("Current simulation timestamp [s]"), 1, 0)
         self.currentTimeValue = QLabel()
         self.simulationTimeValue.setMaximumWidth(100)
-        self.simuGrid.addWidget(self.currentTimeValue, 1, 1)
-
-        self.simuBox.setLayout(self.simuGrid)
-        self.mainLayout.addWidget(self.simuBox)
+        self.infoGrid.addWidget(self.currentTimeValue, 1, 1)
 
         # ego control
-        self.egoBox = QGroupBox()
-        self.egoBox.setTitle("Ego state")
-        self.egoGrid = QGridLayout()
-
-        self.egoGrid.addWidget(QLabel("Velocity"), 0, 0)
+        self.infoGrid.addWidget(QLabel("Velocity"), 2, 0)
         self.egoVelocityValue = QLabel()
         self.egoVelocityValue.setMaximumWidth(100)
-        self.egoGrid.addWidget(self.egoVelocityValue, 0, 1)
+        self.infoGrid.addWidget(self.egoVelocityValue, 2, 1)
 
-        self.egoGrid.addWidget(QLabel("Acceleration"), 1, 0)
+        self.infoGrid.addWidget(QLabel("Acceleration"), 3, 0)
         self.egoAccValue = QLabel()
         self.egoAccValue.setMaximumWidth(100)
-        self.egoGrid.addWidget(self.egoAccValue, 1, 1)
+        self.infoGrid.addWidget(self.egoAccValue, 3, 1)
+
+        self.infoBox.setLayout(self.infoGrid)
+        self.mainLayout.addWidget(self.infoBox)
 
         # plot button
+        self.graphBox = QGroupBox()
+        self.graphGrid = QGridLayout()
+
         self.plotButton1 = QPushButton("Show dynamic plot")
         self.plotButton1.clicked.connect(self.on_plot1_clicked)
         self.plotButton1.setMaximumWidth(200)
-        self.egoGrid.addWidget(self.plotButton1, 2, 0)
+        self.graphGrid.addWidget(self.plotButton1, 2, 0)
 
         self.plotButton2 = QPushButton("Show risk plot")
         self.plotButton2.clicked.connect(self.on_plot2_clicked)
         self.plotButton2.setMaximumWidth(200)
-        self.egoGrid.addWidget(self.plotButton2, 2, 1)
+        self.graphGrid.addWidget(self.plotButton2, 2, 1)
 
-        self.egoBox.setLayout(self.egoGrid)
-        self.mainLayout.addWidget(self.egoBox)
+        self.graphBox.setLayout(self.graphGrid)
+        self.mainLayout.addWidget(self.graphBox)
 
     def update(self):
         if self.core._egoCar is not None:

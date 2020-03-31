@@ -21,7 +21,6 @@ class Environment(object):
         self._l_vehicle = []
         self._l_pedestrian = []
         self._l_cross = []
-        self._l_hypoCoord = []
         self._l_hypoPedes = []
         self._l_hypoVehicle = []
 
@@ -67,7 +66,7 @@ class Environment(object):
         """
         self._l_hypoPedes = []
         self._l_hypoVehicle = []
-        
+
         l_vehicle = []
         l_object = []
         l_pedestrian = []
@@ -83,16 +82,15 @@ class Environment(object):
                 l_polys.append(objPoly)
                 self.generateHypothesis(pose, objPoly, u_in)
 
-        # find static vehicle
+        # find vehicle
         for veh in self._l_vehicle:
             vehPose = veh.getPoseAt(from_timestamp_s)
             if vehPose is not None and vehPose.timestamp_s == from_timestamp_s:
                 vehPos = np.array([vehPose.x_m, vehPose.y_m])
                 if np.linalg.norm(vehPos - currentPos) < radius:
-                    if vehPose.vdy.vx_ms < 1:
-                        vehPoly = veh.getPoly(from_timestamp_s)
-                        l_polys.append(vehPoly)
-                        # self.generateHypothesis(pose, vehPoly)
+                    vehPoly = veh.getPoly(from_timestamp_s)
+                    l_polys.append(vehPoly)
+                    # self.generateHypothesis(pose, vehPoly)
 
         # generate field of view
         fov = pfnc.FOV(
@@ -109,8 +107,8 @@ class Environment(object):
                     vehPoly = veh.getCurrentPoly()
                     if pfnc.inPolyPointList(vehPoly, fov_poly):
                         veh.setDetected(True)
-                        if vehPose.vdy.vx_ms > 0:
-                            l_vehicle.append(veh)
+                        # if vehPose.vdy.vx_ms > 0:
+                        l_vehicle.append(veh)
                         continue
                     else:
                         veh.setDetected(False)
@@ -146,10 +144,9 @@ class Environment(object):
         """
         Get environment around a given position
         """
-        self._l_hypoCoord = []
         self._l_hypoPedes = []
         self._l_hypoVehicle = []
-        
+
         l_vehicle = []
         l_object = []
         l_pedestrian = []
@@ -196,7 +193,7 @@ class Environment(object):
                     else:
                         veh.setDetected(False)
                         continue
-            veh.setDetected(None)
+            veh.setDetected(False)
 
         # check pedestrian in FOV
         for pedes in self._l_pedestrian:
@@ -212,7 +209,7 @@ class Environment(object):
                     else:
                         pedes.setDetected(False)
                         continue
-            pedes.setDetected(None)
+            pedes.setDetected(False)
 
         l_update = {'vehicle': l_vehicle,
                     'staticObject': l_object,
@@ -252,7 +249,7 @@ class Environment(object):
             obs4 = StaticObject(
                 idx=4,
                 poly=np.array([[-2, -20], [5, -20], [5, -10],
-                               [5, -6], [-2, -6]]))
+                               [4, -6], [-2, -6]]))
             self.addStaticObject(obs4)
 
             obs5 = StaticObject(
@@ -409,7 +406,7 @@ class Environment(object):
                     idx=99, from_x_m=ip_l[0], from_y_m=ip_l[1],
                     to_x_m=MP_l[0], to_y_m=MP_l[1], covLong=0.5, covLat=0.5,
                     vx_ms=param._PEDESTRIAN_VX, startTime=pose.timestamp_s,
-                    appearRate=0.4)
+                    appearRate=0.6)
                 if abs(abs(hypoPedes.theta) - abs(c.theta)) < np.pi/3:
                     self._l_hypoPedes.append(hypoPedes)
 
@@ -423,7 +420,7 @@ class Environment(object):
                     idx=99, from_x_m=ip_r[0], from_y_m=ip_r[1],
                     to_x_m=MP_r[0], to_y_m=MP_r[1], covLong=0.5, covLat=0.5,
                     vx_ms=param._PEDESTRIAN_VX, startTime=pose.timestamp_s,
-                    appearRate=0.4)
+                    appearRate=0.6)
                 if abs(abs(hypoPedes.theta) - abs(c.theta)) < np.pi/3:
                     self._l_hypoPedes.append(hypoPedes)
             
@@ -449,7 +446,7 @@ class Environment(object):
                     l1_ip_r = np.linalg.norm(l1_1 - ip_r)
                     if l1_ip_r < p2r_l2:
                         continue
-            
+
             if ip_l is not None and ip_m is not None:
                 endPos = (ip_l + ip_m) / 2
                 startPos = endPos + lane_heading * 2 * dThres
@@ -457,8 +454,9 @@ class Environment(object):
                     hypoVeh = Vehicle(
                         idx=99, length=param._CAR_LENGTH, width=param._CAR_WIDTH,
                         from_x_m=startPos[0], from_y_m=startPos[1],
-                        to_x_m=endPos[0], to_y_m=endPos[1], covLong=0.5, covLat=0.5,
-                        vx_ms=param._VEHICLE_VX, startTime=pose.timestamp_s)
+                        to_x_m=endPos[0], to_y_m=endPos[1], covLong=1, covLat=0.5,
+                        vx_ms=param._VEHICLE_VX, startTime=pose.timestamp_s,
+                        appearRate=1)
                     self._l_hypoVehicle.append(hypoVeh)
                     crossRoad = True
 
@@ -469,8 +467,9 @@ class Environment(object):
                     hypoVeh = Vehicle(
                         idx=99, length=param._CAR_LENGTH, width=param._CAR_WIDTH,
                         from_x_m=startPos[0], from_y_m=startPos[1],
-                        to_x_m=endPos[0], to_y_m=endPos[1], covLong=0.5, covLat=0.5,
-                        vx_ms=param._VEHICLE_VX, startTime=pose.timestamp_s)
+                        to_x_m=endPos[0], to_y_m=endPos[1], covLong=1, covLat=0.5,
+                        vx_ms=param._VEHICLE_VX, startTime=pose.timestamp_s,
+                        appearRate=1)
                     self._l_hypoVehicle.append(hypoVeh)
                     crossRoad = True
 
@@ -488,153 +487,16 @@ class Environment(object):
                         idx=99, from_x_m=startPos[0], from_y_m=startPos[1],
                         to_x_m=MP[0], to_y_m=MP[1], covLong=0.5, covLat=0.5,
                         vx_ms=param._PEDESTRIAN_VX, startTime=pose.timestamp_s,
-                        appearRate=0.15)
+                        appearRate=0.2)
                 self._l_hypoPedes.append(hypoPedes)
-    
+
     def restart(self):
         for veh in self._l_vehicle:
             veh.restart()
         for pedes in self._l_pedestrian:
             pedes.restart()
-        
+
 # ---------------------- BACK UP FUNCTIONS -----------------------------
-        
-    def setupScenario1(self, scenario):
-
-        if scenario == 1:
-            # first vehicle
-            other1 = OtherVehicle(1, 4, 2)
-            startPose1 = Pose(
-                x_m=30, y_m=1, yaw_rad=-np.pi,
-                covLatLong=np.array([[0.3, 0.0], [0.0, 0.2]]),
-                vdy=VehicleDynamic(5, 0), timestamp_s=0)
-            other1.start(startPose=startPose1, u_in=0.5)
-            other1.predict(l_u_in={param._SIMULATION_TIME: 0})
-            other1.update(param._SIMULATION_TIME)
-            self.addVehicle(other1)
-            # static object
-            obs1 = StaticObject(
-                idx=1,
-                poly=np.array([[-10, -5], [-5, -5], [-5, -15], [-10, -15]]))
-            self.addStaticObject(obs1)
-            # road boundary
-            road1 = RoadBoundary(scenario=1)
-            self.addRoadBoundary(road1)
-
-        if scenario == 2:
-            # first vehicle
-            other1 = OtherVehicle(idx=1, length=4, width=2)
-            startPose1 = Pose(
-                x_m=20, y_m=1, yaw_rad=-np.pi,
-                covLatLong=np.array([[0.3, 0.0], [0.0, 0.1]]),
-                vdy=VehicleDynamic(10, 0), timestamp_s=0)
-            other1.start(startPose=startPose1, u_in=1)
-            other1.predict(l_u_in={param._SIMULATION_TIME: 0})
-            other1.update(param._SIMULATION_TIME)
-            # self.addVehicle(other1)
-            # second vehicle
-            other2 = OtherVehicle(idx=2, length=4, width=2.5)
-            startPose2 = Pose(
-                x_m=20, y_m=20, yaw_rad=4.4,
-                covLatLong=np.array([[0.3, 0.0], [0.0, 0.2]]),
-                vdy=VehicleDynamic(8, 0), timestamp_s=4)
-            other2.start(startPose=startPose2, u_in=0)
-            other2.predict(l_u_in={param._SIMULATION_TIME: 0})
-            other2.update(param._SIMULATION_TIME)
-            self.addVehicle(other2)
-            # pedestrian
-            pedes = OtherVehicle(idx=3, length=1, width=1)
-            startPose3 = Pose(
-                x_m=-3, y_m=-7, yaw_rad=np.pi/2 - 0.5,
-                covLatLong=np.array([[1, 0.0], [0.0, 0.5]]),
-                vdy=VehicleDynamic(3, 0), timestamp_s=4)
-            pedes.start(startPose=startPose3, u_in=0)
-            pedes.predict(l_u_in={param._SIMULATION_TIME: 0})
-            pedes.update(param._SIMULATION_TIME)
-            self.addVehicle(pedes)
-            # static object
-            obs1 = StaticObject(
-                idx=1,
-                poly=np.array([[-20, -10], [-20, -6], [-15, -4],
-                               [-5, -4], [-5, -15], [-15, -15]]))
-            self.addStaticObject(obs1)
-
-            obs2 = StaticObject(
-                idx=2,
-                poly=np.array([[0, 4], [10, 7], [10, 10], [0, 10]]))
-            self.addStaticObject(obs2)
-
-            obs3 = StaticObject(
-                idx=3,
-                poly=np.array([[5, -10], [5, -3], [10, -3], [8, -10]]))
-            self.addStaticObject(obs3)
-            # road boundary
-            road1 = RoadBoundary(scenario=2)
-            self.addRoadBoundary(road1)
-
-        if scenario == 3:
-            # pedestrian
-            pedes = OtherVehicle(idx=3, length=1, width=1)
-            startPose3 = Pose(
-                x_m=-3, y_m=-5, yaw_rad=np.pi/2,
-                covLatLong=np.array([[1, 0.0], [0.0, 0.5]]),
-                vdy=VehicleDynamic(4, 0), timestamp_s=4.6)
-            pedes.start(startPose=startPose3, u_in=0)
-            pedes.predict(l_u_in={7: -1, 8: 0, 10: -2})
-            pedes.update(param._SIMULATION_TIME)
-            self.addVehicle(pedes)
-            # static object
-            obs1 = StaticObject(
-                idx=1,
-                poly=np.array([[-20, -10], [-20, -8], [-15, -3],
-                               [-5, -3], [-5, -15], [-15, -15]]))
-            self.addStaticObject(obs1)
-
-            obs2 = StaticObject(
-                idx=2,
-                poly=np.array([[0, -10], [0, -4], [10, -4], [8, -10]]))
-            self.addStaticObject(obs2)
-
-            obs3 = StaticObject(
-                idx=3,
-                poly=np.array([[5, 3], [10, 3], [10, 7], [5, 7]]))
-            # self.addStaticObject(obs3)
-
-            # road boundary
-            road1 = RoadBoundary(scenario=3)
-            self.addRoadBoundary(road1)
-
-        if scenario == 4:
-            # pedestrian
-            pedes = OtherVehicle(idx=3, length=1, width=1)
-            startPose3 = Pose(
-                x_m=-3, y_m=-7, yaw_rad=np.pi/2,
-                covLatLong=np.array([[1, 0.0], [0.0, 0.5]]),
-                vdy=VehicleDynamic(4, 0), timestamp_s=5.4)
-            pedes.start(startPose=startPose3, u_in=0)
-            pedes.predict(l_u_in={7: -1, 8: 0, 10: -2})
-            pedes.update(param._SIMULATION_TIME)
-            # self.addVehicle(pedes)
-            # static object
-            obs1 = StaticObject(
-                idx=1,
-                poly=np.array([[-15, -5], [-15, -2.5], [-10, -3],
-                               [0, -2.5], [0, -10]]))
-            self.addStaticObject(obs1)
-
-            obs2 = StaticObject(
-                idx=2,
-                poly=np.array([[0, -10], [0, -4], [10, -4], [8, -10]]))
-            # self.addStaticObject(obs2)
-
-            obs3 = StaticObject(
-                idx=3,
-                poly=np.array([[5, 3], [10, 3], [10, 7], [5, 7]]))
-            # self.addStaticObject(obs3)
-
-            # road boundary
-            road1 = RoadBoundary(scenario=2)
-            self.addRoadBoundary(road1)
 
     def plot(self, timestamp_s, plotHistory=False, ax=plt):
         """
