@@ -205,7 +205,7 @@ class EgoVehicle:
                 eventRate_max=param._COLLISION_HYPOPEDES_RATE_MAX,
                 method='sigmoid')
 
-            hpcol_severity = rfnc.collisionEventSeverity(
+            hpcol_severity = rfnc.collisionSeverityHypoPedes(
                 ego_vx=egoPose.vdy.vx_ms, obj_vx=hPose.vdy.vx_ms,
                 method='gompertz', gom_rate=hypoPedes._appearRate)
 
@@ -228,7 +228,7 @@ class EgoVehicle:
                 method='sigmoid',
                 eventRate_max=param._COLLISION_HYPOVEH_RATE_MAX)
 
-            hvcol_severity = rfnc.collisionEventSeverity(
+            hvcol_severity = rfnc.collisionSeverityHypoVeh(
                 ego_vx=egoPose.vdy.vx_ms, obj_vx=hvPose.vdy.vx_ms,
                 method='sigmoid')
 
@@ -314,11 +314,11 @@ class EgoVehicle:
         self._searchEnvironment()
 
         # handle stop case
-        if self.getCurrentPose().vdy.vx_ms < 0.5:
+        if self.getCurrentPose().vdy.vx_ms == 0:
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(
                     u_in=x, dT=predictStep),
-                bounds=(0, 1), method='bounded',
+                bounds=(-0.1, 1), method='bounded',
                 options={"maxiter": 5}
                 ).x
         else:
@@ -361,31 +361,64 @@ class EgoVehicle:
 
     # ------------------- Export function ---------------------
 
+    def plotDynamicDistance(self):
+        fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(14, 6))
+        self._plotVelocity(ax=ax[0], xDistance=True)
+        self._plotAcceleration(ax=ax[1], xDistance=True)
+        plt.show()
+
     def plotDynamic(self):
         fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(14, 6))
         self._plotVelocity(ax=ax[0])
         self._plotAcceleration(ax=ax[1])
         plt.show()
 
-    def _plotVelocity(self, ax=plt):
+    def _plotVelocity(self, ax=plt, xDistance=False):
         l_vdy = np.empty((0, 2))
-        for t, pose in self._l_pose.items():
-            l_vdy = np.append(
-                l_vdy, np.array([[t, pose.vdy.vx_ms]]), axis=0)
+        if xDistance:
+            startPose = self._l_pose[min(self._l_pose)]
+            startPos = np.array([[startPose.x_m, startPose.y_m]])
+            for t, pose in self._l_pose.items():
+                pos = np.array([[pose.x_m, pose.y_m]])
+                d = np.linalg.norm(pos - startPos)
+                l_vdy = np.append(
+                    l_vdy, np.array([[d, pose.vdy.vx_ms]]), axis=0)
+            ax.plot(l_vdy[:, 0], l_vdy[:, 1], 'b-', label='velocity')
+            ax.set_xlabel("Travel distance [s]")
+            ax.set_ylabel("Velocity [m/s]")
+            ax.set_ylim(0, 15)
+        else:
+            for t, pose in self._l_pose.items():
+                l_vdy = np.append(
+                    l_vdy, np.array([[t, pose.vdy.vx_ms]]), axis=0)
 
-        ax.plot(l_vdy[:, 0], l_vdy[:, 1], 'b-', label='velocity')
-        ax.set_xlabel("Time [s]")
-        ax.set_ylabel("Velocity [m/s]")
-        ax.set_ylim(0, 15)
+            ax.plot(l_vdy[:, 0], l_vdy[:, 1], 'b-', label='velocity')
+            ax.set_xlabel("Time [s]")
+            ax.set_ylabel("Velocity [m/s]")
+            ax.set_ylim(0, 15)
         ax.legend()
 
-    def _plotAcceleration(self, ax=plt):
+    def _plotAcceleration(self, ax=plt, xDistance=False):
         l_u = sorted(self._l_u.items())
         x, y = zip(*l_u)
-        ax.plot(x, y, 'r-', label='acceleration')
-        ax.set_xlabel("Time [s]")
-        ax.set_ylabel("Acceleration [$m/s_2$]")
-        ax.set_ylim(-6, 3)
+        if xDistance:
+            l_acc = np.empty((0, 2))
+            startPose = self._l_pose[min(self._l_pose)]
+            startPos = np.array([[startPose.x_m, startPose.y_m]])
+            for t, pose in self._l_pose.items():
+                pos = np.array([[pose.x_m, pose.y_m]])
+                d = np.linalg.norm(pos - startPos)
+                l_acc = np.append(
+                    l_acc, np.array([[d, self._l_u[t]]]), axis=0)
+            ax.plot(l_acc[:, 0], l_acc[:, 1], 'r-', label='acceleration')
+            ax.set_xlabel("Travel distance [s]")
+            ax.set_ylabel("Acceleration [$m/s_2$]")
+            ax.set_ylim(-6, 3)
+        else:
+            ax.plot(x, y, 'r-', label='acceleration')
+            ax.set_xlabel("Time [s]")
+            ax.set_ylabel("Acceleration [$m/s_2$]")
+            ax.set_ylim(-6, 3)
         ax.legend()
 
     def plotPassedCost(self):

@@ -516,17 +516,23 @@ class HypothesisPedestrianWindow(QMainWindow):
         self.pedestrianGrid.addWidget(self.pedestrianValue_covLong, 1, 1)
         self.pedestrianGrid.addWidget(self.pedestrianValue_covLat, 1, 2)
 
-        self.pedestrianGrid.addWidget(QLabel("Maximum appear rate"), 2, 0)
+        self.pedestrianGrid.addWidget(QLabel("Relative collision velocity threshold"), 2, 0)
+        self.pedestrianCollVelocityValue = QLineEdit()
+        self.pedestrianCollVelocityValue.setText(str(5.0))
+        self.pedestrianCollVelocityValue.setMaximumWidth(100)
+        self.pedestrianGrid.addWidget(self.pedestrianCollVelocityValue, 2, 1)
+        
+        self.pedestrianGrid.addWidget(QLabel("Maximum appear rate"), 3, 0)
         self.pedesMaxAppearValue = QLineEdit()
         self.pedesMaxAppearValue.setText(str(0.7))
         self.pedesMaxAppearValue.setMaximumWidth(100)
-        self.pedestrianGrid.addWidget(self.pedesMaxAppearValue, 2, 1)
+        self.pedestrianGrid.addWidget(self.pedesMaxAppearValue, 3, 1)
 
-        self.pedestrianGrid.addWidget(QLabel("Maximum appear rate"), 3, 0)
+        self.pedestrianGrid.addWidget(QLabel("Maximum appear rate"), 4, 0)
         self.pedesMinAppearValue = QLineEdit()
         self.pedesMinAppearValue.setText(str(0.2))
         self.pedesMinAppearValue.setMaximumWidth(100)
-        self.pedestrianGrid.addWidget(self.pedesMinAppearValue, 3, 1)
+        self.pedestrianGrid.addWidget(self.pedesMinAppearValue, 4, 1)
 
         self.pedesBox.setLayout(self.pedestrianGrid)
         self.mainLayout.addWidget(self.pedesBox)
@@ -650,11 +656,18 @@ class HypothesisPedestrianWindow(QMainWindow):
 
     def onSeverityGompertzBox(self):
         self.gompertzSeverityGrid = QGridLayout()
-        self.gompertzSeverityGrid.addWidget(QLabel("Exp beta"), 0, 0)
+
+        self.gompertzSeverityGrid.addWidget(QLabel("Gompertz max"), 0, 0)
+        self.gompertzSeverityMaxValue = QLineEdit()
+        self.gompertzSeverityMaxValue.setMaximumWidth(100)
+        self.gompertzSeverityMaxValue.setText(str(2.0))
+        self.gompertzSeverityGrid.addWidget(self.gompertzSeverityMaxValue, 0, 1)
+
+        self.gompertzSeverityGrid.addWidget(QLabel("Gompertz beta"), 1, 0)
         self.gompertzSeverityBetaValue = QLineEdit()
         self.gompertzSeverityBetaValue.setMaximumWidth(100)
-        self.gompertzSeverityBetaValue.setText(str(3))
-        self.gompertzSeverityGrid.addWidget(self.gompertzSeverityBetaValue, 0, 1)
+        self.gompertzSeverityBetaValue.setText(str(3.0))
+        self.gompertzSeverityGrid.addWidget(self.gompertzSeverityBetaValue, 1, 1)
 
         self.gompertzSeverityBox.setLayout(self.gompertzSeverityGrid)
         self.gompertzSeverityBox.setEnabled(True)

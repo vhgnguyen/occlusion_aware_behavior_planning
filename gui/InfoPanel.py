@@ -60,6 +60,11 @@ class InfoPanel(QGroupBox):
         self.plotButton2.setMaximumWidth(200)
         self.graphGrid.addWidget(self.plotButton2, 2, 1)
 
+        self.plotButton3 = QPushButton("Show dynamic distance plot")
+        self.plotButton3.clicked.connect(self.on_plot3_clicked)
+        self.plotButton3.setMaximumWidth(200)
+        self.graphGrid.addWidget(self.plotButton3, 2, 2)
+
         self.graphBox.setLayout(self.graphGrid)
         self.mainLayout.addWidget(self.graphBox)
 
@@ -77,3 +82,8 @@ class InfoPanel(QGroupBox):
     def on_plot2_clicked(self):
         if self.core._egoCar is not None:
             self.core.plotRisk()
+    
+    def on_plot3_clicked(self):
+        if self.core._egoCar is not None:
+            self.core.plotDynamicDistance()
+

@@ -151,6 +151,11 @@ class Core(object):
             return
         self._egoCar.plotDynamic()
 
+    def plotDynamicDistance(self):
+        if self._egoCar is None:
+            return
+        self._egoCar.plotDynamicDistance()
+
     def plotRisk(self):
         if self._egoCar is None:
             return

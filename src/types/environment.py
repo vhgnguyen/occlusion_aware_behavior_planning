@@ -170,6 +170,8 @@ class Environment(object):
                 if np.linalg.norm(vehPos - currentPos) < radius:
                     vehPoly = veh.getPoly(from_timestamp)
                     l_polys.append(vehPoly)
+                    if vehPose.vdy.vx_ms == 0:
+                        self.generateHypothesis(pose, vehPoly, u_in)
 
         # generate field of view
         fov = pfnc.FOV(
@@ -187,8 +189,8 @@ class Environment(object):
                     # if pfnc.inPolygon(vehPoly, fov):
                     if pfnc.inPolyPointList(vehPoly, fov_poly):
                         veh.setDetected(True)
-                        # if vehPose.vdy.vx_ms > 0:
-                        l_vehicle.append(veh)
+                        if vehPose.vdy.vx_ms > 0:
+                            l_vehicle.append(veh)
                         continue
                     else:
                         veh.setDetected(False)
@@ -406,7 +408,7 @@ class Environment(object):
                     idx=99, from_x_m=ip_l[0], from_y_m=ip_l[1],
                     to_x_m=MP_l[0], to_y_m=MP_l[1], covLong=0.5, covLat=0.5,
                     vx_ms=param._PEDESTRIAN_VX, startTime=pose.timestamp_s,
-                    appearRate=0.6)
+                    appearRate=0.8)
                 if abs(abs(hypoPedes.theta) - abs(c.theta)) < np.pi/3:
                     self._l_hypoPedes.append(hypoPedes)
 
@@ -420,7 +422,7 @@ class Environment(object):
                     idx=99, from_x_m=ip_r[0], from_y_m=ip_r[1],
                     to_x_m=MP_r[0], to_y_m=MP_r[1], covLong=0.5, covLat=0.5,
                     vx_ms=param._PEDESTRIAN_VX, startTime=pose.timestamp_s,
-                    appearRate=0.6)
+                    appearRate=0.8)
                 if abs(abs(hypoPedes.theta) - abs(c.theta)) < np.pi/3:
                     self._l_hypoPedes.append(hypoPedes)
             
@@ -456,7 +458,7 @@ class Environment(object):
                         from_x_m=startPos[0], from_y_m=startPos[1],
                         to_x_m=endPos[0], to_y_m=endPos[1], covLong=1, covLat=0.5,
                         vx_ms=param._VEHICLE_VX, startTime=pose.timestamp_s,
-                        appearRate=1)
+                        appearRate=0.5)
                     self._l_hypoVehicle.append(hypoVeh)
                     crossRoad = True
 
@@ -469,7 +471,7 @@ class Environment(object):
                         from_x_m=startPos[0], from_y_m=startPos[1],
                         to_x_m=endPos[0], to_y_m=endPos[1], covLong=1, covLat=0.5,
                         vx_ms=param._VEHICLE_VX, startTime=pose.timestamp_s,
-                        appearRate=1)
+                        appearRate=0.5)
                     self._l_hypoVehicle.append(hypoVeh)
                     crossRoad = True
 
@@ -481,14 +483,14 @@ class Environment(object):
             startPos = randVertex + p2r_norm * dThres
             heading = MP - startPos
             heading /= np.linalg.norm(heading)
-            startPos -= heading * dThres
-            if not pfnc.inPolygonPoint(startPos, objPoly):
-                hypoPedes = Pedestrian(
-                        idx=99, from_x_m=startPos[0], from_y_m=startPos[1],
-                        to_x_m=MP[0], to_y_m=MP[1], covLong=0.5, covLat=0.5,
-                        vx_ms=param._PEDESTRIAN_VX, startTime=pose.timestamp_s,
-                        appearRate=0.2)
-                self._l_hypoPedes.append(hypoPedes)
+            startPos -= heading * dThres * 0.5
+            # if not pfnc.inPolygonPoint(startPos, objPoly):
+            hypoPedes = Pedestrian(
+                    idx=99, from_x_m=startPos[0], from_y_m=startPos[1],
+                    to_x_m=MP[0], to_y_m=MP[1], covLong=0.5, covLat=0.5,
+                    vx_ms=param._PEDESTRIAN_VX, startTime=pose.timestamp_s,
+                    appearRate=0.2)
+            self._l_hypoPedes.append(hypoPedes)
 
     def restart(self):
         for veh in self._l_vehicle:
