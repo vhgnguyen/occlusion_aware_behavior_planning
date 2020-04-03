@@ -54,10 +54,10 @@ def collisionSeverityHypoVeh(ego_vx, obj_vx, method='sigmoid'):
         severity *= param._SEVERITY_QUAD_WEIGHT
         severity += param._SEVERITY_HYPOVEH_MIN_WEIGHT
     elif method == "sigmoid":
-        severity = param._SEVERITY_HYPOVEH_SIG_MAX
         sig_dv = np.linalg.norm(dv) - param._SEVERITY_HYPOVEH_AVG_VX
-        severity /= (1.0 + np.exp(-param._SEVERITY_SIG_B * sig_dv))
-        severity += param._SEVERITY_MIN_WEIGHT_CONST
+        severity = param._SEVERITY_HYPOVEH_SIG_MAX
+        severity /= (1.0 + np.exp(-param._SEVERITY_HYPOVEH_SIG_B * sig_dv))
+        severity += param._SEVERITY_HYPOVEH_MIN_WEIGHT
     else:
         severity = param._SEVERITY_HYPOVEH_MIN_WEIGHT
 

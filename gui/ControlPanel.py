@@ -76,15 +76,19 @@ class ControlPanel(QGroupBox):
     def on_restartButton_clicked(self):
         self.core.restart()
 
-    def on_replayButton_clicked(self):
-        return
-
     def on_simulationButton_clicked(self):
         self.plots_refresh_timer = QtCore.QTimer()
         self.plots_refresh_timer.setSingleShot(False)
         self.plots_refresh_timer.timeout.connect(self.on_simulation)
         self.plots_refresh_timer.setInterval(99)
         self.plots_refresh_timer.start()
+
+    def on_replayButton_clicked(self):
+        self.replay_refresh_timer = QtCore.QTimer()
+        self.replay_refresh_timer.setSingleShot(False)
+        self.replay_refresh_timer.timeout.connect(self.on_replay)
+        self.replay_refresh_timer.setInterval(99)
+        self.replay_refresh_timer.start()
 
     def on_stopSimulation_clicked(self):
         if self.plots_refresh_timer is not None:
@@ -102,3 +106,12 @@ class ControlPanel(QGroupBox):
             self.infoPanel.update()
         else:
             self.plots_refresh_timer.stop()
+
+    def on_replay(self):
+        isMove = self.core.replay()
+        if isMove:
+            self.birdEyeView.update()
+            self.infoPanel.update()
+        else:
+            self.replay_refresh_timer.stop()
+    

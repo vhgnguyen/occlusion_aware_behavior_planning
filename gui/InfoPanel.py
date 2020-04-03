@@ -50,20 +50,55 @@ class InfoPanel(QGroupBox):
         self.graphBox = QGroupBox()
         self.graphGrid = QGridLayout()
 
-        self.plotButton1 = QPushButton("Show dynamic plot")
-        self.plotButton1.clicked.connect(self.on_plot1_clicked)
-        self.plotButton1.setMaximumWidth(200)
-        self.graphGrid.addWidget(self.plotButton1, 2, 0)
+        self.pathName = QLineEdit()
+        self.pathName.setText('result/')
+        self.pathName.setMaximumWidth(400)
+        self.graphGrid.addWidget(self.pathName, 0, 0)
 
-        self.plotButton2 = QPushButton("Show risk plot")
-        self.plotButton2.clicked.connect(self.on_plot2_clicked)
-        self.plotButton2.setMaximumWidth(200)
-        self.graphGrid.addWidget(self.plotButton2, 2, 1)
+        self.plotDButton = QPushButton("Show dynamic plot")
+        self.plotDButton.clicked.connect(self.on_plotD_clicked)
+        self.plotDButton.setMaximumWidth(300)
+        self.graphGrid.addWidget(self.plotDButton, 1, 0)
 
-        self.plotButton3 = QPushButton("Show dynamic distance plot")
-        self.plotButton3.clicked.connect(self.on_plot3_clicked)
-        self.plotButton3.setMaximumWidth(200)
-        self.graphGrid.addWidget(self.plotButton3, 2, 2)
+        self.saveDynamicName = QLineEdit()
+        self.saveDynamicName.setText("dynamic-time.txt")
+        self.saveDynamicName.setMaximumWidth(400)
+        self.graphGrid.addWidget(self.saveDynamicName, 2, 0)
+
+        self.saveDynamicButton = QPushButton("Save")
+        self.saveDynamicButton.clicked.connect(self.on_saveD_clicked)
+        self.saveDynamicButton.setMaximumWidth(100)
+        self.graphGrid.addWidget(self.saveDynamicButton, 2, 1)
+
+        self.plotDDButton = QPushButton("Show dynamic-distance plot")
+        self.plotDDButton.clicked.connect(self.on_plotDD_clicked)
+        self.plotDDButton.setMaximumWidth(300)
+        self.graphGrid.addWidget(self.plotDDButton, 3, 0)
+
+        self.saveDynamicDistanceName = QLineEdit()
+        self.saveDynamicDistanceName.setText("dynamic-distance.txt")
+        self.saveDynamicDistanceName.setMaximumWidth(400)
+        self.graphGrid.addWidget(self.saveDynamicDistanceName, 4, 0)
+
+        self.saveDynamicDistanceButton = QPushButton("Save")
+        self.saveDynamicDistanceButton.clicked.connect(self.on_saveDD_clicked)
+        self.saveDynamicDistanceButton.setMaximumWidth(100)
+        self.graphGrid.addWidget(self.saveDynamicDistanceButton, 4, 1)
+
+        self.plotRButton = QPushButton("Show risk plot")
+        self.plotRButton.clicked.connect(self.on_plotR_clicked)
+        self.plotRButton.setMaximumWidth(300)
+        self.graphGrid.addWidget(self.plotRButton, 5, 0)
+
+        self.saveRiskName = QLineEdit()
+        self.saveRiskName.setText("risk.txt")
+        self.saveRiskName.setMaximumWidth(400)
+        self.graphGrid.addWidget(self.saveRiskName, 6, 0)
+
+        self.saveRiskButton = QPushButton("Save")
+        self.saveRiskButton.clicked.connect(self.on_saveRisk_clicked)
+        self.saveRiskButton.setMaximumWidth(100)
+        self.graphGrid.addWidget(self.saveRiskButton, 6, 1)
 
         self.graphBox.setLayout(self.graphGrid)
         self.mainLayout.addWidget(self.graphBox)
@@ -75,15 +110,32 @@ class InfoPanel(QGroupBox):
             self.egoVelocityValue.setText(str(round(self.core.getCurrentVelocity(), 2)) + " m/s")
             self.egoAccValue.setText(str(round(self.core.getCurrentAcceleration(), 2)) + " m/s<sup>2</sup>")
 
-    def on_plot1_clicked(self):
+    def on_plotD_clicked(self):
         if self.core._egoCar is not None:
             self.core.plotDynamic()
 
-    def on_plot2_clicked(self):
+    def on_plotR_clicked(self):
         if self.core._egoCar is not None:
             self.core.plotRisk()
-    
-    def on_plot3_clicked(self):
+
+    def on_plotDD_clicked(self):
         if self.core._egoCar is not None:
             self.core.plotDynamicDistance()
 
+    def on_saveD_clicked(self):
+        if self.core._egoCar is not None:
+            self.core.saveDynamic(
+                self.pathName.text(),
+                self.saveDynamicName.text())
+
+    def on_saveDD_clicked(self):
+        if self.core._egoCar is not None:
+            self.core.saveDynamicDistance(
+                self.pathName.text(),
+                self.saveDynamicDistanceName.text())
+
+    def on_saveRisk_clicked(self):
+        if self.core._egoCar is not None:
+            self.core.saveRisk(
+                self.pathName.text(),
+                self.saveRiskName.text())
