@@ -26,29 +26,10 @@ class Core(object):
         else:
             return False
 
-    def replay(self, dT=param._dT):
-        self.timestamp_s = 0
-        self._env.restart()
-        if (self._egoCar is not None and
-           self.timestamp_s + dT <= param._SIMULATION_TIME):
-            self._egoCar.replay(self.timestamp_s, dT)
-            self._env.move(currentTime=self.timestamp_s)
-            self.timestamp_s = round(self.timestamp_s + dT, 3)
-            return True
-        else:
-            return False
-
     def reset(self):
         self._egoCar = None
         self._env = Environment()
         self.timestamp_s = 0
-
-    def restart(self):
-        if self._egoCar is None:
-            return
-        self.timestamp_s = 0
-        self._egoCar.restart()
-        self._env.restart()
 
     def getTimeParameter(self, dT, simulationTime, predictTime):
         param._dT = dT
@@ -165,8 +146,6 @@ class Core(object):
             hypoList.append(vehExport)
         return hypoList
 
-    """ Plot functions """
-
     def plotDynamic(self):
         if self._egoCar is None:
             return
@@ -182,17 +161,14 @@ class Core(object):
             return
         self._egoCar.plotPassedCost()
 
-    def saveDynamic(self, path, fileName):
+    def restart(self):
         if self._egoCar is None:
             return
-        self._egoCar.saveDynamic(path, fileName)
+        self.timestamp_s = 0
+        self._egoCar.restart()
+        self._env.restart()
 
-    def saveDynamicDistance(self, path, fileName):
+    def replay(self):
         if self._egoCar is None:
             return
-        self._egoCar.saveDynamicDistance(path, fileName)
-
-    def saveRisk(self, path, fileName):
-        if self._egoCar is None:
-            return
-        self._egoCar.saveRisk(path, fileName)
+        # bool for replay

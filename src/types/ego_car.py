@@ -224,7 +224,7 @@ class EgoVehicle:
                 objPose=hvPose, objPoly=hvPoly)
 
             hvcol_rate = rfnc.collisionEventRate(
-                collisionIndicator=hvcol_indicator*hypoVeh._appearRate,
+                collisionIndicator=hvcol_indicator * hypoVeh._appearRate,
                 method='sigmoid',
                 eventRate_max=param._COLLISION_HYPOVEH_RATE_MAX)
 
@@ -338,11 +338,11 @@ class EgoVehicle:
         total_eventRate = sum(
             list((self._p_eventRate[k]) for k in self._p_eventRate))
         max_eventRate = max(self._p_eventRate.values())
-        if max_eventRate > 3 and self.getCurrentPose().vdy.vx_ms > 0:
+        if max_eventRate > 3 and self.getCurrentPose().vdy.vx_ms > 4:
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(
                     u_in=x, dT=predictStep),
-                bounds=(-6, 0), method='bounded',
+                bounds=(-6, param._A_MIN), method='bounded',
                 options={"maxiter": 5}
             ).x
 
@@ -359,15 +359,6 @@ class EgoVehicle:
         self._l_u = {t: self._l_u[t]}
         self._currentPose = firstPose
 
-    def replay(self, t, dT):
-        self._currentPose = self._l_pose[t]
-        self._u = self._l_u[t]
-        self._searchEnvironment()
-        nextT = round(t + dT, 2)
-        self._currentPose = self._l_pose[nextT]
-        print("move")
-        self._u = self._l_u[nextT]
-
     # ------------------- Export function ---------------------
 
     def plotDynamicDistance(self):
@@ -381,29 +372,6 @@ class EgoVehicle:
         self._plotVelocity(ax=ax[0])
         self._plotAcceleration(ax=ax[1])
         plt.show()
-
-    def saveDynamic(self, path, fileName):
-        l_vdy = np.empty((0, 3))
-        for t, pose in self._l_pose.items():
-            u = self._l_u[t]
-            l_vdy = np.append(
-                l_vdy, np.array([[t, pose.vdy.vx_ms, u]]), axis=0)
-        np.savetxt(path + fileName, l_vdy, fmt='%1.2f')
-
-    def saveDynamicDistance(self, path, fileName):
-        l_vdy = np.empty((0, 3))
-        startPose = self._l_pose[min(self._l_pose)]
-        startPos = np.array([[startPose.x_m, startPose.y_m]])
-        for t, pose in self._l_pose.items():
-            u = self._l_u[t]
-            pos = np.array([[pose.x_m, pose.y_m]])
-            d = np.linalg.norm(pos - startPos)
-            l_vdy = np.append(
-                l_vdy, np.array([[d, pose.vdy.vx_ms, u]]), axis=0)
-        np.savetxt(path + fileName, l_vdy)
-
-    def saveRisk(self, path, fileName):
-        return
 
     def _plotVelocity(self, ax=plt, xDistance=False):
         l_vdy = np.empty((0, 2))

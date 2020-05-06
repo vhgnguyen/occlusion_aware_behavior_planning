@@ -54,10 +54,10 @@ def collisionSeverityHypoVeh(ego_vx, obj_vx, method='sigmoid'):
         severity *= param._SEVERITY_QUAD_WEIGHT
         severity += param._SEVERITY_HYPOVEH_MIN_WEIGHT
     elif method == "sigmoid":
-        sig_dv = np.linalg.norm(dv) - param._SEVERITY_HYPOVEH_AVG_VX
         severity = param._SEVERITY_HYPOVEH_SIG_MAX
-        severity /= (1.0 + np.exp(-param._SEVERITY_HYPOVEH_SIG_B * sig_dv))
-        severity += param._SEVERITY_HYPOVEH_MIN_WEIGHT
+        sig_dv = np.linalg.norm(dv) - param._SEVERITY_HYPOVEH_AVG_VX
+        severity /= (1.0 + np.exp(-param._SEVERITY_SIG_B * sig_dv))
+        severity += param._SEVERITY_MIN_WEIGHT_CONST
     else:
         severity = param._SEVERITY_HYPOVEH_MIN_WEIGHT
 
@@ -157,7 +157,7 @@ def collisionIndicator(egoPose, egoPoly, objPose, objPoly):
             bound=bound,
             dMean=dMean,
             dCov=dCov)
-
+        # col_indicator = collisionIndicatorComputeSimple(bound, dMean, dCov)
     return col_indicator
 
 
