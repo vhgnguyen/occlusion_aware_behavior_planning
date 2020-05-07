@@ -37,8 +37,8 @@ from matplotlib.patches import Ellipse, Polygon
 
 pose1 = Pose(x_m=1, y_m=1, yaw_rad=0)
 pose2 = Pose(x_m=4, y_m=4, yaw_rad=np.pi/2)
-obj1 = rectangle(pose1, 2,1)
-obj2 = rectangle(pose2, 4,1)
+obj1 = rectangle(pose1, 2,2)
+obj2 = rectangle(pose2, 4,2)
 
 minK, _ = gn.minkowskiSum(-obj2, obj1)
 
