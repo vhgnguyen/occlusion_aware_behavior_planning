@@ -2,20 +2,22 @@
 # Discreted time interval
 # ------------------------------
 _dT = 0.2
-_PREDICT_TIME = 5
+_PREDICT_TIME = 3
 _PREDICT_STEP = 0.4
 _SIMULATION_TIME = 20.0
 
 # ------------------------------
 # Environment
 # ------------------------------
-_SCAN_RADIUS = 40.
-_FOV_ANGLE = 3.14159 / 2 - 0.1
-_FOV_RAYS = 100
+_SCAN_RADIUS = 50.
+_FOV_ANGLE = 3.14159 - 0.001
+_FOV_RAYS = 200
+
 _CAR_LENGTH = 3.5
 _CAR_WIDTH = 2
 
 # hypothesen
+_ENABLE_HYPOTHESIS = True
 _PEDESTRIAN_VX = 2.0
 _VEHICLE_VX = 8
 
@@ -43,7 +45,7 @@ _V_MAX_OBJECT = 4
 _COLLISION_ORTHO_THRES = 0.3  # 15 degree
 
 # collision severity
-_SEVERITY_MIN_WEIGHT_CONST = 5.
+_SEVERITY_MIN_WEIGHT_CONST = 1.
 
 _SEVERITY_QUAD_WEIGHT = 0.10
 
@@ -74,6 +76,7 @@ _COLLISION_RATE_MAX = 10.
 _COLLISION_HYPOPEDES_RATE_MAX = 2.
 _COLLISION_HYPOVEH_RATE_MAX = 3.
 _COLLISION_RATE_EXP_BETA = 3.
+_COLLISION_RATE_EXP_BETA_PEDES = 3.
 _COLLISION_RATE_SIG_BETA = 10.
 
 # escape rate
@@ -83,7 +86,7 @@ _ESCAPE_RATE = 1.
 _C_CRUISE = 0.001
 _C_V_CRUISE = 8
 _C_COMFORT = 0.001
-_C_JERK = 0.005
+_C_JERK = 0.0005
 
 # unseen event rate
 _UNSEENEVENT_RATE_MAX = 1
