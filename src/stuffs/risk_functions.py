@@ -7,14 +7,14 @@ import _param as param
 import gaussian as gaussian
 
 
-def collisionEventSeverity(ego_vx, obj_vx, method="quadratic", gom_rate=0.1):
+def collisionEventSeverity(ego_vx, obj_vx, method='sigmoid', gom_rate=1):
     """
     Collision event severity of ego vehicle with another object
     Args:
         ego_vx: longtitude velocity vector of vehicle in UTM
         obj_vx: longtitude velocity vector of object in UTM
-        method: one of these ["constant", "linear",
-                                "quadratic", "sigmoid", "gompertz"]
+        method: one of these ['constant', 'linear',
+                                'quadratic', 'sigmoid', 'gompertz']
     Return:
         severity: collision event severity
     """
@@ -22,20 +22,20 @@ def collisionEventSeverity(ego_vx, obj_vx, method="quadratic", gom_rate=0.1):
 
     dv = ego_vx - obj_vx
     severity = 0.0
-    if method == "constant":
+    if method == 'constant':
         severity = param._SEVERITY_MIN_WEIGHT_CONST
-    elif method == "linear":
+    elif method == 'linear':
         severity = np.linalg.norm(dv)
-    elif method == "quadratic":
+    elif method == 'quadratic':
         severity = np.linalg.norm(dv)**2
         severity *= param._SEVERITY_QUAD_WEIGHT
         severity += param._SEVERITY_MIN_WEIGHT_CONST
-    elif method == "sigmoid":
+    elif method == 'sigmoid':
         sig_dv = np.linalg.norm(dv) - param._SEVERITY_SIG_AVG_VX
         severity = param._SEVERITY_SIG_MAX
         severity /= (1.0 + np.exp(-param._SEVERITY_SIG_B * sig_dv))
         severity += param._SEVERITY_MIN_WEIGHT_CONST
-    elif method == "gompertz":
+    elif method == 'gompertz':
         gom_dv = np.linalg.norm(dv) - param._SEVERITY_GOM_AVG_VX
         severity = param._SEVERITY_GOM_MAX
         severity *= np.exp(-param._SEVERITY_GOM_BETA*np.exp(-gom_rate*gom_dv))
@@ -47,17 +47,26 @@ def collisionEventSeverity(ego_vx, obj_vx, method="quadratic", gom_rate=0.1):
 
 
 def collisionSeverityHypoVeh(ego_vx, obj_vx, method='sigmoid'):
+    """
+    Collision event severity of ego vehicle with hypthetical vehicle
+    Args:
+        ego_vx: longtitude velocity vector of vehicle in UTM
+        obj_vx: longtitude velocity vector of object in UTM
+        method: one of these ['constant', 'quadratic', 'sigmoid']
+    Return:
+        severity: collision event severity
+    """
     dv = ego_vx - obj_vx
     severity = 0.0
-    if method == "quadratic":
+    if method == 'quadratic':
         severity = np.linalg.norm(dv)**2
         severity *= param._SEVERITY_QUAD_WEIGHT
         severity += param._SEVERITY_HYPOVEH_MIN_WEIGHT
-    elif method == "sigmoid":
+    elif method == 'sigmoid':
         severity = param._SEVERITY_HYPOVEH_SIG_MAX
         sig_dv = np.linalg.norm(dv) - param._SEVERITY_HYPOVEH_AVG_VX
         severity /= (1.0 + np.exp(-param._SEVERITY_SIG_B * sig_dv))
-        severity += param._SEVERITY_MIN_WEIGHT_CONST
+        severity += param._SEVERITY_HYPOVEH_MIN_WEIGHT
     else:
         severity = param._SEVERITY_HYPOVEH_MIN_WEIGHT
 
@@ -65,6 +74,15 @@ def collisionSeverityHypoVeh(ego_vx, obj_vx, method='sigmoid'):
 
 
 def collisionSeverityHypoPedes(ego_vx, obj_vx, method='gompertz', gom_rate=0.1):
+    """
+    Collision event severity of ego vehicle with hypthetical vehicle
+    Args:
+        ego_vx: longtitude velocity vector of vehicle in UTM
+        obj_vx: longtitude velocity vector of object in UTM
+        method: one of these ['constant', 'gompertz', 'sigmoid']
+    Return:
+        severity: collision event severity
+    """
     dv = ego_vx - obj_vx
     severity = 0.0
     if method == 'sigmoid':
@@ -75,11 +93,11 @@ def collisionSeverityHypoPedes(ego_vx, obj_vx, method='gompertz', gom_rate=0.1):
     elif method == 'gompertz':
         gom_dv = np.linalg.norm(dv) - param._SEVERITY_HYPOPEDES_AVG_VX
         severity = param._SEVERITY_HYPOPEDES_GOM_MAX
-        severity *= np.exp(-param._SEVERITY_HYPOPEDES_GOM_BETA*np.exp(-gom_rate*gom_dv))
+        severity *= np.exp(-param._SEVERITY_HYPOPEDES_GOM_BETA*np.exp(-gom_dv))
         severity += param._SEVERITY_HYPOPEDES_MIN_WEIGHT
     else:
         severity = param._SEVERITY_HYPOPEDES_MIN_WEIGHT
-    
+
     return severity
 
 

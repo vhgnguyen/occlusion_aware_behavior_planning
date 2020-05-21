@@ -2,6 +2,11 @@ from PyQt5 import QtCore
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QGroupBox,
                              QVBoxLayout, QHBoxLayout, QPushButton,
                              QLineEdit, QGridLayout, QLabel)
+import numpy as np
+import matplotlib.pyplot as plt
+import tikzplotlib
+from matplotlib.patches import Ellipse, Polygon
+import helper as helper
 
 
 class InfoPanel(QGroupBox):
@@ -16,6 +21,7 @@ class InfoPanel(QGroupBox):
         self.addInfoBox()
         self.mainLayout.addStretch()
         self.setLayout(self.mainLayout)
+        self._plotScene, self._ax = None, None
 
     def addInfoBox(self):
         # information control
@@ -103,6 +109,24 @@ class InfoPanel(QGroupBox):
         self.graphBox.setLayout(self.graphGrid)
         self.mainLayout.addWidget(self.graphBox)
 
+        self.plotSceneButton = QPushButton("Show scene plot")
+        self.plotSceneButton.clicked.connect(self.on_plotScene_clicked)
+        self.plotSceneButton.setMaximumWidth(300)
+        self.graphGrid.addWidget(self.plotSceneButton, 7, 0)
+
+        self.saveSceneName = QLineEdit()
+        self.saveSceneName.setText("scene.tex")
+        self.saveSceneName.setMaximumWidth(400)
+        self.graphGrid.addWidget(self.saveSceneName, 8, 0)
+
+        self.saveSceneButton = QPushButton("Save")
+        self.saveSceneButton.clicked.connect(self.on_saveScene_clicked)
+        self.saveSceneButton.setMaximumWidth(100)
+        self.graphGrid.addWidget(self.saveSceneButton, 8, 1)
+
+        self.graphBox.setLayout(self.graphGrid)
+        self.mainLayout.addWidget(self.graphBox)
+
     def update(self):
         if self.core._egoCar is not None:
             self.currentTimeValue.setText(str(self.core.getCurrentTime()) + " s")
@@ -122,6 +146,10 @@ class InfoPanel(QGroupBox):
         if self.core._egoCar is not None:
             self.core.plotDynamicDistance()
 
+    def on_plotScene_clicked(self):
+        if self.core._egoCar is not None:
+            self.plotScene()
+
     def on_saveD_clicked(self):
         if self.core._egoCar is not None:
             self.core.saveDynamic(
@@ -139,3 +167,113 @@ class InfoPanel(QGroupBox):
             self.core.saveRisk(
                 self.pathName.text(),
                 self.saveRiskName.text())
+
+    def on_saveScene_clicked(self):
+        if self.core._egoCar is not None:
+            tikzplotlib.save(
+                self.pathName.text()+self.saveSceneName.text(),
+                axis_height='10cm',
+                axis_width='16cm')
+
+    def plotScene(self):
+        fig, ax = plt.subplots(figsize=(14, 6))
+        pose = self.core.getCurrentEgoPos()
+
+        # plot road
+        for road in self.core._env._l_road:
+            # draw left boundary
+            helper.plotLine(
+                road.left, ax=ax, color='k', linestyle='-')
+            # draw right boundary
+            helper.plotLine(
+                road.right, ax=ax, color='k', linestyle='-')
+            # draw lane in dashed
+            helper.plotLine(
+                road.lane, ax=ax, color='gray', linestyle='--')
+
+        # plot FOV
+        helper.plotPolygon(
+            self.core.getCurrentFOV(), facecolor='lightskyblue', edgecolor='b',
+            alpha=0.6, ax=ax, label="FOV")
+
+        # plot static object
+        objectList = self.core._env._l_staticObject
+        for obj in objectList:
+            helper.plotPolygon(
+                obj._poly, facecolor='gray', edgecolor='gray',
+                alpha=1, label=None, ax=ax)
+
+        # plot pedestrian cross
+        crossList = self.core._env._l_cross
+        for cross in crossList:
+            v_l = cross.left[1] - cross.left[0]
+            length = np.linalg.norm(v_l)
+            v_l = v_l / length
+            v_r = cross.right[1] - cross.right[0]
+            v_r = v_r / length
+            step = np.arange(0, length, 1)
+            for i in range(0, step.shape[0]-1, 2):
+                p1 = cross.left[0] + v_l * step[i]
+                p2 = cross.right[0] + v_r * step[i]
+                p3 = cross.right[0] + v_r * step[i+1]
+                p4 = cross.left[0] + v_l * step[i+1]
+                cPoly = np.array([p1, p2, p3, p4])
+                helper.plotPolygon(
+                    cPoly, facecolor='k', edgecolor='k',
+                    alpha=1, label=None, ax=ax,
+                    )
+
+        # plot ego vehicle
+        helper.plotPolygon(
+            self.core.getCurrentEgoPoly(), facecolor='b', edgecolor='b',
+            alpha=1, label='ego vehicle', ax=ax,
+            heading=True, hcolor='k')
+
+        # plot other vehicle
+        vehicleList = self.core.exportCurrentVehicle()
+        hypoList = self.core.exportHypoVehicle()
+        for vehicle in vehicleList:
+            if vehicle['visible']:
+                helper.plotPolygon(
+                    vehicle['poly'], facecolor='yellow', edgecolor='lime',
+                    alpha=1, label="detected vehicle", ax=ax,
+                    heading=True, hcolor='lime')
+            else:
+                helper.plotPolygon(
+                    vehicle['poly'], facecolor='yellow', edgecolor='r',
+                    alpha=1, label="undetected vehicle", ax=ax,
+                    heading=True, hcolor='r')
+        for hypoV in hypoList:
+            helper.plotPolygon(
+                    hypoV['poly'], facecolor='yellow', edgecolor='k',
+                    alpha=1, label="hypothesis vehicle", ax=ax,
+                    heading=True, hcolor='k')
+
+        # plot other pedestrian
+        pedesList = self.core.exportCurrentPedestrian()
+        hypoPList = self.core.exportHypoPedestrian()
+        for pedes in pedesList:
+            if pedes['visible']:
+                helper.plotPolygon(
+                    pedes['poly'], facecolor='pink', edgecolor='lime',
+                    alpha=1, label="detected pedestrian", ax=ax,
+                    heading=True, hcolor='lime')
+            else:
+                helper.plotPolygon(
+                    pedes['poly'], facecolor='pink', edgecolor='r',
+                    alpha=1, label="undetected pedestrian", ax=ax,
+                    heading=True, hcolor='r')
+        for hypoP in hypoPList:
+            helper.plotPolygon(
+                    hypoP['poly'], facecolor='pink', edgecolor='k',
+                    alpha=1, label="hypothesis pedestrian", ax=ax,
+                    heading=True, hcolor='k')
+
+        helper.handleLegend(ax=plt)
+        ax.axis('equal')
+        ax.set_xlim(pose[0]-40, pose[0]+40)
+        ax.set_ylim(pose[1]-20, pose[1]+20)
+        ax.set_xlabel("x[m]")
+        ax.set_ylabel("y[m]")
+        self._plotScene, self._ax = fig, ax
+        plt.show()

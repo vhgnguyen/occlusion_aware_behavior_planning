@@ -34,6 +34,8 @@ class BirdEyeView(QOpenGLWidget):
         print(self.getOpenglInfo())
         self.setClearColor(self.trolltechPurple.darker())
         gl.glShadeModel(gl.GL_FLAT)
+        gl.glEnable(gl.GL_LINE_SMOOTH)
+        gl.glHint(gl.GL_LINE_SMOOTH_HINT, gl.GL_NICEST)
         gl.glEnable(gl.GL_POLYGON_SMOOTH)
         gl.glEnable(gl.GL_BLEND)
         gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
@@ -133,17 +135,14 @@ class BirdEyeView(QOpenGLWidget):
     def drawRoadBoundary(self):
         for road in self.core._env._l_road:
             # draw left boundary
-            le = road.left
             helper.drawLine(
-                line=le, color='black', alpha=1, lineWidth=4)
+                line=road.left, color='black', alpha=1, lineWidth=4)
             # draw right boundary
-            ri = road.right
             helper.drawLine(
-                line=ri, color='black', alpha=1, lineWidth=4)
+                line=road.right, color='black', alpha=1, lineWidth=4)
             # draw lane in dashed
-            la = road.lane
             helper.drawLine(
-                line=la, color='gray', alpha=1, lineWidth=2, strip=True)
+                line=road.lane, color='gray', alpha=1, lineWidth=2, strip=True)
 
     def drawStaticObject(self):
         objectList = self.core._env._l_staticObject

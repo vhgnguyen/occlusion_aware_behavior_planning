@@ -20,13 +20,6 @@ class StaticObject(object):
         self._poly = poly
         self._center = np.mean(poly, axis=0)
 
-    # def plot(self, ax=plt):
-    #     poly = Polygon(
-    #         self._poly, facecolor='gray',
-    #         edgecolor='black', alpha=1, label='static object'
-    #         )
-    #     ax.add_patch(poly)
-
 
 class Road(object):
     def __init__(self, left, right, lane, prior=False):
@@ -34,104 +27,17 @@ class Road(object):
         self.right = right
         self.lane = lane
         self.theta = math.atan2(left[1][1]-left[0][1], left[1][0]-left[0][0])
-        self.prior = prior
 
 
-class RoadBoundary(object):
-    """
-        Class define road boundary as lines between points
-        with UTM coordinate in ^-> direction
-    """
-    def __init__(self, scenario):
-        self.l_road = []
-        self.setup(scenario)
+class PedestrianCross(object):
 
-    def setup(self, scenario):
-        if scenario == 1:
-            road = Road(
-                left=np.array([[-100, 4], [100, 4]]),
-                right=np.array([[-100, -4], [100, -4]]),
-                lane=np.array([[-100, 0], [100, 0]])
-            )
-            self.l_road.append(road)
-
-        if scenario == 2:
-            road1 = Road(
-                left=np.array([[-100, 4], [-4, 4]]),
-                right=np.array([[-100, -4], [-4, -4]]),
-                lane=np.array([[-100, 0], [-4, 0]])
-            )
-            road2 = Road(
-                left=np.array([[-4, 4], [4, 4]]),
-                right=None,
-                lane=np.array([[-4, 0], [4, 0]])
-            )
-            road3 = Road(
-                left=np.array([[4, 4], [100, 4]]),
-                right=np.array([[4, -4], [100, -4]]),
-                lane=np.array([[4, 0], [100, 0]])
-            )
-            road4 = Road(
-                left=np.array([[-4, -100], [-4, -4]]),
-                right=np.array([[4, -100], [4, -4]]),
-                lane=np.array([[0, -100], [0, -4]])
-            )
-            self.l_road.extend([road1, road2, road3, road4])
-
-        if scenario == 3:
-            road1 = Road(
-                left=np.array([[-100, 4], [-4, 4]]),
-                right=np.array([[-100, -4], [-4, -4]]),
-                lane=np.array([[-100, 0], [-4, 0]])
-            )
-            road2 = Road(
-                left=np.array([[-4, 4], [-4, 100]]),
-                right=np.array([[4, 4], [4, 100]]),
-                lane=np.array([[0, 4], [0, 100]])
-            )
-            road3 = Road(
-                left=np.array([[4, 4], [100, 4]]),
-                right=np.array([[4, -4], [100, -4]]),
-                lane=np.array([[4, 0], [100, 0]])
-            )
-            road4 = Road(
-                left=np.array([[-4, -100], [-4, -4]]),
-                right=np.array([[4, -100], [4, -4]]),
-                lane=np.array([[0, -100], [0, -4]])
-            )
-            self.l_road.extend([road1, road2, road3, road4])
-
-        if scenario == 4:
-            road1 = Road(
-                left=np.array([[-100, 4], [-4, 4]]),
-                right=np.array([[-100, -4], [-4, -4]]),
-                lane=np.array([[-100, 0], [-4, 0]])
-            )
-            road2 = Road(
-                left=np.array([[-4, 4], [-4, 100]]),
-                right=np.array([[4, 4], [4, 100]]),
-                lane=np.array([[0, 4], [0, 100]])
-            )
-            road3 = Road(
-                left=np.array([[4, 4], [100, 4]]),
-                right=np.array([[4, -4], [100, -4]]),
-                lane=np.array([[4, 0], [100, 0]])
-            )
-            road4 = Road(
-                left=np.array([[-4, -100], [-4, -4]]),
-                right=np.array([[4, -100], [4, -4]]),
-                lane=np.array([[0, -100], [0, -4]])
-            )
-            self.l_road.extend([road1, road2, road3, road4])
-
-    # def plot(self, ax=plt):
-    #     nrRoad = self.lane.shape[0]
-    #     for i in nrRoad:
-    #         boundStyle = {'linestyle': '-', 'color': 'k'}
-    #         plotLine(self.left[i], ax=ax, **boundStyle)
-    #         plotLine(self.right[i], ax=ax, **boundStyle)
-    #         laneStyle = {'linestyle': '--', 'color': 'k'}
-    #         plotLine(self.lane[i], ax=ax, **laneStyle)
+    def __init__(self, left, right, density):
+        assert np.linalg.norm(left[0] - left[1]) == \
+               np.linalg.norm(right[0] - right[1])
+        self.left = left
+        self.right = right
+        self.center = 0.5*(np.mean(left, axis=0) + np.mean(right, axis=0))
+        self.theta = math.atan2(left[1][1]-left[0][1], left[1][0]-left[0][0])
 
 
 class Vehicle(object):
@@ -263,44 +169,6 @@ class Vehicle(object):
             }
         return exportVehicle
 
-    # def plotAt(self, timestamp_s, ax=plt):
-    #     if timestamp_s in self._l_pose:
-    #         pose = self._l_pose[timestamp_s]
-    #         ax.scatter(pose.x_m, pose.y_m, s=1, color='b')
-    #         cov = pose.covLatLong
-    #         ellipse = Ellipse([pose.x_m, pose.y_m],
-    #                           width=np.sqrt(cov[0, 0])*2,
-    #                           height=np.sqrt(cov[1, 1])*2,
-    #                           angle=np.degrees(pose.yaw_rad),
-    #                           facecolor=None,
-    #                           edgecolor='blue',
-    #                           alpha=0.4)
-    #         ax.add_patch(ellipse)
-    #     else:
-    #         return
-
-    # def plot(self, maxTimestamp_s, ax=plt):
-    #     for timestamp_s, pose in self._l_pose.items():
-    #         if timestamp_s <= maxTimestamp_s:
-    #             ax.scatter(pose.x_m, pose.y_m, s=1, color='b')
-    #             cov = pose.covLatLong
-    #             ellipse = Ellipse(
-    #                 [pose.x_m, pose.y_m],
-    #                 width=np.sqrt(cov[0, 0])*2,
-    #                 height=np.sqrt(cov[1, 1])*2,
-    #                 angle=np.degrees(pose.yaw_rad),
-    #                 facecolor=None,
-    #                 edgecolor='blue',
-    #                 alpha=0.4)
-    #             ax.add_patch(ellipse)
-    #         if timestamp_s == maxTimestamp_s:
-    #             poly = self.getPoly(timestamp_s)
-    #             poly = Polygon(
-    #                 poly, facecolor='cyan',
-    #                 edgecolor='blue', alpha=0.7, label='other vehicle'
-    #             )
-    #             ax.add_patch(poly)
-
 
 class Pedestrian(object):
 
@@ -428,55 +296,45 @@ class Pedestrian(object):
             }
         return exportPedes
 
-    # def plotAt(self, timestamp_s, ax=plt):
-    #     if timestamp_s in self._l_pose:
-    #         pose = self._l_pose[timestamp_s]
-    #         ax.scatter(pose.x_m, pose.y_m, s=1, color='b')
-    #         cov = pose.covLatLong
-    #         ellipse = Ellipse([pose.x_m, pose.y_m],
-    #                           width=np.sqrt(cov[0, 0])*2,
-    #                           height=np.sqrt(cov[1, 1])*2,
-    #                           angle=np.degrees(pose.yaw_rad),
-    #                           facecolor=None,
-    #                           edgecolor='blue',
-    #                           alpha=0.4)
-    #         ax.add_patch(ellipse)
-    #     else:
-    #         return
 
-    # def plot(self, maxTimestamp_s, ax=plt):
-    #     for timestamp_s, pose in self._l_pose.items():
-    #         if timestamp_s <= maxTimestamp_s:
-    #             ax.scatter(pose.x_m, pose.y_m, s=1, color='b')
-    #             cov = pose.covLatLong
-    #             ellipse = Ellipse(
-    #                 [pose.x_m, pose.y_m],
-    #                 width=np.sqrt(cov[0, 0])*2,
-    #                 height=np.sqrt(cov[1, 1])*2,
-    #                 angle=np.degrees(pose.yaw_rad),
-    #                 facecolor=None,
-    #                 edgecolor='blue',
-    #                 alpha=0.4)
-    #             ax.add_patch(ellipse)
-    #         if timestamp_s == maxTimestamp_s:
-    #             poly = self.getPoly(timestamp_s)
-    #             poly = Polygon(
-    #                 poly, facecolor='cyan',
-    #                 edgecolor='blue', alpha=0.7, label='other vehicle'
-    #             )
-    #             ax.add_patch(poly)
+# def plotAt(self, timestamp_s, ax=plt):
+#     if timestamp_s in self._l_pose:
+#         pose = self._l_pose[timestamp_s]
+#         ax.scatter(pose.x_m, pose.y_m, s=1, color='b')
+#         cov = pose.covLatLong
+#         ellipse = Ellipse([pose.x_m, pose.y_m],
+#                           width=np.sqrt(cov[0, 0])*2,
+#                           height=np.sqrt(cov[1, 1])*2,
+#                           angle=np.degrees(pose.yaw_rad),
+#                           facecolor=None,
+#                           edgecolor='blue',
+#                           alpha=0.4)
+#         ax.add_patch(ellipse)
+#     else:
+#         return
 
-
-class PedestrianCross(object):
-
-    def __init__(self, left, right, density):
-        assert np.linalg.norm(left[0] - left[1]) == \
-               np.linalg.norm(right[0] - right[1])
-        self.left = left
-        self.right = right
-        self.center = 0.5*(np.mean(left, axis=0) + np.mean(right, axis=0))
-        self.theta = math.atan2(left[1][1]-left[0][1], left[1][0]-left[0][0])
+# def plot(self, maxTimestamp_s, ax=plt):
+#     for timestamp_s, pose in self._l_pose.items():
+#         if timestamp_s <= maxTimestamp_s:
+#             ax.scatter(pose.x_m, pose.y_m, s=1, color='b')
+#             cov = pose.covLatLong
+#             ellipse = Ellipse(
+#                 [pose.x_m, pose.y_m],
+#                 width=np.sqrt(cov[0, 0])*2,
+#                 height=np.sqrt(cov[1, 1])*2,
+#                 angle=np.degrees(pose.yaw_rad),
+#                 facecolor=None,
+#                 edgecolor='blue',
+#                 alpha=0.4)
+#             ax.add_patch(ellipse)
+#         if timestamp_s == maxTimestamp_s:
+#             poly = self.getPoly(timestamp_s)
+#             poly = Polygon(
+#                 poly, facecolor='cyan',
+#                 edgecolor='blue', alpha=0.7, label='other vehicle'
+#             )
+#             ax.add_patch(poly)
 
 
-def plotLine(line, ax=plt, **kwargs):
-    ax.plot([line[0][0], line[1][0]], [line[0][1], line[1][1]], **kwargs)
+# def plotLine(line, ax=plt, **kwargs):
+#     ax.plot([line[0][0], line[1][0]], [line[0][1], line[1][1]], **kwargs)

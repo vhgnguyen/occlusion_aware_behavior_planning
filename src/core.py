@@ -97,11 +97,19 @@ class Core(object):
         if self._egoCar is None:
             return None
         return [self._egoCar.getCurrentPose().x_m,
-                self._egoCar.getCurrentPose().y_m]
+                self._egoCar.getCurrentPose().y_m,
+                self._egoCar.getCurrentPose().yaw_rad]
+
+    def getCurrentEgoHeading(self):
+        if self._egoCar is None:
+            return None
+        return self._egoCar.getCurrentPose().yaw_rad
 
     def getCurrentFOV(self):
         if self._egoCar is None:
             return None
+        else:
+            self._egoCar._searchEnvironment()
         return self._egoCar._fov
 
     def getCurrentVelocity(self):
@@ -160,6 +168,21 @@ class Core(object):
         if self._egoCar is None:
             return
         self._egoCar.plotPassedCost()
+
+    def saveDynamic(self, path, fileName):
+        if self._egoCar is None:
+            return
+        self._egoCar.saveDynamic(path, fileName)
+
+    def saveDynamicDistance(self, path, fileName):
+        if self._egoCar is None:
+            return
+        self._egoCar.saveDynamicDistance(path, fileName)
+
+    def saveRisk(self, path, fileName):
+        if self._egoCar is None:
+            return
+        self._egoCar.saveRisk(path, fileName)
 
     def restart(self):
         if self._egoCar is None:

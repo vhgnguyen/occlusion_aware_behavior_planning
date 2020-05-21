@@ -1,8 +1,8 @@
 import sys
 sys.path.insert(0, 'src')
+sys.path.insert(0, 'src/scenario')
 sys.path.insert(0, 'src/types')
 sys.path.insert(0, 'src/stuffs')
-
 sys.path.insert(0, 'gui')
 
 from PyQt5.QtWidgets import QApplication

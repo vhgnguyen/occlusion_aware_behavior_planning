@@ -144,10 +144,14 @@ class EgoVehicle:
                 objPose=vehPose, objPoly=vehPoly)
 
             vcol_rate = rfnc.collisionEventRate(
-                collisionIndicator=vcol_indicator)
+                collisionIndicator=vcol_indicator,
+                eventRate_max=param._COLLISION_RATE_MAX,
+                method=param._COLLISION_EVENT_RATE_MODEL,
+                exp_beta=param._COLLISION_RATE_EXP_BETA)
 
             vcol_severity = rfnc.collisionEventSeverity(
-                ego_vx=egoPose.vdy.vx_ms, obj_vx=vehPose.vdy.vx_ms)
+                ego_vx=egoPose.vdy.vx_ms, obj_vx=vehPose.vdy.vx_ms,
+                method=param._COLLISION_SEVERITY_MODEL)
 
             vcol_risk = rfnc.collisionRisk(
                 col_severity=vcol_severity,
@@ -180,10 +184,14 @@ class EgoVehicle:
                 objPose=pPose, objPoly=pPoly)
 
             pcol_rate = rfnc.collisionEventRate(
-                collisionIndicator=pcol_indicator)
+                collisionIndicator=pcol_indicator,
+                eventRate_max=param._COLLISION_RATE_MAX,
+                method=param._COLLISION_EVENT_RATE_MODEL,
+                exp_beta=param._COLLISION_RATE_EXP_BETA_PEDES)
 
             pcol_severity = rfnc.collisionEventSeverity(
-                ego_vx=egoPose.vdy.vx_ms, obj_vx=pPose.vdy.vx_ms)
+                ego_vx=egoPose.vdy.vx_ms, obj_vx=pPose.vdy.vx_ms,
+                method=param._COLLISION_SEVERITY_MODEL)
 
             pcol_risk = rfnc.collisionRisk(
                 col_severity=pcol_severity,
@@ -203,11 +211,12 @@ class EgoVehicle:
             hpcol_rate = rfnc.collisionEventRate(
                 collisionIndicator=hpcol_indicator * hypoPedes._appearRate,
                 eventRate_max=param._COLLISION_HYPOPEDES_RATE_MAX,
-                method='sigmoid')
+                method=param._EVENT_RATE_HYPOPEDES_MODEL)
 
             hpcol_severity = rfnc.collisionSeverityHypoPedes(
                 ego_vx=egoPose.vdy.vx_ms, obj_vx=hPose.vdy.vx_ms,
-                method='gompertz', gom_rate=hypoPedes._appearRate)
+                method=param._SEVERITY_HYPOPEDES_MODEL,
+                gom_rate=hypoPedes._appearRate)
 
             hpcol_risk = rfnc.collisionRisk(
                 col_severity=hpcol_severity,
@@ -225,12 +234,12 @@ class EgoVehicle:
 
             hvcol_rate = rfnc.collisionEventRate(
                 collisionIndicator=hvcol_indicator * hypoVeh._appearRate,
-                method='sigmoid',
+                method=param._EVENT_RATE_HYPOVEH_MODEL,
                 eventRate_max=param._COLLISION_HYPOVEH_RATE_MAX)
 
             hvcol_severity = rfnc.collisionSeverityHypoVeh(
                 ego_vx=egoPose.vdy.vx_ms, obj_vx=hvPose.vdy.vx_ms,
-                method='sigmoid')
+                method=param._SEVERITY_HYPOVEH_MODEL)
 
             hvcol_risk = rfnc.collisionRisk(
                 col_severity=hvcol_severity,
@@ -318,15 +327,15 @@ class EgoVehicle:
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(
                     u_in=x, dT=predictStep),
-                bounds=(-0.1, 1), method='bounded',
+                bounds=(-0., param._J_MAX), method='bounded',
                 options={"maxiter": 5}
                 ).x
         else:
-            lowBound = max(self._u - 1, -3)
-            upBound = min(self._u + 1, 3)
+            lowBound = max(self._u - param._J_MAX, param._A_MIN)
+            upBound = min(self._u + param._J_MAX, param._A_MAX)
             if lowBound >= upBound:
                 lowBound = param._A_MIN
-                upBound = param._A_MIN + 1
+                upBound = lowBound + param._J_MAX
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(
                     u_in=x, dT=predictStep),
@@ -338,11 +347,11 @@ class EgoVehicle:
         total_eventRate = sum(
             list((self._p_eventRate[k]) for k in self._p_eventRate))
         max_eventRate = max(self._p_eventRate.values())
-        if max_eventRate > 3 and self.getCurrentPose().vdy.vx_ms > 4:
+        if max_eventRate > param._COLLISION_RATE_BRAKE_MIN and self.getCurrentPose().vdy.vx_ms > 0:
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(
                     u_in=x, dT=predictStep),
-                bounds=(-6, param._A_MIN), method='bounded',
+                bounds=(-param._A_MAX_BRAKE, param._A_MIN), method='bounded',
                 options={"maxiter": 5}
             ).x
 
@@ -372,6 +381,29 @@ class EgoVehicle:
         self._plotVelocity(ax=ax[0])
         self._plotAcceleration(ax=ax[1])
         plt.show()
+
+    def saveDynamic(self, path, fileName):
+        l_vdy = np.empty((0, 3))
+        for t, pose in self._l_pose.items():
+            u = self._l_u[t]
+            l_vdy = np.append(
+                l_vdy, np.array([[t, pose.vdy.vx_ms, u]]), axis=0)
+        np.savetxt(path + fileName, l_vdy, fmt='%1.2f')
+
+    def saveDynamicDistance(self, path, fileName):
+        l_vdy = np.empty((0, 3))
+        startPose = self._l_pose[min(self._l_pose)]
+        startPos = np.array([[startPose.x_m, startPose.y_m]])
+        for t, pose in self._l_pose.items():
+            u = self._l_u[t]
+            pos = np.array([[pose.x_m, pose.y_m]])
+            d = np.linalg.norm(pos - startPos)
+            l_vdy = np.append(
+                l_vdy, np.array([[d, pose.vdy.vx_ms, u]]), axis=0)
+        np.savetxt(path + fileName, l_vdy)
+
+    def saveRisk(self, path, fileName):
+        return
 
     def _plotVelocity(self, ax=plt, xDistance=False):
         l_vdy = np.empty((0, 2))
@@ -518,7 +550,7 @@ class EgoVehicle:
                     eventRate_max=param._COLLISION_HYPOPEDES_RATE_MAX,
                     method='sigmoid')
 
-                hpcol_severity = rfnc.collisionEventSeverity(
+                hpcol_severity = rfnc.collisionSeverityHypoPedes(
                     ego_vx=egoPose.vdy.vx_ms, obj_vx=hPose.vdy.vx_ms,
                     method='gompertz', gom_rate=hypoPedes._appearRate)
 
@@ -542,7 +574,7 @@ class EgoVehicle:
                     method='sigmoid',
                     eventRate_max=param._COLLISION_HYPOVEH_RATE_MAX)
 
-                hvcol_severity = rfnc.collisionEventSeverity(
+                hvcol_severity = rfnc.collisionSeverityHypoVeh(
                     ego_vx=egoPose.vdy.vx_ms, obj_vx=hvPose.vdy.vx_ms,
                     method='sigmoid')
 
