@@ -162,6 +162,7 @@ class Environment(object):
             return
 
         l1_1 = np.array([pose.x_m, pose.y_m])
+        l1_1 += pose.heading() * param._CAR_LENGTH * 0.5
         p2r = randVertex - l1_1
         p2r_l2 = np.linalg.norm(p2r)
         p2r_norm = p2r / p2r_l2
@@ -275,7 +276,7 @@ class Environment(object):
         if not crossPedes and not crossRoad:
             dS = np.sqrt((randVertex[0]-pose.x_m)**2 + (randVertex[1]-pose.y_m)**2)
             d2MP = (dS + dThres) * ca
-            MP = pose.heading() * d2MP + l1_1
+            MP = pose.heading() * d2MP + np.array([pose.x_m, pose.y_m])
             startPos = randVertex + p2r_norm * dThres
             d = np.linalg.norm(startPos - MP)
             if d < param._PEDES_OTHER_MIN_THRESHOLD:

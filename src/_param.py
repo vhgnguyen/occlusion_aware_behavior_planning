@@ -29,7 +29,7 @@ _A_MAX = 3
 _A_MIN = -3
 _A_MAX_BRAKE = -6.0
 # jerk
-_J_MAX = 1
+_J_MAX = 2
 # velocity uncertainty
 _ALPHA_V_LONG = 0.2
 _ALPHA_V_LAT = 0.05
