@@ -76,7 +76,7 @@ _C_JERK = 0.005
 # Hypothesis pedestrian model
 # ------------------------------
 # --- Maximum event rate -------
-_COLLISION_HYPOPEDES_RATE_MAX = 3.
+_COLLISION_HYPOPEDES_RATE_MAX = 2.
 # --- Hypothesis covariance
 _HYPOPEDES_COV_LON = 1
 _HYPOPEDES_COV_LAT = 1
@@ -105,10 +105,10 @@ _SEVERITY_HYPOPEDES_GOM_BETA = 4.
 # Hypothesis vehicle model
 # ------------------------------
 # --- Maximum event rate -------
-_COLLISION_HYPOVEH_RATE_MAX = 4.
+_COLLISION_HYPOVEH_RATE_MAX = 3.
 # --- Hypothesis covariance
-_HYPOVEH_COV_LON = 2
-_HYPOVEH_COV_LAT = 1
+_HYPOVEH_COV_LON = 1
+_HYPOVEH_COV_LAT = 0.5
 # --- Hypothesis velocity ------
 _HYPOVEH_VX = 8
 # --- Hypothesis appear rate ---

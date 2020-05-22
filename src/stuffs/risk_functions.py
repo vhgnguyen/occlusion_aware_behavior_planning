@@ -216,6 +216,10 @@ def collisionRisk(col_severity, col_rate):
     return col_rate * col_severity
 
 
+def interactRate(a, b=8, k=2):
+    return 1 - 1 / (1 + np.exp(k * (a-b)))
+
+
 def appearProbability(ego_vx, ego_acc, dS, rate):
     t = min(abs(np.roots([0.5*ego_acc, ego_vx, -dS])))
     return 1 - np.exp(- rate * t)

@@ -189,6 +189,7 @@ def FOV(pose, polys, angle, radius, nrRays=50):
     """
     l_alpha = np.linspace(-angle, angle, nrRays) + pose.yaw_rad
     l1_1 = np.array([pose.x_m, pose.y_m])
+    l1_1 += pose.heading() * param._CAR_LENGTH * 0.5
     l_fov = np.empty((0, 2))
     l_fov = np.append(l_fov + 2*pose.heading(), np.array([l1_1]), axis=0)
 

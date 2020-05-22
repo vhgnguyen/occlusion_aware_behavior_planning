@@ -236,6 +236,7 @@ class EgoVehicle:
                 collisionIndicator=hvcol_indicator * hypoVeh._appearRate,
                 method=param._EVENT_RATE_HYPOVEH_MODEL,
                 eventRate_max=param._COLLISION_HYPOVEH_RATE_MAX)
+            hvcol_rate *= hypoVeh._interactRate
 
             hvcol_severity = rfnc.collisionSeverityHypoVeh(
                 ego_vx=egoPose.vdy.vx_ms, obj_vx=hvPose.vdy.vx_ms,

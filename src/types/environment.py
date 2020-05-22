@@ -4,6 +4,7 @@ import math
 from shapely.geometry import Polygon
 
 import pose_functions as pfnc
+import risk_functions as rfnc
 import set_scenario as sc
 from pose import Pose, VehicleDynamic
 from objects import (StaticObject, Road, PedestrianCross,
@@ -160,6 +161,12 @@ class Environment(object):
         randVertex, alpha = pfnc.minFOVAngle(pose, poly=objPoly)
         if alpha is None:
             return
+        dThres = 2  # magic number:D
+        ca = math.cos(alpha)
+        dS = np.sqrt((randVertex[0]-pose.x_m)**2 + (randVertex[1]-pose.y_m)**2)
+        d2MP = (dS + dThres) * ca
+        MP = pose.heading() * d2MP + np.array([pose.x_m, pose.y_m])
+        interactRate = rfnc.interactRate(d2MP)
 
         l1_1 = np.array([pose.x_m, pose.y_m])
         l1_1 += pose.heading() * param._CAR_LENGTH * 0.5
@@ -167,10 +174,8 @@ class Environment(object):
         p2r_l2 = np.linalg.norm(p2r)
         p2r_norm = p2r / p2r_l2
         l1_2 = p2r_norm * radius + l1_1
-        ca = math.cos(alpha)
         crossPedes = False
         crossRoad = False
-        dThres = 2  # magic number:D
 
         # find intersection with pedestrian cross
         for c in self._l_cross:
@@ -254,7 +259,8 @@ class Environment(object):
                         covLong=param._HYPOVEH_COV_LON,
                         covLat=param._HYPOVEH_COV_LAT,
                         vx_ms=param._HYPOVEH_VX, startTime=pose.timestamp_s,
-                        appearRate=param._APPEAR_RATE_VEH)
+                        appearRate=param._APPEAR_RATE_VEH,
+                        interactRate=interactRate)
                     self._l_hypoVehicle.append(hypoVeh)
                     crossRoad = True
 
@@ -269,14 +275,13 @@ class Environment(object):
                         covLong=param._HYPOVEH_COV_LON,
                         covLat=param._HYPOVEH_COV_LAT,
                         vx_ms=param._HYPOVEH_VX, startTime=pose.timestamp_s,
-                        appearRate=param._APPEAR_RATE_VEH)
+                        appearRate=param._APPEAR_RATE_VEH,
+                        interactRate=interactRate)
                     self._l_hypoVehicle.append(hypoVeh)
                     crossRoad = True
 
         if not crossPedes and not crossRoad:
-            dS = np.sqrt((randVertex[0]-pose.x_m)**2 + (randVertex[1]-pose.y_m)**2)
-            d2MP = (dS + dThres) * ca
-            MP = pose.heading() * d2MP + np.array([pose.x_m, pose.y_m])
+            
             startPos = randVertex + p2r_norm * dThres
             d = np.linalg.norm(startPos - MP)
             if d < param._PEDES_OTHER_MIN_THRESHOLD:
