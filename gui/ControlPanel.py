@@ -12,8 +12,8 @@ class ControlPanel(QGroupBox):
         self.core = core
         self.birdEyeView = birdEyeView
         self.infoPanel = infoPanel
-        self.setMaximumSize(800, 200)
-        self.setMinimumSize(800, 200)
+        self.setMaximumSize(700, 200)
+        self.setMinimumSize(700, 100)
         self.mainLayout = QHBoxLayout()
         self.addLegendWidget()
         self.addControlBox()

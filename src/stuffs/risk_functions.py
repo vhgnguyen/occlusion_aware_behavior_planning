@@ -7,7 +7,15 @@ import _param as param
 import gaussian as gaussian
 
 
-def collisionEventSeverity(ego_vx, obj_vx, method='sigmoid', gom_rate=1):
+def collisionEventSeverity(ego_vx, obj_vx, method='sigmoid', gom_rate=1,
+                           min_weight=param._SEVERITY_MIN_WEIGHT_CONST,
+                           quad_weight=param._SEVERITY_QUAD_WEIGHT,
+                           sig_vx=param._SEVERITY_SIG_AVG_VX,
+                           sig_max=param._SEVERITY_SIG_MAX,
+                           sig_beta=param._SEVERITY_SIG_B,
+                           gom_vx=param._SEVERITY_GOM_AVG_VX,
+                           gom_max=param._SEVERITY_GOM_MAX,
+                           gom_beta=param._SEVERITY_GOM_BETA):
     """
     Collision event severity of ego vehicle with another object
     Args:
@@ -23,30 +31,35 @@ def collisionEventSeverity(ego_vx, obj_vx, method='sigmoid', gom_rate=1):
     dv = ego_vx - obj_vx
     severity = 0.0
     if method == 'constant':
-        severity = param._SEVERITY_MIN_WEIGHT_CONST
+        severity = min_weight
     elif method == 'linear':
         severity = np.linalg.norm(dv)
     elif method == 'quadratic':
         severity = np.linalg.norm(dv)**2
-        severity *= param._SEVERITY_QUAD_WEIGHT
-        severity += param._SEVERITY_MIN_WEIGHT_CONST
+        severity *= quad_weight
+        severity += min_weight
     elif method == 'sigmoid':
-        sig_dv = np.linalg.norm(dv) - param._SEVERITY_SIG_AVG_VX
-        severity = param._SEVERITY_SIG_MAX
-        severity /= (1.0 + np.exp(-param._SEVERITY_SIG_B * sig_dv))
-        severity += param._SEVERITY_MIN_WEIGHT_CONST
+        sig_dv = np.linalg.norm(dv) - sig_vx
+        severity = sig_max
+        severity /= (1.0 + np.exp(-sig_beta * sig_dv))
+        severity += min_weight
     elif method == 'gompertz':
-        gom_dv = np.linalg.norm(dv) - param._SEVERITY_GOM_AVG_VX
-        severity = param._SEVERITY_GOM_MAX
-        severity *= np.exp(-param._SEVERITY_GOM_BETA*np.exp(-gom_rate*gom_dv))
-        severity += param._SEVERITY_MIN_WEIGHT_CONST
+        gom_dv = np.linalg.norm(dv) - gom_vx
+        severity = gom_max
+        severity *= np.exp(-gom_beta*np.exp(-gom_rate*gom_dv))
+        severity += min_weight
     else:
-        severity = param._SEVERITY_MIN_WEIGHT_CONST
+        severity = min_weight
 
     return severity
 
 
-def collisionSeverityHypoVeh(ego_vx, obj_vx, method='sigmoid'):
+def collisionSeverityHypoVeh(ego_vx, obj_vx, method='sigmoid',
+                             quad_weight=param._SEVERITY_QUAD_WEIGHT,
+                             min_weight=param._SEVERITY_HYPOVEH_MIN_WEIGHT,
+                             sig_max=param._SEVERITY_HYPOVEH_SIG_MAX,
+                             sig_avg_vx=param._SEVERITY_HYPOVEH_AVG_VX,
+                             sig_beta=param._SEVERITY_SIG_B):
     """
     Collision event severity of ego vehicle with hypthetical vehicle
     Args:
@@ -60,20 +73,26 @@ def collisionSeverityHypoVeh(ego_vx, obj_vx, method='sigmoid'):
     severity = 0.0
     if method == 'quadratic':
         severity = np.linalg.norm(dv)**2
-        severity *= param._SEVERITY_QUAD_WEIGHT
-        severity += param._SEVERITY_HYPOVEH_MIN_WEIGHT
+        severity *= quad_weight
+        severity += min_weight
     elif method == 'sigmoid':
-        severity = param._SEVERITY_HYPOVEH_SIG_MAX
-        sig_dv = np.linalg.norm(dv) - param._SEVERITY_HYPOVEH_AVG_VX
-        severity /= (1.0 + np.exp(-param._SEVERITY_SIG_B * sig_dv))
-        severity += param._SEVERITY_HYPOVEH_MIN_WEIGHT
+        severity = sig_max
+        sig_dv = np.linalg.norm(dv) - sig_avg_vx
+        severity /= (1.0 + np.exp(-sig_beta * sig_dv))
+        severity += min_weight
     else:
-        severity = param._SEVERITY_HYPOVEH_MIN_WEIGHT
+        severity = min_weight
 
     return severity
 
 
-def collisionSeverityHypoPedes(ego_vx, obj_vx, method='gompertz', gom_rate=0.1):
+def collisionSeverityHypoPedes(ego_vx, obj_vx, method='gompertz', gom_rate=0.1,
+                               min_weight=param._SEVERITY_HYPOPEDES_MIN_WEIGHT,
+                               avg_vx=param._SEVERITY_HYPOPEDES_AVG_VX,
+                               sig_max=param._SEVERITY_HYPOPEDES_SIG_MAX,
+                               sig_beta=param._SEVERITY_HYPOPEDES_SIG_BETA,
+                               gom_max=param._SEVERITY_HYPOPEDES_GOM_MAX,
+                               gom_beta=param._SEVERITY_HYPOPEDES_GOM_BETA):
     """
     Collision event severity of ego vehicle with hypthetical vehicle
     Args:
@@ -86,17 +105,17 @@ def collisionSeverityHypoPedes(ego_vx, obj_vx, method='gompertz', gom_rate=0.1):
     dv = ego_vx - obj_vx
     severity = 0.0
     if method == 'sigmoid':
-        sig_dv = np.linalg.norm(dv) - param._SEVERITY_HYPOPEDES_AVG_VX
-        severity = param._SEVERITY_HYPOPEDES_SIG_MAX
-        severity /= (1.0 + np.exp(-param._SEVERITY_HYPOPEDES_SIG_BETA*sig_dv))
-        severity += param._SEVERITY_HYPOPEDES_MIN_WEIGHT
+        sig_dv = np.linalg.norm(dv) - avg_vx
+        severity = sig_max
+        severity /= (1.0 + np.exp(-sig_beta*sig_dv))
+        severity += min_weight
     elif method == 'gompertz':
-        gom_dv = np.linalg.norm(dv) - param._SEVERITY_HYPOPEDES_AVG_VX
-        severity = param._SEVERITY_HYPOPEDES_GOM_MAX
-        severity *= np.exp(-param._SEVERITY_HYPOPEDES_GOM_BETA*np.exp(-gom_dv))
-        severity += param._SEVERITY_HYPOPEDES_MIN_WEIGHT
+        gom_dv = np.linalg.norm(dv) - avg_vx
+        severity = gom_max
+        severity *= np.exp(-gom_beta*np.exp(-gom_dv))
+        severity += min_weight
     else:
-        severity = param._SEVERITY_HYPOPEDES_MIN_WEIGHT
+        severity = min_weight
 
     return severity
 

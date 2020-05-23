@@ -51,6 +51,8 @@ _SEVERITY_SIG_AVG_VX = 10.
 _SEVERITY_SIG_B = 1.
 # gompertz model
 _SEVERITY_GOM_MAX = 5.
+_SEVERITY_GOM_AVG_VX = 10.
+_SEVERITY_GOM_BETA = 4.
 
 # --- Collision event rate -----
 # collision emergency brake minimum rate
@@ -86,7 +88,7 @@ _HYPOPEDES_OFFSET_VX = 2.0
 # --- Hypothesis appear rate ---
 _PEDES_APPEAR_RATE_CROSS = 1
 _PEDES_APPEAR_RATE_STREET = 0.5
-_PEDES_APPEAR_RATE_OTHER = 0.5
+_PEDES_APPEAR_RATE_OTHER = 0.2
 _PEDES_OTHER_MIN_THRESHOLD = 5
 # --- Event rate model ---------
 _EVENT_RATE_HYPOPEDES_MODEL = 'sigmoid'

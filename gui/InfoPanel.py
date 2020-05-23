@@ -15,8 +15,8 @@ class InfoPanel(QGroupBox):
         super(InfoPanel, self).__init__(parent)
         self.core = core
         self.setTitle("Information panel")
-        self.setMaximumSize(500, 1080)
-        self.setMinimumSize(500, 1080)
+        self.setMaximumSize(400, 900)
+        self.setMinimumSize(400, 900)
         self.mainLayout = QVBoxLayout()
         self.addInfoBox()
         self.mainLayout.addStretch()

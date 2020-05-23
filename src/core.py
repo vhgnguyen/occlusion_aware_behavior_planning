@@ -16,9 +16,9 @@ class Core(object):
 
     """ Run functions """
 
-    def move(self, dT=param._dT):
+    def move(self, dT=param._dT, sT=param._SIMULATION_TIME):
         if (self._egoCar is not None and
-           self.timestamp_s + dT <= param._SIMULATION_TIME):
+           self.timestamp_s + dT <= sT):
             self._egoCar.optimize()
             self._env.move(currentTime=self.timestamp_s)
             self.timestamp_s = round(self.timestamp_s + dT, 3)
@@ -30,11 +30,6 @@ class Core(object):
         self._egoCar = None
         self._env = Environment()
         self.timestamp_s = 0
-
-    def getTimeParameter(self, dT, simulationTime, predictTime):
-        param._dT = dT
-        param._SIMULATION_TIME = simulationTime
-        param._PREDICT_TIME = predictTime
 
     def getCurrentTime(self):
         return self.timestamp_s

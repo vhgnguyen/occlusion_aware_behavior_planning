@@ -99,6 +99,8 @@ def plotPolygon(poly, facecolor, edgecolor, alpha, label=None, ax=plt,
 
 
 def plotLine(line, ax=plt, **kwargs):
+    if line is None:
+        return
     ax.plot(line[:, 0], line[:, 1], **kwargs)
 
 

@@ -75,7 +75,9 @@ def updatePoseList(lastPose, u_in, nextTimestamp_s, dT):
     return l_pose
 
 
-def updateCovLatlong(lastCovLatLong, dT, dX, dY):
+def updateCovLatlong(lastCovLatLong, dT, dX, dY,
+                     alpha_v_long=param._ALPHA_V_LONG,
+                     alpha_v_lat=param._ALPHA_V_LAT):
     """
         Update covariance matrix along moving direction
         Args:
@@ -86,8 +88,8 @@ def updateCovLatlong(lastCovLatLong, dT, dX, dY):
         Return:
             covariance matrix of next pose in latlong
     """
-    x = (param._ALPHA_V_LONG*dX)**2
-    y = (param._ALPHA_V_LAT*(dY+0.05))**2
+    x = (alpha_v_long*dX)**2
+    y = (alpha_v_lat*(dY+0.05))**2
     if dX == 0 and dY == 0:
         x = -0.1
         y = -0.1
@@ -189,7 +191,7 @@ def FOV(pose, polys, angle, radius, nrRays=50):
     """
     l_alpha = np.linspace(-angle, angle, nrRays) + pose.yaw_rad
     l1_1 = np.array([pose.x_m, pose.y_m])
-    l1_1 += pose.heading() * param._CAR_LENGTH * 0.5
+    # l1_1 += pose.heading() * param._CAR_LENGTH * 0.5
     l_fov = np.empty((0, 2))
     l_fov = np.append(l_fov + 2*pose.heading(), np.array([l1_1]), axis=0)
 
@@ -242,7 +244,7 @@ def computeAccToStop(from_x_m, from_y_m, to_x_m, to_y_m, vx_ms):
     return - 0.5 * vx_ms**2 / s
 
 
-def updatePoseTurn(lastPose, u_in, nextTimestamp_s):
+def updatePoseTurn(lastPose, u_in, nextTimestamp_s, _dT=param._dT):
     """
     Update vehicle pose with given longtitude acceleration and timestamp
     Args:
@@ -255,14 +257,14 @@ def updatePoseTurn(lastPose, u_in, nextTimestamp_s):
     """
     assert nextTimestamp_s > lastPose.timestamp_s
 
-    step = int((nextTimestamp_s - lastPose.timestamp_s)/param._dT)
+    step = int((nextTimestamp_s - lastPose.timestamp_s)/_dT)
     vx = lastPose.vdy.vx_ms
     dyaw = lastPose.vdy.dyaw_rads
     l_pose = {}
     for i in range(1, step+1, 1):
-        dT = i * param._dT
-        current_vx = vx + u_in * (dT - param._dT)
-        current_yaw_rad = lastPose.yaw_rad + (dT - param._dT) * dyaw
+        dT = i * _dT
+        current_vx = vx + u_in * (dT - _dT)
+        current_yaw_rad = lastPose.yaw_rad + (dT - _dT) * dyaw
         if abs(dyaw) < 0.0001:
             dX = current_vx * dT * math.cos(current_yaw_rad)
             dY = current_vx * dT * math.sin(current_yaw_rad)
@@ -276,11 +278,11 @@ def updatePoseTurn(lastPose, u_in, nextTimestamp_s):
         next_covLatLong = 0
         if not l_pose:
             next_covLatLong = updateCovLatlong(lastPose.covLatLong,
-                                               param._dT, current_vx * dT, 0)
+                                               _dT, current_vx * dT, 0)
         else:
             nearestPose = l_pose[max(l_pose)]
             next_covLatLong = updateCovLatlong(nearestPose.covLatLong,
-                                               param._dT, current_vx * dT, 0)
+                                               _dT, current_vx * dT, 0)
         nextPose = Pose(x_m=lastPose.x_m + dX, y_m=lastPose.y_m + dY,
                         yaw_rad=lastPose.yaw_rad + dyaw*dT, vdy=next_vdy,
                         covLatLong=next_covLatLong,

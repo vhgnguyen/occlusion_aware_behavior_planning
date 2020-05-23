@@ -15,8 +15,8 @@ class BirdEyeView(QOpenGLWidget):
         self.core = core
 
         # widget size
-        self._width = 800
-        self._height = 800
+        self._width = 700
+        self._height = 700
         self.setMaximumSize(self._width, self._height)
         self.setMinimumSize(self._width, self._height)
 
@@ -248,8 +248,8 @@ class LegendWidget(QOpenGLWidget):
     def __init__(self, parent=None):
         super(LegendWidget, self).__init__(parent)
         # widget size
-        self._width = 300
-        self._height = 200
+        self._width = 200
+        self._height = 100
         self.setMaximumSize(self._width, self._height)
         self.setMinimumSize(self._width, self._height)
         self.trolltechPurple = QColor.fromCmykF(0.29, 0.29, 0.0, 0.0)

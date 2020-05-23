@@ -45,12 +45,12 @@ class Vehicle(object):
     def __init__(self, idx, length, width,
                  from_x_m, from_y_m, to_x_m, to_y_m,
                  covLong, covLat, vx_ms, startTime, isStop=False,
-                 appearRate=1, interactRate=1):
+                 appearRate=1, interactRate=1, dT=param._dT):
         self._idx = idx
         self._length = length
         self._width = width
 
-        startTime = round(round(startTime/param._dT, 2) * param._dT, 2)
+        startTime = round(round(startTime/dT, 2) * dT, 2)
         self._startTime = startTime
         self.theta = math.atan2(to_y_m-from_y_m, to_x_m-from_x_m)
         startPose = Pose(
@@ -107,7 +107,7 @@ class Vehicle(object):
     def getCurrentPoly(self):
         return pfnc.rectangle(self._currentPose, self._length, self._width)
 
-    def predict(self, const_vx=False, pT=param._PREDICT_TIME):
+    def predict(self, const_vx=False, dT=param._PREDICT_STEP, pT=param._PREDICT_TIME):
         """
         Predict the vehicle motion from current state
         Args:
@@ -121,14 +121,14 @@ class Vehicle(object):
                 lastPose=self._currentPose,
                 u_in=0,
                 nextTimestamp_s=nextTimestamp_s,
-                dT=param._PREDICT_STEP
+                dT=dT
             )
         else:
             self._p_pose = pfnc.updatePoseList(
                 lastPose=self._currentPose,
                 u_in=self._u,
                 nextTimestamp_s=nextTimestamp_s,
-                dT=param._PREDICT_STEP
+                dT=dT
             )
 
     def getPredictAt(self, timestamp_s: float):
@@ -176,12 +176,12 @@ class Pedestrian(object):
 
     def __init__(self, idx, from_x_m, from_y_m, to_x_m, to_y_m,
                  covLong, covLat, vx_ms, startTime, isStop=False,
-                 appearRate=1):
+                 appearRate=1, dT=param._dT):
         self._idx = idx
         self._length = 1
         self._width = 1
 
-        startTime = round(round(startTime/param._dT, 2) * param._dT, 2)
+        startTime = round(round(startTime/dT, 2) * dT, 2)
         self._startTime = startTime
         self.theta = math.atan2(to_y_m-from_y_m, to_x_m-from_x_m)
         startPose = Pose(
@@ -238,7 +238,7 @@ class Pedestrian(object):
     def getCurrentPoly(self):
         return pfnc.rectangle(self._currentPose, self._length, self._width)
 
-    def predict(self, pT=param._PREDICT_TIME):
+    def predict(self, dT=param._PREDICT_STEP, pT=param._PREDICT_TIME):
         """
         Predict the vehicle motion from current state
         Args:
@@ -251,7 +251,7 @@ class Pedestrian(object):
             lastPose=self._currentPose,
             u_in=self._u,
             nextTimestamp_s=nextTimestamp_s,
-            dT=param._PREDICT_STEP
+            dT=dT
         )
 
     def getPredictAt(self, timestamp_s: float):
