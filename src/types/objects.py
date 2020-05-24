@@ -176,7 +176,7 @@ class Pedestrian(object):
 
     def __init__(self, idx, from_x_m, from_y_m, to_x_m, to_y_m,
                  covLong, covLat, vx_ms, startTime, isStop=False,
-                 appearRate=1, dT=param._dT):
+                 appearRate=1, interactRate=1, dT=param._dT):
         self._idx = idx
         self._length = 1
         self._width = 1
@@ -203,7 +203,7 @@ class Pedestrian(object):
         self._currentPose = startPose
         self._l_pose = {startPose.timestamp_s: startPose}
         # for hypothetical objects
-        self._interactRate = 1
+        self._interactRate = interactRate
 
     def isVisible(self):
         return self._isDetected

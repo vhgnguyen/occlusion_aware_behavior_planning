@@ -159,7 +159,19 @@ class Environment(object):
 
         return l_update, fov
 
-    def _generateHypothesis(self, pose, objPoly, fov_poly, u_in, radius, objectVehicle=False):
+    def _generateHypothesis(self, pose, objPoly, fov_poly, u_in, radius, objectVehicle=False,
+                            pVx=param._HYPOPEDES_VX,
+                            pCovLat=param._HYPOPEDES_COV_LAT,
+                            pCovLon=param._HYPOPEDES_COV_LON,
+                            pCrossRate=param._PEDES_APPEAR_RATE_CROSS,
+                            pStreetRate=param._PEDES_APPEAR_RATE_STREET,
+                            pOtherRate=param._PEDES_APPEAR_RATE_OTHER,
+                            pDistanceThres=param._PEDES_OTHER_MIN_THRESHOLD,
+                            vVx=param._HYPOVEH_VX,
+                            vCovLat=param._HYPOVEH_COV_LAT,
+                            vCovLon=param._HYPOVEH_COV_LON,
+                            vRate=param._APPEAR_RATE_VEH
+                            ):
 
         randVertex, alpha = pfnc.minFOVAngle(pose, poly=objPoly)
         if alpha is None:
@@ -209,10 +221,9 @@ class Environment(object):
                 hypoPedes = Pedestrian(
                     idx=99, from_x_m=ip_l[0], from_y_m=ip_l[1],
                     to_x_m=MP_l[0], to_y_m=MP_l[1],
-                    covLong=param._HYPOPEDES_COV_LON,
-                    covLat=param._HYPOPEDES_COV_LAT,
-                    vx_ms=param._HYPOPEDES_VX, startTime=pose.timestamp_s,
-                    appearRate=param._PEDES_APPEAR_RATE_CROSS)
+                    covLong=pCovLon, covLat=pCovLat, vx_ms=pVx,
+                    startTime=pose.timestamp_s, appearRate=pCrossRate,
+                    interactRate=interactRate)
                 crossPedes = True
                 if abs(abs(hypoPedes.theta) - abs(c.theta)) < np.pi/3:
                     self._l_hypoPedes.append(hypoPedes)
@@ -226,10 +237,9 @@ class Environment(object):
                 hypoPedes = Pedestrian(
                     idx=99, from_x_m=ip_r[0], from_y_m=ip_r[1],
                     to_x_m=MP_r[0], to_y_m=MP_r[1],
-                    covLong=param._HYPOPEDES_COV_LON,
-                    covLat=param._HYPOPEDES_COV_LAT,
-                    vx_ms=param._HYPOPEDES_VX, startTime=pose.timestamp_s,
-                    appearRate=param._PEDES_APPEAR_RATE_CROSS)
+                    covLong=pCovLon, covLat=pCovLat, vx_ms=pVx,
+                    startTime=pose.timestamp_s, appearRate=pCrossRate,
+                    interactRate=interactRate)
                 crossPedes = True
                 if abs(abs(hypoPedes.theta) - abs(c.theta)) < np.pi/3:
                     self._l_hypoPedes.append(hypoPedes)
@@ -262,10 +272,8 @@ class Environment(object):
                         idx=99, length=param._CAR_LENGTH, width=param._CAR_WIDTH,
                         from_x_m=startPos[0], from_y_m=startPos[1],
                         to_x_m=endPos[0], to_y_m=endPos[1],
-                        covLong=param._HYPOVEH_COV_LON,
-                        covLat=param._HYPOVEH_COV_LAT,
-                        vx_ms=param._HYPOVEH_VX, startTime=pose.timestamp_s,
-                        appearRate=param._APPEAR_RATE_VEH,
+                        covLong=vCovLon, covLat=vCovLat, vx_ms=vVx,
+                        startTime=pose.timestamp_s, appearRate=vRate,
                         interactRate=interactRate)
                     self._l_hypoVehicle.append(hypoVeh)
                     crossRoad = True
@@ -278,10 +286,8 @@ class Environment(object):
                         idx=99, length=param._CAR_LENGTH, width=param._CAR_WIDTH,
                         from_x_m=startPos[0], from_y_m=startPos[1],
                         to_x_m=endPos[0], to_y_m=endPos[1],
-                        covLong=param._HYPOVEH_COV_LON,
-                        covLat=param._HYPOVEH_COV_LAT,
-                        vx_ms=param._HYPOVEH_VX, startTime=pose.timestamp_s,
-                        appearRate=param._APPEAR_RATE_VEH,
+                        covLong=vCovLon, covLat=vCovLat, vx_ms=vVx,
+                        startTime=pose.timestamp_s, appearRate=vRate,
                         interactRate=interactRate)
                     self._l_hypoVehicle.append(hypoVeh)
                     crossRoad = True
@@ -289,21 +295,18 @@ class Environment(object):
         # if not crossPedes and not crossRoad:
         startPos = randVertex + p2r_norm * dThres
         d = np.linalg.norm(startPos - MP)
-        if d < param._PEDES_OTHER_MIN_THRESHOLD:
+        if d < pDistanceThres:
             heading = MP - startPos
             heading /= np.linalg.norm(heading)
             startPos -= heading
             if not pfnc.inPolyPoint(startPos, fov_poly):
-                appearRate = param._PEDES_APPEAR_RATE_STREET \
-                    if objectVehicle else param._PEDES_APPEAR_RATE_OTHER
+                appearRate = pStreetRate if objectVehicle else pOtherRate
                 hypoPedes = Pedestrian(
                     idx=99, from_x_m=startPos[0], from_y_m=startPos[1],
                     to_x_m=MP[0], to_y_m=MP[1],
-                    covLong=param._HYPOPEDES_COV_LON,
-                    covLat=param._HYPOPEDES_COV_LAT,
-                    vx_ms=param._HYPOPEDES_VX + param._HYPOPEDES_OFFSET_VX,
-                    startTime=pose.timestamp_s,
-                    appearRate=param._PEDES_APPEAR_RATE_OTHER)
+                    covLong=pCovLon, covLat=pCovLat, vx_ms=pVx,
+                    startTime=pose.timestamp_s, appearRate=appearRate,
+                    interactRate=interactRate)
                 self._l_hypoPedes.append(hypoPedes)
 
     def updateAt(self, pose, from_timestamp, u_in,

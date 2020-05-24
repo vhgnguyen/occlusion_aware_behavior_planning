@@ -189,6 +189,7 @@ class EgoVehicle:
                 eventRate_max=param._COLLISION_RATE_MAX,
                 method=param._COLLISION_EVENT_RATE_MODEL,
                 exp_beta=param._COLLISION_RATE_EXP_BETA_PEDES)
+            pcol_rate *= pedes._interactRate
 
             pcol_severity = rfnc.collisionEventSeverity(
                 ego_vx=egoPose.vdy.vx_ms, obj_vx=pPose.vdy.vx_ms,

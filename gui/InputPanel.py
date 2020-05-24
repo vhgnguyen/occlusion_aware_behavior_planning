@@ -35,10 +35,10 @@ class InputWidget(QWidget):
         self.okButton.setEnabled(False)
         self.okButton.clicked.connect(self.on_okButton_clicked)
         self.mainLayout.addWidget(self.okButton)
-        
+
         self.mainLayout.addStretch()
         self.setLayout(self.mainLayout)
-    
+
     def addScenarioBox(self):
         self.scenarioBox = QGroupBox()
         self.scenarioBox.setTitle("Scenario")
@@ -76,7 +76,7 @@ class InputWidget(QWidget):
         self.scenarioGenerateButton.setEnabled(False)
         self.scenarioGenerateButton.clicked.connect(self.on_generateButton_clicked)
         self.scenarioGrid.addWidget(self.scenarioGenerateButton, 1, 0)
-        
+
         # reset button
         self.scenarioResetButton = QPushButton("Reset")
         self.scenarioResetButton.setMaximumWidth(200)
@@ -86,7 +86,7 @@ class InputWidget(QWidget):
 
         self.scenarioBox.setLayout(self.scenarioGrid)
         self.mainLayout.addWidget(self.scenarioBox)
-    
+
     def addEgoCarBox(self):
         self.carBox = QGroupBox()
         self.carBox.setTitle("Ego vehicle")
@@ -140,7 +140,7 @@ class InputWidget(QWidget):
         self.carValue_longAcc.setMaximumWidth(100)
         self.carValue_longAcc.setText(str(0.0))
         self.carGrid.addWidget(self.carValue_longAcc, 5, 1)
-        
+
         self.carGrid.addWidget(QLabel("Start timestamp [s]"), 6, 0)
         self.carValue_time = QLineEdit()
         self.carValue_time.setMaximumWidth(100)
@@ -162,7 +162,7 @@ class InputWidget(QWidget):
         self.brakeAccValue.setMaximumWidth(100)
         self.brakeAccValue.setText(str(-6.0))
         self.carGrid.addWidget(self.brakeAccValue, 8, 1)
-    
+
         self.carGrid.addWidget(QLabel("Max jerk [m/s<sup>3</sup>]"), 9, 0)
         self.jerkValue = QLineEdit()
         self.jerkValue.setMaximumWidth(100)
@@ -177,7 +177,7 @@ class InputWidget(QWidget):
         self.carBox.setLayout(self.carGrid)
         self.carBox.setEnabled(False)
         self.mainLayout.addWidget(self.carBox)
-    
+
     def addObjectBox(self):
         self.envBox = QGroupBox()
         self.envBox.setTitle("Add object")
@@ -276,10 +276,16 @@ class InputWidget(QWidget):
         self.paramGrid = QGridLayout()
 
         # hypothesis
-        self.hypoButton = QPushButton("Hypothesis pedestrian")
-        self.hypoButton.setMinimumWidth(200)
-        self.hypoButton.clicked.connect(self.on_hypoPedestrianButton_clicked)
-        self.paramGrid.addWidget(self.hypoButton, 0, 0)
+        self.hypoPedesButton = QPushButton("Hypothetical pedestrian")
+        self.hypoPedesButton.setMinimumWidth(200)
+        self.hypoPedesButton.clicked.connect(self.on_hypoPedestrianButton_clicked)
+        self.paramGrid.addWidget(self.hypoPedesButton, 0, 0)
+
+        # hypothesis
+        self.hypoVehButton = QPushButton("Hypothetical vehicle")
+        self.hypoVehButton.setMinimumWidth(200)
+        self.hypoVehButton.clicked.connect(self.on_hypoVehicleButton_clicked)
+        self.paramGrid.addWidget(self.hypoVehButton, 0, 1)
 
         # risk model
         self.riskButton = QPushButton("Risk model")
@@ -349,6 +355,9 @@ class InputWidget(QWidget):
     def on_hypoPedestrianButton_clicked(self):
         self.hypoPedesWindow = HypothesisPedestrianWindow()
 
+    def on_hypoVehicleButton_clicked(self):
+        self.hypoVehicleWindow = HypothesisVehicleWindow()
+
     def on_riskButton_clicked(self):
         return
 
@@ -371,7 +380,7 @@ class InputWidget(QWidget):
 
     def _generate_risk_param(self):
         return
-    
+
     def _generate_other_param(self):
         param._ENABLE_HYPOTHESIS = self.hypoCheckBox.isChecked()
         return
@@ -381,6 +390,7 @@ class InputWidget(QWidget):
         self._generate_time_param()
         self._generate_fov_param()
         self._generate_other_param()
+
 
 class AddVehicleWindow(QMainWindow):
 
@@ -507,10 +517,10 @@ class AddPedestrianWindow(QMainWindow):
         self.pedestrianGrid.addWidget(
             QLabel("Covariance (\u03C3<sup>2</sup><sub>long</sub>, \u03C3<sup>2</sup><sub>lat</sub>) [m]"), 3, 0)
         self.pedestrianValue_covLong = QLineEdit()
-        self.pedestrianValue_covLong.setText(str(0.5))
+        self.pedestrianValue_covLong.setText(str(1.0))
         self.pedestrianValue_covLong.setMaximumWidth(100)
         self.pedestrianValue_covLat = QLineEdit()
-        self.pedestrianValue_covLat.setText(str(0.5))
+        self.pedestrianValue_covLat.setText(str(1.0))
         self.pedestrianValue_covLat.setMaximumWidth(100)
         self.pedestrianGrid.addWidget(self.pedestrianValue_covLong, 3, 1)
         self.pedestrianGrid.addWidget(self.pedestrianValue_covLat, 3, 2)
@@ -588,31 +598,37 @@ class HypothesisPedestrianWindow(QMainWindow):
         self.pedestrianGrid.addWidget(
             QLabel("Covariance (\u03C3<sup>2</sup><sub>long</sub>, \u03C3<sup>2</sup><sub>lat</sub>) [m]"), 1, 0)
         self.pedestrianValue_covLong = QLineEdit()
-        self.pedestrianValue_covLong.setText(str(0.5))
+        self.pedestrianValue_covLong.setText(str(1.0))
         self.pedestrianValue_covLong.setMaximumWidth(100)
         self.pedestrianValue_covLat = QLineEdit()
-        self.pedestrianValue_covLat.setText(str(0.5))
+        self.pedestrianValue_covLat.setText(str(1.0))
         self.pedestrianValue_covLat.setMaximumWidth(100)
         self.pedestrianGrid.addWidget(self.pedestrianValue_covLong, 1, 1)
         self.pedestrianGrid.addWidget(self.pedestrianValue_covLat, 1, 2)
 
-        self.pedestrianGrid.addWidget(QLabel("Relative collision velocity threshold"), 2, 0)
-        self.pedestrianCollVelocityValue = QLineEdit()
-        self.pedestrianCollVelocityValue.setText(str(5.0))
-        self.pedestrianCollVelocityValue.setMaximumWidth(100)
-        self.pedestrianGrid.addWidget(self.pedestrianCollVelocityValue, 2, 1)
-        
-        self.pedestrianGrid.addWidget(QLabel("Maximum appear rate"), 3, 0)
+        self.pedestrianGrid.addWidget(QLabel("Maximum distance [m]"), 2, 0)
+        self.pedestrianDistanceValue = QLineEdit()
+        self.pedestrianDistanceValue.setText(str(5.0))
+        self.pedestrianDistanceValue.setMaximumWidth(100)
+        self.pedestrianGrid.addWidget(self.pedestrianDistanceValue, 2, 1)
+
+        self.pedestrianGrid.addWidget(QLabel("Cross appear rate"), 3, 0)
         self.pedesMaxAppearValue = QLineEdit()
-        self.pedesMaxAppearValue.setText(str(0.7))
+        self.pedesMaxAppearValue.setText(str(1))
         self.pedesMaxAppearValue.setMaximumWidth(100)
         self.pedestrianGrid.addWidget(self.pedesMaxAppearValue, 3, 1)
 
-        self.pedestrianGrid.addWidget(QLabel("Maximum appear rate"), 4, 0)
+        self.pedestrianGrid.addWidget(QLabel("Street appear rate"), 4, 0)
+        self.pedesStreetAppearValue = QLineEdit()
+        self.pedesStreetAppearValue.setText(str(0.3))
+        self.pedesStreetAppearValue.setMaximumWidth(100)
+        self.pedestrianGrid.addWidget(self.pedesStreetAppearValue, 4, 1)
+
+        self.pedestrianGrid.addWidget(QLabel("Other appear rate"), 5, 0)
         self.pedesMinAppearValue = QLineEdit()
         self.pedesMinAppearValue.setText(str(0.2))
         self.pedesMinAppearValue.setMaximumWidth(100)
-        self.pedestrianGrid.addWidget(self.pedesMinAppearValue, 4, 1)
+        self.pedestrianGrid.addWidget(self.pedesMinAppearValue, 5, 1)
 
         self.pedesBox.setLayout(self.pedestrianGrid)
         self.mainLayout.addWidget(self.pedesBox)
@@ -635,6 +651,7 @@ class HypothesisPedestrianWindow(QMainWindow):
         self.eventModelGrid.addWidget(self.eventModelToolButton, 1, 1)
 
         self.eventModelMenu = QMenu()
+        self.eventRateModel = 'sigmoid'
         self.eventModelList = ['exponential', 'sigmoid']
         self.eventModelMenu.addAction(self.eventModelList[0])
         self.eventModelMenu.addAction(self.eventModelList[1])
@@ -642,13 +659,16 @@ class HypothesisPedestrianWindow(QMainWindow):
         self.eventModelToolButton.setPopupMode(QToolButton.InstantPopup)
         self.eventModelToolButton.triggered.connect(self.on_eventModelToolButton)
 
-        self.expEventBox = QGroupBox()
+        self.expEventBox = QGroupBox("Exponential")
+        self.eventExpBox()
         self.expEventBox.setEnabled(False)
-        self.sigEventBox = QGroupBox()
+
+        self.sigEventBox = QGroupBox("Sigmoid")
+        self.eventSigBox()
         self.sigEventBox.setEnabled(False)
 
         self.eventModelGrid.addWidget(self.expEventBox, 2, 0)
-        self.eventModelGrid.addWidget(self.sigEventBox, 3, 0)
+        self.eventModelGrid.addWidget(self.sigEventBox, 2, 1)
         self.eventModelBox.setLayout(self.eventModelGrid)
         self.mainLayout.addWidget(self.eventModelBox)
 
@@ -656,52 +676,55 @@ class HypothesisPedestrianWindow(QMainWindow):
         self.eventRateModel = action.text()
         self.eventModelToolButton.setText(self.eventRateModel)
         if self.eventRateModel == self.eventModelList[0]:
-            self.onEventExpBox()
+            self.expEventBox.setEnabled(True)
+            self.sigEventBox.setEnabled(False)
         if self.eventRateModel == self.eventModelList[1]:
-            self.onEventSigBox()
+            self.expEventBox.setEnabled(False)
+            self.sigEventBox.setEnabled(True)
 
-    def onEventExpBox(self):
+    def eventExpBox(self):
         self.expEventGrid = QGridLayout()
-        self.expEventGrid.addWidget(QLabel("Exp beta"), 0, 0)
+        self.expEventGrid.addWidget(QLabel("Beta"), 0, 0)
         self.expEventBetaValue = QLineEdit()
         self.expEventBetaValue.setMaximumWidth(100)
         self.expEventBetaValue.setText(str(3))
         self.expEventGrid.addWidget(self.expEventBetaValue, 0, 1)
-
         self.expEventBox.setLayout(self.expEventGrid)
-        self.expEventBox.setEnabled(True)
-        self.sigEventBox.setEnabled(False)
 
-    def onEventSigBox(self):
+    def eventSigBox(self):
         self.sigEventGrid = QGridLayout()
-        self.sigEventGrid.addWidget(QLabel("Sigmoi beta"), 0, 0)
+        self.sigEventGrid.addWidget(QLabel("Beta"), 0, 0)
         self.sigEventBetaValue = QLineEdit()
         self.sigEventBetaValue.setMaximumWidth(100)
         self.sigEventBetaValue.setText(str(3))
         self.sigEventGrid.addWidget(self.sigEventBetaValue, 0, 1)
-
         self.sigEventBox.setLayout(self.sigEventGrid)
-        self.expEventBox.setEnabled(False)
-        self.sigEventBox.setEnabled(True)
 
     def addSeverityBox(self):
         self.severityModelBox = QGroupBox()
         self.severityModelBox.setTitle("Severity model")
         self.severityModelGrid = QGridLayout()
 
-        self.severityModelGrid.addWidget(QLabel("Max severity rate"), 0, 0)
-        self.maxSeverityValue = QLineEdit()
-        self.maxSeverityValue.setText(str(2.0))
-        self.maxSeverityValue.setMaximumWidth(100)
-        self.severityModelGrid.addWidget(self.maxSeverityValue, 0, 1)
+        self.severityModelGrid.addWidget(QLabel("Minimum weight"), 0, 0)
+        self.minSeverityValue = QLineEdit()
+        self.minSeverityValue.setText(str(2.0))
+        self.minSeverityValue.setMaximumWidth(100)
+        self.severityModelGrid.addWidget(self.minSeverityValue, 0, 1)
 
-        self.severityModelGrid.addWidget(QLabel("Severity model"), 1, 0)
+        self.severityModelGrid.addWidget(QLabel("Velocity threshold"), 1, 0)
+        self.severityVelocityThresholdValue = QLineEdit()
+        self.severityVelocityThresholdValue.setText(str(5.0))
+        self.severityVelocityThresholdValue.setMaximumWidth(100)
+        self.severityModelGrid.addWidget(self.severityVelocityThresholdValue, 1, 1)
+
+        self.severityModelGrid.addWidget(QLabel("Severity model"), 2, 0)
         self.severityModelToolButton = QToolButton()
         self.severityModelToolButton.setText("Choose model")
         self.severityModelToolButton.setMinimumWidth(300)
-        self.severityModelGrid.addWidget(self.severityModelToolButton, 1, 1)
+        self.severityModelGrid.addWidget(self.severityModelToolButton, 2, 1)
 
         self.severityModelMenu = QMenu()
+        self.severityRateModel = 'sigmoid'
         self.severityModelList = ['sigmoid', 'gompertz']
         self.severityModelMenu.addAction(self.severityModelList[0])
         self.severityModelMenu.addAction(self.severityModelList[1])
@@ -709,13 +732,16 @@ class HypothesisPedestrianWindow(QMainWindow):
         self.severityModelToolButton.setPopupMode(QToolButton.InstantPopup)
         self.severityModelToolButton.triggered.connect(self.on_severityModelToolButton)
 
-        self.sigSeverityBox = QGroupBox()
+        self.sigSeverityBox = QGroupBox("Sigmoid")
+        self.severitySigBox()
         self.sigSeverityBox.setEnabled(False)
-        self.gompertzSeverityBox = QGroupBox()
+
+        self.gompertzSeverityBox = QGroupBox("Gompertz")
+        self.severityGompertzBox()
         self.gompertzSeverityBox.setEnabled(False)
 
-        self.severityModelGrid.addWidget(self.sigSeverityBox, 2, 0)
-        self.severityModelGrid.addWidget(self.gompertzSeverityBox, 3, 0)
+        self.severityModelGrid.addWidget(self.sigSeverityBox, 3, 0)
+        self.severityModelGrid.addWidget(self.gompertzSeverityBox, 3, 1)
         self.severityModelBox.setLayout(self.severityModelGrid)
         self.mainLayout.addWidget(self.severityModelBox)
 
@@ -723,44 +749,278 @@ class HypothesisPedestrianWindow(QMainWindow):
         self.severityRateModel = action.text()
         self.severityModelToolButton.setText(self.severityRateModel)
         if self.severityRateModel == self.severityModelList[1]:
-            self.onSeverityGompertzBox()
+            self.gompertzSeverityBox.setEnabled(True)
+            self.sigSeverityBox.setEnabled(False)
         if self.severityRateModel == self.severityModelList[0]:
-            self.onSeveritySigBox()
+            self.gompertzSeverityBox.setEnabled(False)
+            self.sigSeverityBox.setEnabled(True)
 
-    def onSeverityGompertzBox(self):
+    def severityGompertzBox(self):
         self.gompertzSeverityGrid = QGridLayout()
-
-        self.gompertzSeverityGrid.addWidget(QLabel("Gompertz max"), 0, 0)
+        self.gompertzSeverityGrid.addWidget(QLabel("Max severity"), 0, 0)
         self.gompertzSeverityMaxValue = QLineEdit()
         self.gompertzSeverityMaxValue.setMaximumWidth(100)
-        self.gompertzSeverityMaxValue.setText(str(2.0))
+        self.gompertzSeverityMaxValue.setText(str(5.0))
         self.gompertzSeverityGrid.addWidget(self.gompertzSeverityMaxValue, 0, 1)
-
-        self.gompertzSeverityGrid.addWidget(QLabel("Gompertz beta"), 1, 0)
+        self.gompertzSeverityGrid.addWidget(QLabel("Beta"), 1, 0)
         self.gompertzSeverityBetaValue = QLineEdit()
         self.gompertzSeverityBetaValue.setMaximumWidth(100)
-        self.gompertzSeverityBetaValue.setText(str(3.0))
+        self.gompertzSeverityBetaValue.setText(str(4.0))
         self.gompertzSeverityGrid.addWidget(self.gompertzSeverityBetaValue, 1, 1)
-
         self.gompertzSeverityBox.setLayout(self.gompertzSeverityGrid)
-        self.gompertzSeverityBox.setEnabled(True)
-        self.sigSeverityBox.setEnabled(False)
 
-    def onSeveritySigBox(self):
+    def severitySigBox(self):
         self.sigSeverityGrid = QGridLayout()
-        self.sigSeverityGrid.addWidget(QLabel("Sigmoi beta"), 0, 0)
+        self.sigSeverityGrid.addWidget(QLabel("Max severity"), 0, 0)
+        self.sigSeverityMaxValue = QLineEdit()
+        self.sigSeverityMaxValue.setMaximumWidth(100)
+        self.sigSeverityMaxValue.setText(str(5.0))
+        self.sigSeverityGrid.addWidget(self.sigSeverityMaxValue, 0, 1)
+        self.sigSeverityGrid.addWidget(QLabel("Beta"), 1, 0)
         self.sigSeverityBetaValue = QLineEdit()
         self.sigSeverityBetaValue.setMaximumWidth(100)
-        self.sigSeverityBetaValue.setText(str(3))
-        self.sigSeverityGrid.addWidget(self.sigSeverityBetaValue, 0, 1)
-
+        self.sigSeverityBetaValue.setText(str(1.0))
+        self.sigSeverityGrid.addWidget(self.sigSeverityBetaValue, 1, 1)
         self.sigSeverityBox.setLayout(self.sigSeverityGrid)
-        self.gompertzSeverityBox.setEnabled(False)
-        self.sigSeverityBox.setEnabled(True)
 
     def on_updateHypoPedes_clicked(self):
         param._HYPOPEDES_VX = float(self.pedesVxValue.text())
         param._HYPOPEDES_COV_LON = float(self.pedestrianValue_covLong.text())
         param._HYPOPEDES_COV_LAT = float(self.pedestrianValue_covLat.text())
-        
+        param._PEDES_OTHER_MIN_THRESHOLD = float(self.pedestrianDistanceValue.text())
+        param._PEDES_APPEAR_RATE_CROSS = float(self.pedesMaxAppearValue.text())
+        param._PEDES_APPEAR_RATE_STREET = float(self.pedesStreetAppearValue.text())
+        param.__PEDES_APPEAR_RATE_OTHER = float(self.pedesMinAppearValue.text())
+        # event rate
+        param._COLLISION_HYPOPEDES_RATE_MAX = float(self.maxEventValue.text())
+        param._EVENT_RATE_HYPOPEDES_MODEL = self.eventRateModel
+        # severity
+        param._SEVERITY_HYPOPEDES_MODEL = self.severityRateModel
+        param._SEVERITY_HYPOPEDES_AVG_VX = float(self.severityVelocityThresholdValue.text())
+        param._SEVERITY_HYPOPEDES_MIN_WEIGHT = float(self.minSeverityValue.text())
+        param._SEVERITY_HYPOPEDES_SIG_MAX = float(self.sigSeverityMaxValue.text())
+        param._SEVERITY_HYPOPEDES_SIG_BETA = float(self.sigSeverityBetaValue.text())
+        param._SEVERITY_HYPOPEDES_GOM_MAX = float(self.gompertzSeverityMaxValue.text())
+        param.__SEVERITY_HYPOPEDES_GOM_BETA = float(self.gompertzSeverityBetaValue.text())
         self.close()
+
+
+class HypothesisVehicleWindow(QMainWindow):
+
+    def __init__(self, parent=None):
+        super(HypothesisVehicleWindow, self).__init__(parent)
+        self.setWindowTitle("Hypothesis vehicle parameters")
+        self.setGeometry(100, 100, 600, 600)
+        self.mainWidget = QWidget(self)
+        self.setCentralWidget(self.mainWidget)
+        self.mainLayout = QVBoxLayout()
+        self.addDynamicBox()
+        self.addEventBox()
+        self.addSeverityBox()
+
+        self.hypoUpdateButton = QPushButton("Update and close")
+        self.hypoUpdateButton.setMinimumWidth(200)
+        self.hypoUpdateButton.clicked.connect(self.on_updateHypoPedes_clicked)
+        self.mainLayout.addWidget(self.hypoUpdateButton)
+
+        self.mainLayout.addStretch()
+        self.mainWidget.setLayout(self.mainLayout)
+        self.show()
+
+    def addDynamicBox(self):
+        self.vehicleBox = QGroupBox()
+        self.vehicleBox.setTitle("Vehicle profile")
+        self.vehicleGrid = QGridLayout()
+
+        self.vehicleGrid.addWidget(QLabel("Longtitude velocity [m/s]"), 0, 0)
+        self.vehicleVxValue = QLineEdit()
+        self.vehicleVxValue.setText(str(10.0))
+        self.vehicleVxValue.setMaximumWidth(100)
+        self.vehicleGrid.addWidget(self.vehicleVxValue, 0, 1)
+
+        self.vehicleGrid.addWidget(
+            QLabel("Covariance (\u03C3<sup>2</sup><sub>long</sub>, \u03C3<sup>2</sup><sub>lat</sub>) [m]"), 1, 0)
+        self.vehicleValue_covLong = QLineEdit()
+        self.vehicleValue_covLong.setText(str(1.0))
+        self.vehicleValue_covLong.setMaximumWidth(100)
+        self.vehicleValue_covLat = QLineEdit()
+        self.vehicleValue_covLat.setText(str(0.5))
+        self.vehicleValue_covLat.setMaximumWidth(100)
+        self.vehicleGrid.addWidget(self.vehicleValue_covLong, 1, 1)
+        self.vehicleGrid.addWidget(self.vehicleValue_covLat, 1, 2)
+
+        self.vehicleGrid.addWidget(QLabel("Appear rate"), 2, 0)
+        self.vehicleMaxAppearValue = QLineEdit()
+        self.vehicleMaxAppearValue.setText(str(1.0))
+        self.vehicleMaxAppearValue.setMaximumWidth(100)
+        self.vehicleGrid.addWidget(self.vehicleMaxAppearValue, 2, 1)
+
+        self.vehicleBox.setLayout(self.vehicleGrid)
+        self.mainLayout.addWidget(self.vehicleBox)
+
+    def addEventBox(self):
+        self.eventModelBox = QGroupBox()
+        self.eventModelBox.setTitle("Event rate model")
+        self.eventModelGrid = QGridLayout()
+
+        self.eventModelGrid.addWidget(QLabel("Max event rate"), 0, 0)
+        self.maxEventValue = QLineEdit()
+        self.maxEventValue.setText(str(3.0))
+        self.maxEventValue.setMaximumWidth(100)
+        self.eventModelGrid.addWidget(self.maxEventValue, 0, 1)
+
+        self.eventModelGrid.addWidget(QLabel("Event rate model"), 1, 0)
+        self.eventModelToolButton = QToolButton()
+        self.eventModelToolButton.setText("Choose model")
+        self.eventModelToolButton.setMinimumWidth(300)
+        self.eventModelGrid.addWidget(self.eventModelToolButton, 1, 1)
+
+        self.eventModelMenu = QMenu()
+        self.eventRateModel = 'exponential'
+        self.eventModelList = ['exponential', 'sigmoid']
+        self.eventModelMenu.addAction(self.eventModelList[0])
+        self.eventModelMenu.addAction(self.eventModelList[1])
+        self.eventModelToolButton.setMenu(self.eventModelMenu)
+        self.eventModelToolButton.setPopupMode(QToolButton.InstantPopup)
+        self.eventModelToolButton.triggered.connect(self.on_eventModelToolButton)
+
+        self.expEventBox = QGroupBox("Exponential")
+        self.eventExpBox()
+        self.expEventBox.setEnabled(False)
+
+        self.sigEventBox = QGroupBox("Sigmoid")
+        self.eventSigBox()
+        self.sigEventBox.setEnabled(False)
+
+        self.eventModelGrid.addWidget(self.expEventBox, 2, 0)
+        self.eventModelGrid.addWidget(self.sigEventBox, 2, 1)
+        self.eventModelBox.setLayout(self.eventModelGrid)
+        self.mainLayout.addWidget(self.eventModelBox)
+
+    def on_eventModelToolButton(self, action):
+        self.eventRateModel = action.text()
+        self.eventModelToolButton.setText(self.eventRateModel)
+        if self.eventRateModel == self.eventModelList[0]:
+            self.expEventBox.setEnabled(True)
+            self.sigEventBox.setEnabled(False)
+        if self.eventRateModel == self.eventModelList[1]:
+            self.expEventBox.setEnabled(False)
+            self.sigEventBox.setEnabled(True)
+
+    def eventExpBox(self):
+        self.expEventGrid = QGridLayout()
+        self.expEventGrid.addWidget(QLabel("Beta"), 0, 0)
+        self.expEventBetaValue = QLineEdit()
+        self.expEventBetaValue.setMaximumWidth(100)
+        self.expEventBetaValue.setText(str(3))
+        self.expEventGrid.addWidget(self.expEventBetaValue, 0, 1)
+        self.expEventBox.setLayout(self.expEventGrid)
+
+    def eventSigBox(self):
+        self.sigEventGrid = QGridLayout()
+        self.sigEventGrid.addWidget(QLabel("Beta"), 0, 0)
+        self.sigEventBetaValue = QLineEdit()
+        self.sigEventBetaValue.setMaximumWidth(100)
+        self.sigEventBetaValue.setText(str(3))
+        self.sigEventGrid.addWidget(self.sigEventBetaValue, 0, 1)
+        self.sigEventBox.setLayout(self.sigEventGrid)
+
+    def addSeverityBox(self):
+        self.severityModelBox = QGroupBox()
+        self.severityModelBox.setTitle("Severity model")
+        self.severityModelGrid = QGridLayout()
+
+        self.severityModelGrid.addWidget(QLabel("Minimum weight"), 0, 0)
+        self.minSeverityValue = QLineEdit()
+        self.minSeverityValue.setText(str(2.0))
+        self.minSeverityValue.setMaximumWidth(100)
+        self.severityModelGrid.addWidget(self.minSeverityValue, 0, 1)
+
+        self.severityModelGrid.addWidget(QLabel("Velocity threshold"), 1, 0)
+        self.severityVelocityThresholdValue = QLineEdit()
+        self.severityVelocityThresholdValue.setText(str(10.0))
+        self.severityVelocityThresholdValue.setMaximumWidth(100)
+        self.severityModelGrid.addWidget(self.severityVelocityThresholdValue, 1, 1)
+
+        self.severityModelGrid.addWidget(QLabel("Severity model"), 2, 0)
+        self.severityModelToolButton = QToolButton()
+        self.severityModelToolButton.setText("Choose model")
+        self.severityModelToolButton.setMinimumWidth(300)
+        self.severityModelGrid.addWidget(self.severityModelToolButton, 2, 1)
+
+        self.severityModelMenu = QMenu()
+        self.severityRateModel = 'sigmoid'
+        self.severityModelList = ['sigmoid', 'quadratic']
+        self.severityModelMenu.addAction(self.severityModelList[0])
+        self.severityModelMenu.addAction(self.severityModelList[1])
+        self.severityModelToolButton.setMenu(self.severityModelMenu)
+        self.severityModelToolButton.setPopupMode(QToolButton.InstantPopup)
+        self.severityModelToolButton.triggered.connect(self.on_severityModelToolButton)
+
+        self.sigSeverityBox = QGroupBox("Sigmoid")
+        self.severitySigBox()
+        self.sigSeverityBox.setEnabled(False)
+
+        self.severityModelGrid.addWidget(self.sigSeverityBox, 3, 0)
+        self.severityModelBox.setLayout(self.severityModelGrid)
+        self.mainLayout.addWidget(self.severityModelBox)
+
+    def on_severityModelToolButton(self, action):
+        self.severityRateModel = action.text()
+        self.severityModelToolButton.setText(self.severityRateModel)
+        if self.severityRateModel == self.severityModelList[1]:
+            self.sigSeverityBox.setEnabled(False)
+        if self.severityRateModel == self.severityModelList[0]:
+            self.sigSeverityBox.setEnabled(True)
+
+    def severitySigBox(self):
+        self.sigSeverityGrid = QGridLayout()
+        self.sigSeverityGrid.addWidget(QLabel("Max severity"), 0, 0)
+        self.sigSeverityMaxValue = QLineEdit()
+        self.sigSeverityMaxValue.setMaximumWidth(100)
+        self.sigSeverityMaxValue.setText(str(5.0))
+        self.sigSeverityGrid.addWidget(self.sigSeverityMaxValue, 0, 1)
+        self.sigSeverityGrid.addWidget(QLabel("Beta"), 1, 0)
+        self.sigSeverityBetaValue = QLineEdit()
+        self.sigSeverityBetaValue.setMaximumWidth(100)
+        self.sigSeverityBetaValue.setText(str(1.0))
+        self.sigSeverityGrid.addWidget(self.sigSeverityBetaValue, 1, 1)
+        self.sigSeverityBox.setLayout(self.sigSeverityGrid)
+
+    def on_updateHypoPedes_clicked(self):
+        param._HYPOVEH_VX = float(self.vehicleVxValue.text())
+        param._HYPOVEH_COV_LON = float(self.vehicleValue_covLong.text())
+        param._HYPOVEH_COV_LAT = float(self.vehicleValue_covLat.text())
+        param._APPEAR_RATE_VEH = float(self.vehicleMaxAppearValue.text())
+        # event rate
+        param._COLLISION_HYPOVEH_RATE_MAX = float(self.maxEventValue.text())
+        param._EVENT_RATE_HYPOVEH_MODEL = self.eventRateModel
+        # severity
+        param._SEVERITY_HYPOVEH_MODEL = self.severityRateModel
+        param._SEVERITY_HYPOVEH_AVG_VX = float(self.severityVelocityThresholdValue.text())
+        param._SEVERITY_HYPOVEH_MIN_WEIGHT = float(self.minSeverityValue.text())
+        param._SEVERITY_HYPOVEH_SIG_MAX = float(self.sigSeverityMaxValue.text())
+        param._SEVERITY_HYPOVEH_SIG_B = float(self.sigSeverityBetaValue.text())
+        self.close()
+
+
+class RiskModelWindow(QMainWindow):
+
+    def __init__(self, parent=None):
+        super(RiskModelWindow, self).__init__(parent)
+        self.setWindowTitle("Collision risk model parameters")
+        self.setGeometry(100, 100, 600, 600)
+        self.mainWidget = QWidget(self)
+        self.setCentralWidget(self.mainWidget)
+        self.mainLayout = QVBoxLayout()
+        self.addEventBox()
+        self.addSeverityBox()
+
+        self.updateButton = QPushButton("Update and close")
+        self.updateButton.setMinimumWidth(200)
+        self.updateButton.clicked.connect(self.on_update_clicked)
+        self.mainLayout.addWidget(self.updateButton)
+
+        self.mainLayout.addStretch()
+        self.mainWidget.setLayout(self.mainLayout)
+        self.show()
