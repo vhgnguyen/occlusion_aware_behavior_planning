@@ -2,6 +2,7 @@
 # Model
 # ------------------------------
 _ENABLE_HYPOTHESIS = True
+_ENABLE_AWARENESS_RATE = True
 
 # ------------------------------
 # Discreted time interval
@@ -88,10 +89,12 @@ _HYPOPEDES_VX = 2.0
 # --- Hypothesis appear rate ---
 _PEDES_APPEAR_RATE_CROSS = 1
 _PEDES_APPEAR_RATE_STREET = 0.3
-_PEDES_APPEAR_RATE_OTHER = 0.1
+_PEDES_APPEAR_RATE_OTHER = 0.2
 _PEDES_OTHER_MIN_THRESHOLD = 5
 # --- Event rate model ---------
 _EVENT_RATE_HYPOPEDES_MODEL = 'sigmoid'
+_EVENT_RATE_HYPOPEDES_EXP_BETA = 1.0
+_EVENT_RATE_HYPOPEDES_SIG_BETA = 10
 # --- Severity model -----------
 _SEVERITY_HYPOPEDES_MODEL = 'gompertz'
 _SEVERITY_HYPOPEDES_AVG_VX = 5.
@@ -117,6 +120,8 @@ _HYPOVEH_VX = 8
 _APPEAR_RATE_VEH = 1
 # --- Event rate model ---------
 _EVENT_RATE_HYPOVEH_MODEL = 'exponential'
+_EVENT_RATE_HYPOVEH_EXP_BETA = 1.0
+_EVENT_RATE_HYPOVEH_SIG_BETA = 10
 # --- Severity model -----------
 _SEVERITY_HYPOVEH_MODEL = 'sigmoid'
 _SEVERITY_HYPOVEH_AVG_VX = 10.

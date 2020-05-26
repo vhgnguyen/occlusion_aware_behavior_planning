@@ -70,13 +70,23 @@ class Environment(object):
                 pedestrian.move()
 
     def update(self, pose: Pose, from_timestamp: float, u_in,
-               radius, hypothesis=False):
+               radius, hypothesis=False,
+               pVx=param._HYPOPEDES_VX,
+               pCovLat=param._HYPOPEDES_COV_LAT,
+               pCovLon=param._HYPOPEDES_COV_LON,
+               pCrossRate=param._PEDES_APPEAR_RATE_CROSS,
+               pStreetRate=param._PEDES_APPEAR_RATE_STREET,
+               pOtherRate=param._PEDES_APPEAR_RATE_OTHER,
+               pDistanceThres=param._PEDES_OTHER_MIN_THRESHOLD,
+               vVx=param._HYPOVEH_VX,
+               vCovLat=param._HYPOVEH_COV_LAT,
+               vCovLon=param._HYPOVEH_COV_LON,
+               vRate=param._APPEAR_RATE_VEH):
         """
         Get environment around a given position
         """
         self._l_hypoPedes = []
         self._l_hypoVehicle = []
-
         l_vehicle = []
         l_object = []
         l_pedestrian = []
@@ -109,8 +119,11 @@ class Environment(object):
         # generate hypothesis from static object
         for sObj in self._l_staticObject:
             objPoly = sObj._poly
-            if pfnc.inPolyPointList(objPoly, fov_poly) and  hypothesis:
-                self._generateHypothesis(pose, objPoly, fov_poly, u_in, radius=radius)
+            if pfnc.inPolyPointList(objPoly, fov_poly) and hypothesis:
+                self._generateHypothesis(
+                    pose, objPoly, fov_poly, u_in, radius,
+                    pVx, pCovLat, pCovLon, pCrossRate, pStreetRate, pOtherRate,
+                    pDistanceThres, vVx, vCovLat, vCovLon, vRate)
 
         # check other moving vehicle in FOV
         for veh in self._l_vehicle:
@@ -121,7 +134,9 @@ class Environment(object):
                     vehPoly = veh.getCurrentPoly()
                     if hypothesis and vehPose.vdy.vx_ms == 0:
                         self._generateHypothesis(
-                            pose, vehPoly, fov_poly, u_in, radius=radius,
+                            pose, vehPoly, fov_poly, u_in, radius,
+                            pVx, pCovLat, pCovLon, pCrossRate, pStreetRate, pOtherRate,
+                            pDistanceThres, vVx, vCovLat, vCovLon, vRate,
                             objectVehicle=True)
                     # if pfnc.inPolygon(vehPoly, fov):
                     if pfnc.inPolyPointList(vehPoly, fov_poly):
@@ -159,19 +174,10 @@ class Environment(object):
 
         return l_update, fov
 
-    def _generateHypothesis(self, pose, objPoly, fov_poly, u_in, radius, objectVehicle=False,
-                            pVx=param._HYPOPEDES_VX,
-                            pCovLat=param._HYPOPEDES_COV_LAT,
-                            pCovLon=param._HYPOPEDES_COV_LON,
-                            pCrossRate=param._PEDES_APPEAR_RATE_CROSS,
-                            pStreetRate=param._PEDES_APPEAR_RATE_STREET,
-                            pOtherRate=param._PEDES_APPEAR_RATE_OTHER,
-                            pDistanceThres=param._PEDES_OTHER_MIN_THRESHOLD,
-                            vVx=param._HYPOVEH_VX,
-                            vCovLat=param._HYPOVEH_COV_LAT,
-                            vCovLon=param._HYPOVEH_COV_LON,
-                            vRate=param._APPEAR_RATE_VEH
-                            ):
+    def _generateHypothesis(self, pose, objPoly, fov_poly, u_in, radius, pVx,
+                            pCovLat, pCovLon, pCrossRate, pStreetRate, pOtherRate,
+                            pDistanceThres, vVx, vCovLat, vCovLon, vRate,
+                            objectVehicle=False):
 
         randVertex, alpha = pfnc.minFOVAngle(pose, poly=objPoly)
         if alpha is None:
@@ -300,14 +306,22 @@ class Environment(object):
             heading /= np.linalg.norm(heading)
             startPos -= heading
             if not pfnc.inPolyPoint(startPos, fov_poly):
-                appearRate = pStreetRate if objectVehicle else pOtherRate
-                hypoPedes = Pedestrian(
-                    idx=99, from_x_m=startPos[0], from_y_m=startPos[1],
-                    to_x_m=MP[0], to_y_m=MP[1],
-                    covLong=pCovLon, covLat=pCovLat, vx_ms=pVx,
-                    startTime=pose.timestamp_s, appearRate=appearRate,
-                    interactRate=interactRate)
-                self._l_hypoPedes.append(hypoPedes)
+                if objectVehicle:
+                    hypoPedes = Pedestrian(
+                        idx=99, from_x_m=startPos[0], from_y_m=startPos[1],
+                        to_x_m=MP[0], to_y_m=MP[1],
+                        covLong=pCovLon, covLat=pCovLat, vx_ms=pVx,
+                        startTime=pose.timestamp_s, appearRate=pStreetRate,
+                        interactRate=interactRate)
+                    self._l_hypoPedes.append(hypoPedes)
+                else:
+                    hypoPedes = Pedestrian(
+                        idx=99, from_x_m=startPos[0], from_y_m=startPos[1],
+                        to_x_m=MP[0], to_y_m=MP[1],
+                        covLong=pCovLon, covLat=pCovLat, vx_ms=pVx,
+                        startTime=pose.timestamp_s, appearRate=pOtherRate,
+                        interactRate=interactRate)
+                    self._l_hypoPedes.append(hypoPedes)
 
     def updateAt(self, pose, from_timestamp, u_in,
                  radius, hypothesis):

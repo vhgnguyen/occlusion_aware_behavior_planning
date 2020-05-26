@@ -59,7 +59,7 @@ def collisionSeverityHypoVeh(ego_vx, obj_vx, method='sigmoid',
                              min_weight=param._SEVERITY_HYPOVEH_MIN_WEIGHT,
                              sig_max=param._SEVERITY_HYPOVEH_SIG_MAX,
                              sig_avg_vx=param._SEVERITY_HYPOVEH_AVG_VX,
-                             sig_beta=param._SEVERITY_SIG_B):
+                             sig_beta=param._SEVERITY_HYPOVEH_SIG_B):
     """
     Collision event severity of ego vehicle with hypthetical vehicle
     Args:
@@ -199,10 +199,9 @@ def collisionIndicator(egoPose, egoPoly, objPose, objPoly):
 
 
 def collisionEventRate(collisionIndicator,
-                       eventRate_max=param._COLLISION_RATE_MAX,
-                       method='exponential',
-                       exp_beta=param._COLLISION_RATE_EXP_BETA,
-                       sig_beta=param._COLLISION_RATE_SIG_BETA):
+                       eventRate_max, exp_beta=param._COLLISION_RATE_EXP_BETA,
+                       sig_beta=param._COLLISION_RATE_SIG_BETA,
+                       method='exponential'):
     """
     Function to calculate event rate
     Args:

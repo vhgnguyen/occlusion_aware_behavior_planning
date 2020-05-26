@@ -96,7 +96,18 @@ class EgoVehicle:
             pose=currentPose,
             from_timestamp=currentPose.timestamp_s,
             u_in=self._u, radius=param._SCAN_RADIUS,
-            hypothesis=param._ENABLE_HYPOTHESIS
+            hypothesis=param._ENABLE_HYPOTHESIS,
+            pVx=param._HYPOPEDES_VX,
+            pCovLat=param._HYPOPEDES_COV_LAT,
+            pCovLon=param._HYPOPEDES_COV_LON,
+            pCrossRate=param._PEDES_APPEAR_RATE_CROSS,
+            pStreetRate=param._PEDES_APPEAR_RATE_STREET,
+            pOtherRate=param._PEDES_APPEAR_RATE_OTHER,
+            pDistanceThres=param._PEDES_OTHER_MIN_THRESHOLD,
+            vVx=param._HYPOVEH_VX,
+            vCovLat=param._HYPOVEH_COV_LAT,
+            vCovLon=param._HYPOVEH_COV_LON,
+            vRate=param._APPEAR_RATE_VEH
             )
 
     def _predict(self, u_in: float, dT=param._PREDICT_STEP,
@@ -189,7 +200,6 @@ class EgoVehicle:
                 eventRate_max=param._COLLISION_RATE_MAX,
                 method=param._COLLISION_EVENT_RATE_MODEL,
                 exp_beta=param._COLLISION_RATE_EXP_BETA_PEDES)
-            pcol_rate *= pedes._interactRate
 
             pcol_severity = rfnc.collisionEventSeverity(
                 ego_vx=egoPose.vdy.vx_ms, obj_vx=pPose.vdy.vx_ms,
@@ -211,14 +221,24 @@ class EgoVehicle:
                 objPose=hPose, objPoly=hPoly)
 
             hpcol_rate = rfnc.collisionEventRate(
-                collisionIndicator=hpcol_indicator * hypoPedes._appearRate,
+                collisionIndicator=hpcol_indicator*hypoPedes._appearRate,
                 eventRate_max=param._COLLISION_HYPOPEDES_RATE_MAX,
-                method=param._EVENT_RATE_HYPOPEDES_MODEL)
+                method=param._EVENT_RATE_HYPOPEDES_MODEL,
+                exp_beta=param._EVENT_RATE_HYPOPEDES_EXP_BETA,
+                sig_beta=param._EVENT_RATE_HYPOPEDES_SIG_BETA)
+
+            hpcol_rate *= hypoPedes._interactRate
 
             hpcol_severity = rfnc.collisionSeverityHypoPedes(
                 ego_vx=egoPose.vdy.vx_ms, obj_vx=hPose.vdy.vx_ms,
                 method=param._SEVERITY_HYPOPEDES_MODEL,
-                gom_rate=hypoPedes._appearRate)
+                gom_rate=hypoPedes._appearRate,
+                min_weight=param._SEVERITY_HYPOPEDES_MIN_WEIGHT,
+                avg_vx=param._SEVERITY_HYPOPEDES_AVG_VX,
+                sig_max=param._SEVERITY_HYPOPEDES_SIG_MAX,
+                sig_beta=param._SEVERITY_HYPOPEDES_SIG_BETA,
+                gom_max=param._SEVERITY_HYPOPEDES_GOM_MAX,
+                gom_beta=param._SEVERITY_HYPOPEDES_GOM_BETA)
 
             hpcol_risk = rfnc.collisionRisk(
                 col_severity=hpcol_severity,
@@ -235,14 +255,21 @@ class EgoVehicle:
                 objPose=hvPose, objPoly=hvPoly)
 
             hvcol_rate = rfnc.collisionEventRate(
-                collisionIndicator=hvcol_indicator * hypoVeh._appearRate,
+                collisionIndicator=hvcol_indicator*hypoVeh._appearRate,
                 method=param._EVENT_RATE_HYPOVEH_MODEL,
-                eventRate_max=param._COLLISION_HYPOVEH_RATE_MAX)
+                eventRate_max=param._COLLISION_HYPOVEH_RATE_MAX,
+                exp_beta=param._EVENT_RATE_HYPOVEH_EXP_BETA,
+                sig_beta=param._EVENT_RATE_HYPOVEH_SIG_BETA)
             hvcol_rate *= hypoVeh._interactRate
 
             hvcol_severity = rfnc.collisionSeverityHypoVeh(
                 ego_vx=egoPose.vdy.vx_ms, obj_vx=hvPose.vdy.vx_ms,
-                method=param._SEVERITY_HYPOVEH_MODEL)
+                method=param._SEVERITY_HYPOVEH_MODEL,
+                quad_weight=param._SEVERITY_QUAD_WEIGHT,
+                min_weight=param._SEVERITY_HYPOVEH_MIN_WEIGHT,
+                sig_max=param._SEVERITY_HYPOVEH_SIG_MAX,
+                sig_avg_vx=param._SEVERITY_HYPOVEH_AVG_VX,
+                sig_beta=param._SEVERITY_HYPOVEH_SIG_B)
 
             hvcol_risk = rfnc.collisionRisk(
                 col_severity=hvcol_severity,
@@ -345,7 +372,7 @@ class EgoVehicle:
                 bounds=(lowBound, upBound), method='bounded',
                 options={"maxiter": 5}
                 ).x
-
+        self._predict(u_in=val)
         # check if critical event occur
         total_eventRate = sum(
             list((self._p_eventRate[k]) for k in self._p_eventRate))
@@ -357,7 +384,7 @@ class EgoVehicle:
                 bounds=(param._A_MAX_BRAKE, param._A_MIN), method='bounded',
                 options={"maxiter": 5}
             ).x
-
+        self._predict(u_in=val)
         self._p_u = self._u + (val - self._u) * dT / predictStep
         self._move()
 
@@ -370,6 +397,17 @@ class EgoVehicle:
         self._u = self._l_u[t]
         self._l_u = {t: self._l_u[t]}
         self._currentPose = firstPose
+
+    def exportPredictState(self):
+        l_p = []
+        for p_pose in self._p_pose:
+            exportP = {
+                'pos': [p_pose.x_m, p_pose.y_m],
+                'cov': p_pose.covUtm,
+                'poly': pfnc.rectangle(p_pose, self._length, self._width),
+            }
+            l_p.append(exportP)
+        return l_p
 
     # ------------------- Export function ---------------------
 

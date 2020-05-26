@@ -107,7 +107,7 @@ class Vehicle(object):
     def getCurrentPoly(self):
         return pfnc.rectangle(self._currentPose, self._length, self._width)
 
-    def predict(self, const_vx=False, dT=param._PREDICT_STEP, pT=param._PREDICT_TIME):
+    def predict(self, const_vx=True, dT=param._PREDICT_STEP, pT=param._PREDICT_TIME):
         """
         Predict the vehicle motion from current state
         Args:
@@ -170,6 +170,17 @@ class Vehicle(object):
             'Pcol': self._Pcoll
             }
         return exportVehicle
+
+    def exportPredictState(self):
+        l_p = []
+        for p_pose in self._p_pose:
+            exportP = {
+                'pos': [p_pose.x_m, p_pose.y_m],
+                'cov': p_pose.covUtm,
+                'poly': pfnc.rectangle(p_pose, self._length, self._width),
+            }
+            l_p.append(exportP)
+        return l_p
 
 
 class Pedestrian(object):
@@ -296,9 +307,20 @@ class Pedestrian(object):
             'cov': self._currentPose.covUtm,
             'poly': self.getCurrentPoly(),
             'visible': self.isVisible(),
-            'Pcoll': self._Pcoll
+            'Pcoll': self._Pcoll,
             }
         return exportPedes
+
+    def exportPredictState(self):
+        l_p = []
+        for p_pose in self._p_pose:
+            exportP = {
+                'pos': [p_pose.x_m, p_pose.y_m],
+                'cov': p_pose.covUtm,
+                'poly': pfnc.rectangle(p_pose, self._length, self._width),
+            }
+            l_p.append(exportP)
+        return l_p
 
 
 # def plotAt(self, timestamp_s, ax=plt):
