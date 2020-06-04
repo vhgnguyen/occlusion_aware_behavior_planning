@@ -1,3 +1,4 @@
+#%%
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -38,14 +39,14 @@ plt.show()
 
 
 t = np.linspace(0, 20, 1000)
-app = [0.1, 0.3, 0.6]
+app = [0.1, 0.3, 1]
 res = np.empty((0, 3))
 for tt in t:
     # r = rate(t, i)
     # r = sigmoid(tt, 1, 1, 8)
-    r1 = gompertz(tt, 2, 5, app[0], 6)
-    r2 = gompertz(tt, 2, 5, app[1], 6)
-    r3 = gompertz(tt, 2, 5, app[2], 6)
+    r1 = gompertz(tt, 1, 2, app[2], 5)
+    r2 = gompertz(tt, 1, 3, app[2], 5)
+    r3 = gompertz(tt, 1, 4, app[2], 5)
     res = np.append(res, np.array([[r1, r2, r3]]), axis=0)
 
 fig = plt.figure()
@@ -58,14 +59,14 @@ plt.legend()
 plt.show()
 
 t = np.linspace(0, 20, 1000)
-b = [1, 1, 1]
+b = [1, 3, 7]
 sig = np.empty((0, 3))
 for tt in t:
     # r = rate(t, i)
     # r = sigmoid(tt, 1, 1, 8)
-    r1 = sigmoid(tt, 3, b[0], 8)
-    r2 = sigmoid(tt, 3, b[1], 10)
-    r3 = sigmoid(tt, 3, b[2], 12)
+    r1 = sigmoid(tt, 1, b[0], 5)
+    r2 = sigmoid(tt, 1, b[1], 5)
+    r3 = sigmoid(tt, 1, b[2], 5)
     sig = np.append(sig, np.array([[r1, r2, r3]]), axis=0)
 
 fig = plt.figure()
@@ -76,3 +77,6 @@ plt.xlabel("Relative velocity")
 plt.ylabel("Severity")
 plt.legend()
 plt.show()
+
+
+# %%

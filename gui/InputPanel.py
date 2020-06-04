@@ -391,7 +391,6 @@ class InputWidget(QWidget):
     def _generate_other_param(self):
         param._ENABLE_HYPOTHESIS = self.hypoCheckBox.isChecked()
         param._ENABLE_AWARENESS_RATE = self.awareCheckBox.isChecked()
-        return
 
     def on_okButton_clicked(self):
         self._generate_car_param()
@@ -598,7 +597,7 @@ class HypothesisPedestrianWindow(QMainWindow):
 
         self.pedestrianGrid.addWidget(QLabel("Longtitude velocity [m/s]"), 0, 0)
         self.pedesVxValue = QLineEdit()
-        self.pedesVxValue.setText(str(3.0))
+        self.pedesVxValue.setText(str(2.0))
         self.pedesVxValue.setMaximumWidth(100)
         self.pedestrianGrid.addWidget(self.pedesVxValue, 0, 1)
 
@@ -798,7 +797,6 @@ class HypothesisPedestrianWindow(QMainWindow):
         param._PEDES_APPEAR_RATE_CROSS = float(self.pedesMaxAppearValue.text())
         param._PEDES_APPEAR_RATE_STREET = float(self.pedesStreetAppearValue.text())
         param._PEDES_APPEAR_RATE_OTHER = float(self.pedesMinAppearValue.text())
-        print(param._PEDES_APPEAR_RATE_STREET)
         # event rate
         param._COLLISION_HYPOPEDES_RATE_MAX = float(self.maxEventValue.text())
         param._EVENT_RATE_HYPOPEDES_MODEL = self.eventRateModel

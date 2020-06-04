@@ -107,7 +107,7 @@ class Vehicle(object):
     def getCurrentPoly(self):
         return pfnc.rectangle(self._currentPose, self._length, self._width)
 
-    def predict(self, const_vx=True, dT=param._PREDICT_STEP, pT=param._PREDICT_TIME):
+    def predict(self, const_vx=False, dT=param._PREDICT_STEP, pT=param._PREDICT_TIME):
         """
         Predict the vehicle motion from current state
         Args:

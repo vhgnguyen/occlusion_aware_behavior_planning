@@ -86,7 +86,7 @@ def collisionSeverityHypoVeh(ego_vx, obj_vx, method='sigmoid',
     return severity
 
 
-def collisionSeverityHypoPedes(ego_vx, obj_vx, method='gompertz', gom_rate=0.1,
+def collisionSeverityHypoPedes(ego_vx, obj_vx, method='gompertz',
                                min_weight=param._SEVERITY_HYPOPEDES_MIN_WEIGHT,
                                avg_vx=param._SEVERITY_HYPOPEDES_AVG_VX,
                                sig_max=param._SEVERITY_HYPOPEDES_SIG_MAX,
@@ -234,7 +234,7 @@ def collisionRisk(col_severity, col_rate):
     return col_rate * col_severity
 
 
-def interactRate(a, b=8, k=2):
+def interactRate(a, b=8, k=1):
     return 1 - 1 / (1 + np.exp(k * (a-b)))
 
 

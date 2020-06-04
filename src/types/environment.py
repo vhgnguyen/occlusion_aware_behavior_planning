@@ -117,7 +117,7 @@ class Environment(object):
         fov_poly = Polygon(fov)
 
         # generate hypothesis from static object
-        for sObj in self._l_staticObject:
+        for sObj in l_object:
             objPoly = sObj._poly
             if pfnc.inPolyPointList(objPoly, fov_poly) and hypothesis:
                 self._generateHypothesis(
@@ -185,7 +185,7 @@ class Environment(object):
 
         crossPedes = False
         crossRoad = False
-        dThres = 2  # define short distance from boundary lines:D
+        dThres = 1  # define short distance from boundary lines:D
 
         # get occlusion boundary
         ca = math.cos(alpha)
@@ -312,7 +312,7 @@ class Environment(object):
                         to_x_m=MP[0], to_y_m=MP[1],
                         covLong=pCovLon, covLat=pCovLat, vx_ms=pVx,
                         startTime=pose.timestamp_s, appearRate=pStreetRate,
-                        interactRate=interactRate)
+                        interactRate=1)
                     self._l_hypoPedes.append(hypoPedes)
                 else:
                     hypoPedes = Pedestrian(

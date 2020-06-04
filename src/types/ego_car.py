@@ -137,7 +137,8 @@ class EgoVehicle:
         """
         return param._ESCAPE_RATE
 
-    def _riskCost(self, timestamp_s: float, u_in: float):
+    def _riskCost(self, timestamp_s: float, u_in: float,
+                  useAwarenessRate):
         """
         Compute collision risk & event rate at given predict timestamp
         """
@@ -226,13 +227,12 @@ class EgoVehicle:
                 method=param._EVENT_RATE_HYPOPEDES_MODEL,
                 exp_beta=param._EVENT_RATE_HYPOPEDES_EXP_BETA,
                 sig_beta=param._EVENT_RATE_HYPOPEDES_SIG_BETA)
-
-            hpcol_rate *= hypoPedes._interactRate
+            if useAwarenessRate:
+                hpcol_rate *= hypoPedes._interactRate
 
             hpcol_severity = rfnc.collisionSeverityHypoPedes(
                 ego_vx=egoPose.vdy.vx_ms, obj_vx=hPose.vdy.vx_ms,
                 method=param._SEVERITY_HYPOPEDES_MODEL,
-                gom_rate=hypoPedes._appearRate,
                 min_weight=param._SEVERITY_HYPOPEDES_MIN_WEIGHT,
                 avg_vx=param._SEVERITY_HYPOPEDES_AVG_VX,
                 sig_max=param._SEVERITY_HYPOPEDES_SIG_MAX,
@@ -260,7 +260,8 @@ class EgoVehicle:
                 eventRate_max=param._COLLISION_HYPOVEH_RATE_MAX,
                 exp_beta=param._EVENT_RATE_HYPOVEH_EXP_BETA,
                 sig_beta=param._EVENT_RATE_HYPOVEH_SIG_BETA)
-            hvcol_rate *= hypoVeh._interactRate
+            if useAwarenessRate:
+                hvcol_rate *= hypoVeh._interactRate
 
             hvcol_severity = rfnc.collisionSeverityHypoVeh(
                 ego_vx=egoPose.vdy.vx_ms, obj_vx=hvPose.vdy.vx_ms,
@@ -308,7 +309,8 @@ class EgoVehicle:
         Compute total cost at given timestamp
         """
         utilCost = self._utilityCost(timestamp_s, u_in)
-        riskCost = self._riskCost(timestamp_s, u_in)
+        riskCost = self._riskCost(timestamp_s, u_in,
+                                  useAwarenessRate=param._ENABLE_AWARENESS_RATE)
         cost = utilCost + riskCost
         return cost
 
