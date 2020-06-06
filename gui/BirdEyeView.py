@@ -178,10 +178,13 @@ class BirdEyeView(QOpenGLWidget):
         for pedes in pedesList:
             if pedes['visible']:
                 helper.drawPoly(pedes['poly'], color='lightGreen', alpha=0.5)
+                helper.drawHeading(pedes['poly'], color='black',alpha=1)
             else:
                 helper.drawPoly(pedes['poly'], color='lightRed', alpha=0.5)
+                helper.drawHeading(pedes['poly'], color='black',alpha=1)
         for hypo in hypoList:
             helper.drawPoly(hypo['poly'], color='pink', alpha=0.3)
+            helper.drawHeading(hypo['poly'], color='black',alpha=1)
 
     def drawOtherVehicle(self):
         vehicleList = self.core.exportCurrentVehicle()
@@ -189,15 +192,19 @@ class BirdEyeView(QOpenGLWidget):
         for vehicle in vehicleList:
             if vehicle['visible']:
                 helper.drawPoly(vehicle['poly'], color='green', alpha=0.5)
+                helper.drawHeading(vehicle['poly'], color='black',alpha=1)
             else:
                 helper.drawPoly(vehicle['poly'], color='red', alpha=0.5)
+                helper.drawHeading(vehicle['poly'], color='black',alpha=1)
         for hypo in hypoList:
             helper.drawPoly(hypo['poly'], color='yellow', alpha=0.3)
+            helper.drawHeading(hypo['poly'], color='black',alpha=1)
 
     def drawEgoVehicle(self):
         egoPoly = self.core.getCurrentEgoPoly()
         pos = self.core.getCurrentEgoPos()
         helper.drawPoly(egoPoly, color='blue', alpha=1)
+        helper.drawHeading(egoPoly, color='black',alpha=1)
         if pos is not None:
             self._x_center = pos[0]
             self._y_center = pos[1]

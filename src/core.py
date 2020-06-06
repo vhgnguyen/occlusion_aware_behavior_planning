@@ -3,7 +3,7 @@ import numpy as np
 from environment import Environment
 from pose import Pose, VehicleDynamic
 from ego_car import EgoVehicle
-from objects import Vehicle, Pedestrian
+from objects import Vehicle, Pedestrian, StaticObject
 import _param as param
 
 
@@ -13,15 +13,19 @@ class Core(object):
         self._egoCar = None
         self._env = Environment()
         self.timestamp_s = 0
+        self.simulationTime = param._SIMULATION_TIME
+        self.dT = param._dT
 
     """ Run functions """
 
-    def move(self, dT=param._dT, sT=param._SIMULATION_TIME):
+    def move(self):
         if (self._egoCar is not None and
-           self.timestamp_s + dT <= sT):
-            self._egoCar.optimize()
-            self._env.move(currentTime=self.timestamp_s)
-            self.timestamp_s = round(self.timestamp_s + dT, 3)
+           self.timestamp_s + self.dT <= self.simulationTime):
+            self._egoCar.optimizeState(
+                dT=param._dT, predictStep=param._PREDICT_STEP,
+                predictTime=param._PREDICT_TIME)
+            self._env.move(currentTime=self.timestamp_s, dT=param._dT)
+            self.timestamp_s = round(self.timestamp_s + self.dT, 3)
             return True
         else:
             return False
@@ -35,7 +39,13 @@ class Core(object):
         return self.timestamp_s
 
     def getSimulationTime(self):
-        return param._SIMULATION_TIME
+        return self.simulationTime
+
+    def updateSimulationTime(self, sT):
+        self.simulationTime = sT
+
+    def updateTimeStep(self, dT):
+        self.dT = dT
 
     """ Add elements functions """
 
@@ -76,8 +86,14 @@ class Core(object):
         self._env.addPedestrian(pedestrian)
         print("Pedestrian count: {:}".format(self._env.countPedestrian()))
 
-    def addStaticObject(self, staticObject):
-        self._env.addStaticObject(staticObject)
+    def addStaticObject(self, x_m, y_m, length, width):
+
+        obs = StaticObject(
+            idx=self._env.countStaticObject()+1,
+            poly=np.array([[x_m, y_m], [x_m + length, y_m],
+                          [x_m + length, y_m + width],
+                          [x_m, y_m + width]]))
+        self._env.addStaticObject(obs)
 
     """ Export functions """
 

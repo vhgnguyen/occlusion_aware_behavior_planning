@@ -186,6 +186,7 @@ def collisionIndicator(egoPose, egoPoly, objPose, objPoly):
     if abs(math.remainder(diff_yaw, np.pi/2)) < param._COLLISION_ORTHO_THRES:
         poly, bound = gaussian.minkowskiSumOrthogonal(egoPoly, objPoly)
         col_indicator = collisionIndicatorComputeSimple(bound, dMean, dCov)
+
     # handle general case
     else:
         poly, bound = gaussian.minkowskiSum(egoPoly, objPoly)
@@ -194,7 +195,6 @@ def collisionIndicator(egoPose, egoPoly, objPose, objPoly):
             bound=bound,
             dMean=dMean,
             dCov=dCov)
-        # col_indicator = collisionIndicatorComputeSimple(bound, dMean, dCov)
     return col_indicator
 
 
@@ -238,48 +238,19 @@ def interactRate(a, b=8, k=1):
     return 1 - 1 / (1 + np.exp(k * (a-b)))
 
 
-def appearProbability(ego_vx, ego_acc, dS, rate):
-    t = min(abs(np.roots([0.5*ego_acc, ego_vx, -dS])))
-    return 1 - np.exp(- rate * t)
+def limitViewRisk(fov_range, ego_vx, aBrake, dBrake, stdLon,
+                  rateMax=param._FOV_EVENTRATE_MAX,
+                  rateBeta=param._FOV_EVENTRATE_BETA,
+                  severity_min_weight=param._FOV_SEVERITY_MIN):
+    # event rate
+    sBrake_max = abs(0.5 * ego_vx**2 / aBrake) + dBrake + stdLon
+    eventRate = rateMax
+    eventRate *= 1 - 1 / (1 + rateBeta * np.exp(-(fov_range - sBrake_max)))
+    # severity
+    v_max2 = ego_vx**2 + 2*aBrake*(fov_range - stdLon - dBrake)
+    severity = max(v_max2, 0)
+    severity += severity_min_weight
+    # risk
+    risk = eventRate * severity
 
-
-def unseenEventRate(unseenEventIndicator,
-                    eventRate_max=param._UNSEENEVENT_RATE_MAX,
-                    eventRate_beta=param._UNSEENEVENT_RATE_BETA):
-    assert np.isscalar(eventRate_max) and eventRate_max >= 1.0
-    assert np.isscalar(eventRate_beta) and eventRate_beta > 0.0
-    assert 0.0 <= unseenEventIndicator <= 1.0
-    return eventRate_max \
-        * (1.0 - np.exp(-eventRate_beta*unseenEventIndicator)) \
-        / (1.0 - np.exp(-eventRate_beta))
-
-
-def unseenEventRisk(d2MP, ego_vx, ego_acc, dVis,
-                    obj_vx=param._V_MAX_OBJECT, dBrakeThresh=0.3,
-                    ref_deAcc=-0.5,
-                    objectAppearRate=0.1):
-    # ego vehicle brake distance
-    sBrake_max = abs(0.5 * ego_vx**2 / param._A_MAX_BRAKE)
-    t_ego2MP = min(abs(np.roots([0.5*ego_acc, ego_vx, -d2MP])))
-    pro_unseen = 1 - np.exp(- objectAppearRate * t_ego2MP)
-
-    col_indicator = 0
-    if d2MP <= sBrake_max + dBrakeThresh:
-        t_obj2MP = dVis / obj_vx
-        t_ego2Brake = - ego_vx / param._A_MAX_BRAKE
-        v_max2 = max(ego_vx**2 + 2*param._A_MAX_BRAKE*d2MP, 0)
-        v_egoAtMP = max(np.sqrt(v_max2), 0)
-
-        col_indicator = min(t_ego2Brake / t_obj2MP, 1) * pro_unseen
-        col_event = unseenEventRate(col_indicator)
-
-        col_severity = 0.05 * abs(v_egoAtMP)**2
-        col_risk = col_event * col_severity
-
-        return col_indicator, col_event, col_risk
-    else:
-        # ideal velocity for comfort stopping at merge point
-        v_ref = min(np.sqrt(2*(d2MP - dBrakeThresh)*abs(ref_deAcc)), param._C_V_CRUISE)
-        col_risk = 0.01 * abs(ego_vx - v_ref)**2 * pro_unseen
-
-        return col_indicator, 0, col_risk
+    return eventRate, risk

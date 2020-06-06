@@ -24,7 +24,6 @@ def minkowskiSum(obj1, obj2):
         for p2 in obj2:
             poly = np.vstack([poly, np.array([p1+p2])])
     poly00 = poly - np.mean(obj1, axis=0) - np.mean(obj2, axis=0)
-    # poly00 = poly - np.mean(obj1, axis=0)
     hull = ConvexHull(poly00)
     poly = poly00[hull.vertices]
     bound = {'max': hull.max_bound, 'min': hull.min_bound}

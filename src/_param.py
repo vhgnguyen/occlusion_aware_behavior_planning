@@ -3,6 +3,7 @@
 # ------------------------------
 _ENABLE_HYPOTHESIS = True
 _ENABLE_AWARENESS_RATE = True
+_ENABLE_FOV_AWARE = True
 
 # ------------------------------
 # Discreted time interval
@@ -29,6 +30,7 @@ _CAR_WIDTH = 2
 _A_MAX = 3
 _A_MIN = -3
 _A_MAX_BRAKE = -6.0
+_D_BRAKE_MIN = 1
 # jerk
 _J_MAX = 2
 # velocity uncertainty
@@ -57,23 +59,23 @@ _SEVERITY_GOM_BETA = 4.
 
 # --- Collision event rate -----
 # collision emergency brake minimum rate
-_COLLISION_RATE_BRAKE_MIN = 5.
+_COLLISION_RATE_BRAKE_MIN = 7.
 _COLLISION_RATE_MAX = 10.
 _COLLISION_EVENT_RATE_MODEL = 'exponential'
 # exponential model
-_COLLISION_RATE_EXP_BETA = 3.
-_COLLISION_RATE_EXP_BETA_PEDES = 3.
+_COLLISION_RATE_EXP_BETA = 10.
+_COLLISION_RATE_EXP_BETA_PEDES = 10.
 # sigmoid model
 _COLLISION_RATE_SIG_BETA = 10.
 
 # escape rate
-_ESCAPE_RATE = 1.
+_ESCAPE_RATE = 0.5
 
 # --- Utility weight -----------
 _C_CRUISE = 0.001
 _C_V_CRUISE = 8
 _C_COMFORT = 0.001
-_C_JERK = 0.005
+_C_JERK = 0.01
 
 # ------------------------------
 # Hypothesis pedestrian model
@@ -130,8 +132,9 @@ _SEVERITY_HYPOVEH_MIN_WEIGHT = 2.
 _SEVERITY_HYPOVEH_SIG_MAX = 5.
 _SEVERITY_HYPOVEH_SIG_B = 1
 
-
-# unseen event rate
-_UNSEENEVENT_RATE_MAX = 1
-_UNSEENEVENT_RATE_BETA = 0.1
-_V_MAX_OBJECT = 4
+# ------------------------------
+# FOV model
+# ------------------------------
+_FOV_EVENTRATE_MAX = 1
+_FOV_EVENTRATE_BETA = 1
+_FOV_SEVERITY_MIN = 1

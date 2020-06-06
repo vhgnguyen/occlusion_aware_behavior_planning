@@ -1,13 +1,1 @@
-fix pedestrian covariance!!!
-severity of collision with two low speed profile about zero - fix with condition of collision based on event rate and velocity
-plot event
-object prediction to get prior collision
-
-27/03
-investigate prediction time | |
-change event rate to sigmoid or gompertz type |V|
-
-28/03
-interpolate acceleration for smooth behaviour | |
-change max event rate for hypotheses |V|
-separate min severity for pedestrian object and vehicle object
+05/06:

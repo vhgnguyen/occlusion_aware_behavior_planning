@@ -1,5 +1,6 @@
 from matplotlib.patches import Ellipse, Polygon
 from scipy import optimize
+from shapely.geometry import Polygon
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -34,10 +35,20 @@ class EgoVehicle:
         # current state
         self._currentPose = startPose
         self._u = u_in
+        self._minColValue = 0
+        self._minRiskValue = 0
+
+        # optimization state machine
+        self._stopState = False
+        self._defaultState = True
+        self._emergencyState = False
+        self._TTB = 0
+        self._brake = False
 
         # environment information
         self._env = env
         self._fov = None
+        self._fovRange = None
         self._l_currentObject = {}
 
         # moved poses
@@ -92,7 +103,7 @@ class EgoVehicle:
         Scan environment at current state
         """
         currentPose = self.getCurrentPose()
-        self._l_currentObject, self._fov = self._env.update(
+        self._l_currentObject, self._fov, self._fovRange = self._env.update(
             pose=currentPose,
             from_timestamp=currentPose.timestamp_s,
             u_in=self._u, radius=param._SCAN_RADIUS,
@@ -131,23 +142,69 @@ class EgoVehicle:
             )
         self._p_u = u_in
 
-    def _escapeRate(self):
+    def _escapeRate(self, r=param._ESCAPE_RATE):
         """
         Return escape rate
         """
-        return param._ESCAPE_RATE
+        return r
 
     def _riskCost(self, timestamp_s: float, u_in: float,
-                  useAwarenessRate):
+                  useAwarenessRate, useFOV):
         """
         Compute collision risk & event rate at given predict timestamp
         """
+        currentTime = self.getCurrentTimestamp()
         timestamp_s = round(timestamp_s, 2)
         egoPose = self._p_pose[timestamp_s]
         egoPoly = self.getPredictPoly(timestamp_s)
         l_obj = self._l_currentObject
+
         total_risk = 0
         total_eventRate = 0
+
+        if useFOV:
+            limitViewEvent, limitViewRisk = rfnc.limitViewRisk(
+                fov_range=self._fovRange, ego_vx=egoPose.vdy.vx_ms,
+                aBrake=param._A_MIN, dBrake=param._D_BRAKE_MIN,
+                stdLon=np.sqrt(egoPose.covLatLong[0, 0]),
+                rateMax=param._FOV_EVENTRATE_MAX,
+                rateBeta=param._FOV_EVENTRATE_BETA,
+                severity_min_weight=param._FOV_SEVERITY_MIN)
+
+            total_risk += limitViewRisk
+            total_eventRate += limitViewEvent
+
+        egoPolygon = Polygon(egoPoly + egoPose.heading())
+
+        for sobj in l_obj['staticObject']:
+            sPolygon = Polygon(sobj._poly)
+            if egoPolygon.intersects(sPolygon):
+                sO_eventRate = param._COLLISION_RATE_MAX
+                sO_severity = rfnc.collisionEventSeverity(
+                    ego_vx=egoPose.vdy.vx_ms, obj_vx=0,
+                    method=param._COLLISION_SEVERITY_MODEL)
+
+                total_eventRate += sO_eventRate
+                total_risk += sO_eventRate*sO_severity
+
+                self._minColValue = 1
+                if timestamp_s <= currentTime + self._TTB:
+                    self._brake = True
+
+        for staticVeh in l_obj['staticVehicle']:
+            _, vehPoly = staticVeh.getPredictAt(timestamp_s)
+            vehPolygon = Polygon(vehPoly)
+            if egoPolygon.intersects(vehPolygon):
+                sV_eventRate = param._COLLISION_RATE_MAX
+                sV_severity = rfnc.collisionEventSeverity(
+                    ego_vx=egoPose.vdy.vx_ms, obj_vx=0,
+                    method=param._COLLISION_SEVERITY_MODEL)
+                total_eventRate += sV_eventRate
+                total_risk += sV_eventRate*sV_severity
+
+                self._minColValue = 1
+                if timestamp_s <= currentTime + self._TTB:
+                    self._brake = True
 
         for veh in l_obj['vehicle']:
             vehPose, vehPoly = veh.getPredictAt(timestamp_s)
@@ -170,24 +227,14 @@ class EgoVehicle:
                 col_severity=vcol_severity,
                 col_rate=vcol_rate)
 
+            self._minColValue = max(self._minColValue, vcol_indicator)
+            if timestamp_s <= currentTime + self._TTB:
+                if vcol_indicator > 0.5:
+                    self._brake = True
+
             total_risk += vcol_risk
             total_eventRate += vcol_rate
             veh.setCollisionProb(vcol_indicator)
-
-        # for sobj in l_obj['staticObject']:
-        #     dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
-        #         pose=egoPose,
-        #         poly=sobj._poly
-        #         )
-        #     if MP is not None:
-        #         indicator, rate, risk = rfnc.unseenEventRisk(
-        #             d2MP=dMerge,
-        #             ego_vx=egoPose.vdy.vx_ms,
-        #             ego_acc=self._p_u,
-        #             dVis=dVis
-        #         )
-        #         total_risk += risk
-        #         total_eventRate += rate
 
         for pedes in l_obj['pedestrian']:
             pPose, pPoly = pedes.getPredictAt(timestamp_s)
@@ -209,6 +256,11 @@ class EgoVehicle:
             pcol_risk = rfnc.collisionRisk(
                 col_severity=pcol_severity,
                 col_rate=pcol_rate)
+
+            self._minColValue = max(self._minColValue, pcol_indicator)
+            if timestamp_s <= currentTime + self._TTB:
+                if pcol_indicator > 0.3:
+                    self._brake = True
 
             total_risk += pcol_risk
             total_eventRate += pcol_rate
@@ -287,40 +339,51 @@ class EgoVehicle:
         """
         Compute survival function up to given timestamp_s
         """
-        total_eventRate = self._escapeRate()
+        total_eventRate = self._escapeRate(param._ESCAPE_RATE)
         total_eventRate += sum(list((self._p_eventRate[k])
                                for k in self._p_eventRate if k <= timestamp_s))
         s = np.exp(-total_eventRate*dT)
         return s
 
-    def _utilityCost(self, timestamp_s: float, u_in: float):
+    def _utilityCost(self, timestamp_s: float, u_in: float,
+                     wV=param._C_CRUISE, vx=param._C_V_CRUISE,
+                     wA=param._C_COMFORT, wJ=param._C_JERK):
         """
         Compute current utility cost at given predict timestamp
         """
         p_pose = self._p_pose[timestamp_s]
         utCost = 0
-        utCost += param._C_CRUISE * (p_pose.vdy.vx_ms-param._C_V_CRUISE)**2
-        utCost += param._C_COMFORT * (u_in**2)
-        utCost += param._C_JERK * ((u_in - self._u)**2)
+        utCost += wV * (p_pose.vdy.vx_ms-vx)**2
+        utCost += wA * (u_in**2)
+        utCost += wJ * ((u_in - self._u)**2)
         return utCost
 
     def _computeCost(self, timestamp_s: float, u_in: float):
         """
         Compute total cost at given timestamp
         """
-        utilCost = self._utilityCost(timestamp_s, u_in)
-        riskCost = self._riskCost(timestamp_s, u_in,
-                                  useAwarenessRate=param._ENABLE_AWARENESS_RATE)
+        utilCost = self._utilityCost(
+            timestamp_s=timestamp_s, u_in=u_in,
+            wV=param._C_CRUISE, vx=param._C_V_CRUISE,
+            wA=param._C_COMFORT, wJ=param._C_JERK)
+        riskCost = self._riskCost(
+            timestamp_s, u_in,
+            useAwarenessRate=param._ENABLE_AWARENESS_RATE,
+            useFOV=param._ENABLE_FOV_AWARE)
         cost = utilCost + riskCost
         return cost
 
-    def _computeTotalCost(self, u_in: float, dT=param._PREDICT_STEP):
+    def _computeTotalCost(self, u_in: float, dT=param._PREDICT_STEP,
+                          predictTime=param._PREDICT_TIME):
         """
         Predict and compute total cost of prediction
         """
-        self._p_eventRate = {}
-        self._predict(u_in, dT=dT)
         cost = 0
+        self._brake = False
+        self._minColValue = 0
+        self._p_eventRate = {}
+        self._predict(u_in, dT=dT, predictTime=predictTime)
+
         for k in self._p_pose:
             dCost = self._computeCost(k, u_in)
             s = self._survivalRate(k, dT=dT)
@@ -328,41 +391,54 @@ class EgoVehicle:
         cost = cost * s * dT
         return cost
 
+    def _computeTTB(self, aBrake=param._A_MAX_BRAKE, delay=1):
+        ego_vx = self.getCurrentPose().vdy.vx_ms
+        self._TTB = abs(ego_vx / param._A_MAX_BRAKE) + delay
+
     def _move(self, dT=param._dT):
         lastPose = self.getCurrentPose()
         nextTimestamp_s = round(lastPose.timestamp_s + dT, 2)
+
         if self._p_u is not None:
             nextPose = pfnc.updatePose(
-                lastPose=lastPose,
-                u_in=self._p_u,
-                dT=dT
-                )
+                lastPose=lastPose, u_in=self._p_u, dT=dT)
             self._u = self._p_u
         else:
             nextPose = pfnc.updatePose(
-                lastPose=lastPose,
-                u_in=self._u,
-                dT=dT
-                )
+                lastPose=lastPose, u_in=self._u, dT=dT)
         self._currentPose = nextPose
         self._l_pose.update({nextTimestamp_s: nextPose})
         self._l_u.update({nextTimestamp_s: self._u})
 
-    def optimize(self, dT=param._dT, predictStep=param._PREDICT_STEP):
+        if self.getCurrentPose().vdy.vx_ms == 0 and self._emergencyState:
+            self._toStopState()
+            self._u = 0
+
+    def optimizeState(self, dT=param._dT, predictStep=param._PREDICT_STEP,
+                      predictTime=param._PREDICT_TIME):
+        self._searchEnvironment()
+        self._computeTTB(aBrake=param._A_MAX_BRAKE)
         val = 0
 
-        # search environment
-        self._searchEnvironment()
-
-        # handle stop case
-        if self.getCurrentPose().vdy.vx_ms == 0:
+        if self._stopState:
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(
-                    u_in=x, dT=predictStep),
-                bounds=(-0., param._J_MAX), method='bounded',
+                    u_in=x, dT=predictStep, predictTime=predictTime),
+                bounds=(0, param._J_MAX), method='bounded',
                 options={"maxiter": 5}
                 ).x
-        else:
+            self._computeTotalCost(
+                u_in=val, dT=predictStep, predictTime=predictTime)
+            if self._brake or self._minColValue > 0.7:
+                self._p_u = 0
+                self._u = 0
+            else:
+                self._toDefaultState()
+                self._p_u = self._u + (val - self._u) * dT / predictStep
+            self._move()
+            return
+
+        if self._defaultState:
             lowBound = max(self._u - param._J_MAX, param._A_MIN)
             upBound = min(self._u + param._J_MAX, param._A_MAX)
             if lowBound >= upBound:
@@ -370,25 +446,43 @@ class EgoVehicle:
                 upBound = lowBound + param._J_MAX
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(
-                    u_in=x, dT=predictStep),
+                    u_in=x, dT=predictStep, predictTime=predictTime),
                 bounds=(lowBound, upBound), method='bounded',
                 options={"maxiter": 5}
                 ).x
-        self._predict(u_in=val)
-        # check if critical event occur
-        total_eventRate = sum(
-            list((self._p_eventRate[k]) for k in self._p_eventRate))
-        max_eventRate = max(self._p_eventRate.values())
-        if max_eventRate > param._COLLISION_RATE_BRAKE_MIN and self.getCurrentPose().vdy.vx_ms > 0:
+            self._computeTotalCost(
+                u_in=val, dT=predictStep, predictTime=predictTime)
+            if self._brake:
+                self._toEmergencyState()
+            self._p_u = self._u + (val - self._u) * dT / predictStep
+            self._move()
+            return
+
+        if self._emergencyState:
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(
-                    u_in=x, dT=predictStep),
+                    u_in=x, dT=predictStep, predictTime=predictTime),
                 bounds=(param._A_MAX_BRAKE, param._A_MIN), method='bounded',
                 options={"maxiter": 5}
             ).x
-        self._predict(u_in=val)
-        self._p_u = self._u + (val - self._u) * dT / predictStep
-        self._move()
+            self._p_u = self._u + (val - self._u) * dT / predictStep
+            self._move()
+            return
+
+    def _toStopState(self):
+        self._stopState = True
+        self._defaultState = False
+        self._emergencyState = False
+
+    def _toDefaultState(self):
+        self._stopState = False
+        self._defaultState = True
+        self._emergencyState = False
+
+    def _toEmergencyState(self):
+        self._stopState = False
+        self._defaultState = False
+        self._emergencyState = True
 
     # ------------------- System function ---------------------
 
@@ -546,23 +640,6 @@ class EgoVehicle:
                 total_rate += vcol_rate
                 total_risk += vcol_risk
 
-            # for obj in l_obj['staticObject']:
-            #     objPoly = obj._poly
-            #     # define unexpected risk here and add rate and risk
-            #     dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
-            #         pose=egoPose,
-            #         poly=objPoly
-            #         )
-            #     if MP is not None:
-            #         indicator, rate, risk = rfnc.unseenEventRisk(
-            #             d2MP=dMerge,
-            #             ego_vx=egoPose.vdy.vx_ms,
-            #             ego_acc=self._l_u[k],
-            #             dVis=dVis
-            #         )
-            #         col_risk += risk
-            #         col_rate += rate
-
             for veh in l_obj['pedestrian']:
                 vehPose = veh.getPoseAt(k)
                 vehPoly = veh.getPoly(k)
@@ -583,506 +660,55 @@ class EgoVehicle:
                 total_rate += vcol_rate
                 total_risk += vcol_risk
 
-            # for hypoPedes in l_obj['hypoPedestrian']:
-            #     hPose = hypoPedes.getPoseAt(k)
-            #     hPoly = hypoPedes.getPoly(k)
-            #     hpcol_indicator = rfnc.collisionIndicator(
-            #         egoPose=egoPose, egoPoly=egoPoly,
-            #         objPose=hPose, objPoly=hPoly)
-
-            #     hpcol_rate = rfnc.collisionEventRate(
-            #         collisionIndicator=hpcol_indicator * hypoPedes._appearRate,
-            #         eventRate_max=param._COLLISION_HYPOPEDES_RATE_MAX,
-            #         method='sigmoid')
-
-            #     hpcol_severity = rfnc.collisionSeverityHypoPedes(
-            #         ego_vx=egoPose.vdy.vx_ms, obj_vx=hPose.vdy.vx_ms,
-            #         method='gompertz', gom_rate=hypoPedes._appearRate)
-
-            #     hpcol_risk = rfnc.collisionRisk(
-            #         col_severity=hpcol_severity,
-            #         col_rate=hpcol_rate)
-
-            #     total_risk += hpcol_risk
-            #     total_rate += hpcol_rate
-            #     hypoPedes.setCollisionProb(hpcol_indicator)
-
-            # for hypoVeh in l_obj['hypoVehicle']:
-            #     hvPose = hypoVeh.getPoseAt(k)
-            #     hvPoly = hypoVeh.getPoly(k)
-            #     hvcol_indicator = rfnc.collisionIndicator(
-            #         egoPose=egoPose, egoPoly=egoPoly,
-            #         objPose=hvPose, objPoly=hvPoly)
-
-            #     hvcol_rate = rfnc.collisionEventRate(
-            #         collisionIndicator=hvcol_indicator * hypoVeh._appearRate,
-            #         method='sigmoid',
-            #         eventRate_max=param._COLLISION_HYPOVEH_RATE_MAX)
-
-            #     hvcol_severity = rfnc.collisionSeverityHypoVeh(
-            #         ego_vx=egoPose.vdy.vx_ms, obj_vx=hvPose.vdy.vx_ms,
-            #         method='sigmoid')
-
-            #     hvcol_risk = rfnc.collisionRisk(
-            #         col_severity=hvcol_severity,
-            #         col_rate=hvcol_rate)
-
-            #     total_risk += hvcol_risk
-            #     total_rate += hvcol_rate
-            #     hypoVeh.setCollisionProb(hvcol_indicator)
-
             l_cost = np.append(
                 l_cost, np.array([[k, total_risk, total_rate]]), axis=0)
         return l_cost
 
     # ------------------- Backup function ---------------------
-    
-    def _unseenObjectCost(self):
-        nrObj = len(self._env._l_staticObject)
-        l_cost_list = {}
-
-        for i in range(0, nrObj):
-            l_cost = np.empty((0, 4))
-            l_cost_list.update({i: l_cost})
-
-        for k in self._l_pose:
-            egoPose = self._l_pose[k]
-            l_obj = self._env.updateAt(x_m=egoPose.x_m,
-                                       y_m=egoPose.y_m,
-                                       timestamp_s=egoPose.timestamp_s)
-
-            for obj in l_obj['staticObject']:
-                indicator, rate, risk = 0, 0, 0
-                # define unexpected risk here and add rate and risk
-                dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
-                    pose=egoPose,
-                    poly=obj._poly
-                    )
-                if MP is not None:
-                    indicator, rate, risk = rfnc.unseenEventRisk(
-                        d2MP=dMerge,
-                        ego_vx=egoPose.vdy.vx_ms,
-                        ego_acc=self._l_u[k],
-                        dVis=dVis
-                    )
-
-                l_cost_list[obj._idx-1] = np.append(
-                    l_cost_list[obj._idx-1], np.array([[k, indicator, rate, risk]]), axis=0)
-
-        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(21, 6))
-
-        ax[0].set_title("Probability of collision with unseen pedestrian")
-        ax[0].set_xlabel("Time [s]")
-        ax[0].set_ylabel("Probability")
-        ax[0].set_ylim(0, 1)
-
-        ax[1].set_title("Event rate of collision with unseen pedestrian")
-        ax[1].set_xlabel("Time [s]")
-        ax[1].set_ylabel("Event rate [event/s]")
-        ax[1].set_ylim(0, 1)
-
-        ax[2].set_title("Risk of collision with unseen pedestrian")
-        ax[2].set_xlabel("Time [s]")
-        ax[2].set_ylabel("Risk")
-
-        for (i, l_cost) in l_cost_list.items():
-
-            ax[0].plot(l_cost[:, 0], l_cost[:, 1],
-                       label='object {:}'.format(i+1))
-
-            ax[1].plot(l_cost[:, 0], l_cost[:, 2],
-                       label='object {:}'.format(i+1))
-
-            ax[2].plot(l_cost[:, 0], l_cost[:, 3],
-                       label='object {:}'.format(i+1))
-
-        for a in ax:
-            a.legend()
-
-        return l_cost_list
-
-    def _unseenObjectCost_unseenRate(self):
-        nrObj = len(self._env._l_staticObject)
-        l_cost_list = {}
-        unseenRate = [0.1, 0.5, 1, 2]
-        for i in unseenRate:
-            l_cost = np.empty((0, 5))
-            l_cost_list.update({i: l_cost})
-
-        for k in self._l_pose:
-            egoPose = self._l_pose[k]
-            l_obj = self._env.updateAt(x_m=egoPose.x_m,
-                                       y_m=egoPose.y_m,
-                                       timestamp_s=egoPose.timestamp_s)
-
-            for obj in l_obj['staticObject']:
-                for i in unseenRate:
-                    indicator, rate, risk = 0, 0, 0
-                    # define unexpected risk here and add rate and risk
-                    dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
-                        pose=egoPose,
-                        poly=obj._poly
-                        )
-                    if MP is not None:
-                        indicator, rate, risk = rfnc.unseenEventRisk(
-                            d2MP=dMerge,
-                            ego_vx=egoPose.vdy.vx_ms,
-                            ego_acc=self._l_u[k],
-                            dVis=dVis,
-                            objectAppearRate=i
-                        )
-                    else:
-                        dMerge = 0
-                    l_cost_list[i] = np.append(
-                        l_cost_list[i], np.array([[k, dMerge, indicator, rate, risk]]), axis=0)                  
-
-        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(21, 6))
-
-        ax[0].set_title("Probability of collision with unseen pedestrian")
-        ax[0].set_xlabel("Distane to merge point [m]")
-        ax[0].set_ylabel("Probability")
-        ax[0].set_ylim(0, 1)
-
-        ax[1].set_title("Event rate of collision with unseen pedestrian")
-        ax[1].set_xlabel("Distane to merge point [m]")
-        ax[1].set_ylabel("Event rate [event/s]")
-        ax[1].set_ylim(0, 1)
-
-        ax[2].set_title("Risk of collision with unseen pedestrian")
-        ax[2].set_xlabel("Distane to merge point [m]")
-        ax[2].set_ylabel("Risk")
-
-        for (i, l_cost) in l_cost_list.items():
-
-            ax[0].plot(l_cost[:, 1], l_cost[:, 2],
-                       label='unseen rate = {:}'.format(i))
-
-            ax[1].plot(l_cost[:, 1], l_cost[:, 3],
-                       label='unseen rate = {:}'.format(i))
-
-            ax[2].plot(l_cost[:, 1], l_cost[:, 4],
-                       label='unseen rate = {:}'.format(i))
-
-        for a in ax:
-            a.legend()
-
-        ax[0].set_xlim(25, -2)
-        ax[1].set_xlim(25, -2)
-        ax[2].set_xlim(25, -2)
-
-        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(21, 6))
-
-        ax[0].set_title("Probability of collision with unseen pedestrian")
-        ax[0].set_xlabel("Time [s]")
-        ax[0].set_ylabel("Probability")
-        ax[0].set_ylim(0, 1)
-
-        ax[1].set_title("Event rate of collision with unseen pedestrian")
-        ax[1].set_xlabel("Time [s]")
-        ax[1].set_ylabel("Event rate [event/s]")
-        ax[1].set_ylim(0, 1)
-
-        ax[2].set_title("Risk of collision with unseen pedestrian")
-        ax[2].set_xlabel("Time [s]")
-        ax[2].set_ylabel("Risk")
-
-        for (i, l_cost) in l_cost_list.items():
-
-            ax[0].plot(l_cost[:, 0], l_cost[:, 2],
-                       label='unseen rate = {:}'.format(i))
-
-            ax[1].plot(l_cost[:, 0], l_cost[:, 3],
-                       label='unseen rate = {:}'.format(i))
-
-            ax[2].plot(l_cost[:, 0], l_cost[:, 4],
-                       label='unseen rate = {:}'.format(i))
-
-        for a in ax:
-            a.legend()
-
-        return l_cost_list
-
-    def _unseenObjectCost_velocity(self):
-        l_cost_list = {}
-        velocity = [4, 6, 8, 10]
-        for i in velocity:
-            l_cost = np.empty((0, 6))
-            l_cost_list.update({i: l_cost})
-
-        for k in self._l_pose:
-            egoPose = self._l_pose[k]
-            l_obj = self._env.updateAt(x_m=egoPose.x_m,
-                                       y_m=egoPose.y_m,
-                                       timestamp_s=egoPose.timestamp_s)
-
-            for obj in l_obj['staticObject']:
-                for i in velocity:
-                    indicator, rate, risk = 0, 0, 0
-                    # define unexpected risk here and add rate and risk
-                    dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
-                        pose=egoPose,
-                        poly=obj._poly
-                        )
-                    if MP is not None:
-                        indicator, rate, risk = rfnc.unseenEventRisk(
-                            d2MP=dMerge,
-                            ego_vx=i,
-                            ego_acc=self._l_u[k],
-                            dVis=dVis
-                        )
-                    else:
-                        dMerge, dVis = 0, 0
-                    l_cost_list[i] = np.append(
-                        l_cost_list[i], np.array([[k, dMerge, dVis, indicator, rate, risk]]), axis=0)                  
-
-        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(21, 6))
-
-        ax[0].set_title("Probability of collision with unseen pedestrian")
-        ax[0].set_xlabel("Distane to merge point [m]")
-        ax[0].set_ylabel("Probability")
-        ax[0].set_ylim(0, 1)
-
-        ax[1].set_title("Event rate of collision with unseen pedestrian")
-        ax[1].set_xlabel("Distane to merge point [m]")
-        ax[1].set_ylabel("Event rate [event/s]")
-        ax[1].set_ylim(0, 1)
-
-        ax[2].set_title("Risk of collision with unseen pedestrian")
-        ax[2].set_xlabel("Distane to merge point [m]")
-        ax[2].set_ylabel("Risk")
-
-        for (i, l_cost) in l_cost_list.items():
-
-            ax[0].plot(l_cost[:, 1], l_cost[:, 3],
-                       label='$v_x$ = {:} [m/s]'.format(i))
-
-            ax[1].plot(l_cost[:, 1], l_cost[:, 4],
-                       label='$v_x$ = {:} [m/s]'.format(i))
-
-            ax[2].plot(l_cost[:, 1], l_cost[:, 5],
-                       label='$v_x$ = {:} [m/s]'.format(i))
-
-        for a in ax:
-            a.legend()
-
-        ax[0].set_xlim(25, -2)
-        ax[1].set_xlim(25, -2)
-        ax[2].set_xlim(25, -2)
-
-        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(21, 6))
-
-        ax[0].set_title("Probability of collision with unseen pedestrian")
-        ax[0].set_xlabel("Time [s]")
-        ax[0].set_ylabel("Probability")
-        ax[0].set_ylim(0, 1)
-
-        ax[1].set_title("Event rate of collision with unseen pedestrian")
-        ax[1].set_xlabel("Time [s]")
-        ax[1].set_ylabel("Event rate [event/s]")
-        ax[1].set_ylim(0, 1)
-
-        ax[2].set_title("Risk of collision with unseen pedestrian")
-        ax[2].set_xlabel("Time [s]")
-        ax[2].set_ylabel("Risk")
-
-        for (i, l_cost) in l_cost_list.items():
-
-            ax[0].plot(l_cost[:, 0], l_cost[:, 3],
-                       label='$v_x$ = {:} [m/s]'.format(i))
-
-            ax[1].plot(l_cost[:, 0], l_cost[:, 4],
-                       label='$v_x$ = {:} [m/s]'.format(i))
-
-            ax[2].plot(l_cost[:, 0], l_cost[:, 5],
-                       label='$v_x$ = {:} [m/s]'.format(i))
-
-        for a in ax:
-            a.legend()
-
-        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(21, 6))
-
-        ax[0].set_title("Probability of collision with unseen pedestrian")
-        ax[0].set_xlabel("Minimal visible range [m]")
-        ax[0].set_ylabel("Probability")
-        ax[0].set_ylim(0, 1)
-
-        ax[1].set_title("Event rate of collision with unseen pedestrian")
-        ax[1].set_xlabel("Minimal visible range [m]")
-        ax[1].set_ylabel("Event rate [event/s]")
-        ax[1].set_ylim(0, 1)
-
-        ax[2].set_title("Risk of collision with unseen pedestrian")
-        ax[2].set_xlabel("Minimal visible range [m]")
-        ax[2].set_ylabel("Risk")
-
-        for (i, l_cost) in l_cost_list.items():
-
-            ax[0].plot(l_cost[:, 2], l_cost[:, 3],
-                       label='velocity = {:}'.format(i))
-
-            ax[1].plot(l_cost[:, 2], l_cost[:, 4],
-                       label='velocity = {:}'.format(i))
-
-            ax[2].plot(l_cost[:, 2], l_cost[:, 5],
-                       label='velocity = {:}'.format(i))
-
-        for a in ax:
-            a.legend()
-
-        return l_cost_list
-
-    def _unseenObjectCost_dVis(self):
-        l_cost_list = {}
-        unseenRate = [0.1, 0.5, 1, 2]
-        for i in unseenRate:
-            l_cost = np.empty((0, 5))
-            l_cost_list.update({i: l_cost})
-
-        for k in self._l_pose:
-            egoPose = self._l_pose[k]
-            l_obj = self._env.updateAt(x_m=egoPose.x_m,
-                                       y_m=egoPose.y_m,
-                                       timestamp_s=egoPose.timestamp_s)
-
-            for obj in l_obj['staticObject']:
-                for i in unseenRate:
-                    indicator, rate, risk = 0, 0, 0
-                    # define unexpected risk here and add rate and risk
-                    dMerge, MP, dVis, randVertex = pfnc.distanceToMergePoint(
-                        pose=egoPose,
-                        poly=obj._poly
-                        )
-                    if MP is not None:
-                        indicator, rate, risk = rfnc.unseenEventRisk(
-                            d2MP=dMerge,
-                            ego_vx=egoPose.vdy.vx_ms,
-                            ego_acc=self._l_u[k],
-                            dVis=dVis,
-                            objectAppearRate=i
-                        )
-                    l_cost_list[i] = np.append(
-                        l_cost_list[i], np.array([[k, dVis, indicator, rate, risk]]), axis=0)                  
-
-        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(21, 6))
-
-        ax[0].set_title("Probability of collision with unseen pedestrian")
-        ax[0].set_xlabel("Minimal visible range [m]")
-        ax[0].set_ylabel("Probability")
-        ax[0].set_ylim(0, 1)
-
-        ax[1].set_title("Event rate of collision with unseen pedestrian")
-        ax[1].set_xlabel("Minimal visible range [m]")
-        ax[1].set_ylabel("Event rate [event/s]")
-        ax[1].set_ylim(0, 1)
-
-        ax[2].set_title("Risk of collision with unseen pedestrian")
-        ax[2].set_xlabel("Minimal visible range [m]")
-        ax[2].set_ylabel("Risk")
-
-        for (i, l_cost) in l_cost_list.items():
-
-            ax[0].plot(l_cost[:, 1], l_cost[:, 2],
-                       label='unseen rate = {:}'.format(i))
-
-            ax[1].plot(l_cost[:, 1], l_cost[:, 3],
-                       label='unseen rate = {:}'.format(i))
-
-            ax[2].plot(l_cost[:, 1], l_cost[:, 4],
-                       label='unseen rate = {:}'.format(i))
-
-        for a in ax:
-            a.legend()
-
-        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(21, 6))
-
-        ax[0].set_title("Probability of collision with unseen pedestrian")
-        ax[0].set_xlabel("Time [s]")
-        ax[0].set_ylabel("Probability")
-        ax[0].set_ylim(0, 1)
-
-        ax[1].set_title("Event rate of collision with unseen pedestrian")
-        ax[1].set_xlabel("Time [s]")
-        ax[1].set_ylabel("Event rate [event/s]")
-        ax[1].set_ylim(0, 1)
-
-        ax[2].set_title("Risk of collision with unseen pedestrian")
-        ax[2].set_xlabel("Time [s]")
-        ax[2].set_ylabel("Risk")
-
-        for (i, l_cost) in l_cost_list.items():
-
-            ax[0].plot(l_cost[:, 0], l_cost[:, 2],
-                       label='unseen rate = {:}'.format(i))
-
-            ax[1].plot(l_cost[:, 0], l_cost[:, 3],
-                       label='unseen rate = {:}'.format(i))
-
-            ax[2].plot(l_cost[:, 0], l_cost[:, 4],
-                       label='unseen rate = {:}'.format(i))
-
-        for a in ax:
-            a.legend()
-
-        return l_cost_list
-
-    def plotPose(self, maxTimestamp_s, ax=plt):
-        for timestamp_s, pose in self._l_pose.items():
-            if timestamp_s <= maxTimestamp_s:
-                plt.scatter(pose.x_m, pose.y_m, s=1, color='r')
-                cov = pose.covLatLong
-                ellipse = Ellipse(
-                    [pose.x_m, pose.y_m],
-                    width=np.sqrt(cov[0, 0])*2,
-                    height=np.sqrt(cov[1, 1])*2,
-                    angle=np.degrees(pose.yaw_rad),
-                    facecolor='mistyrose',
-                    edgecolor='red',
-                    alpha=0.7
-                    )
-                ax.add_patch(ellipse)
-                if timestamp_s == maxTimestamp_s:
-                    poly = self.getPoly(timestamp_s)
-                    poly = Polygon(
-                        poly, facecolor='yellow',
-                        edgecolor='gold', alpha=0.7, label='ego vehicle'
-                    )
-                    ax.add_patch(poly)
-                    l_obj = self._env.update(
-                                x_m=pose.x_m,
-                                y_m=pose.y_m,
-                                timestamp_s=pose.timestamp_s,
-                                from_timestamp=pose.timestamp_s
-                                )
-                    polys = []
-                    for obj in l_obj['staticObject']:
-                        objPoly = obj._poly
-                        d2MP, MP, dVis, randVertex = pfnc.distanceToMergePoint(
-                            pose=pose,
-                            poly=objPoly
-                            )
-                        if MP is not None:
-                            plt.scatter(randVertex[0], randVertex[1], color='r')
-                            plt.scatter(MP[0], MP[1])
-                            indicator, rate, risk = rfnc.unseenEventRisk(
-                                d2MP=d2MP,
-                                ego_vx=pose.vdy.vx_ms,
-                                ego_acc=self._l_u[timestamp_s],
-                                dVis=dVis
-                            )
-                        polys.append(objPoly)
-                    fov = pfnc.FOV(pose, polys, np.pi/6, 25)
-                    for f in fov:
-                        plt.plot([pose.x_m, f[0]], [pose.y_m, f[1]], color='r', alpha=0.3, linewidth=0.5)
-            elif timestamp_s < maxTimestamp_s + param._PREDICT_TIME:
-                plt.scatter(pose.x_m, pose.y_m, s=1, color='m')
-                cov = pose.covLatLong
-                ellipse = Ellipse(
-                    [pose.x_m, pose.y_m],
-                    width=np.sqrt(cov[0, 0])*2,
-                    height=np.sqrt(cov[1, 1])*2,
-                    angle=np.degrees(pose.yaw_rad),
-                    facecolor='wheat',
-                    edgecolor='orange',
-                    alpha=0.4
-                    )
-                ax.add_patch(ellipse)
+    def optimize(self, dT=param._dT, predictStep=param._PREDICT_STEP):
+            val = 0
+            ego_vx = self.getCurrentPose().vdy.vx_ms
+            # search environment
+            self._searchEnvironment()
+
+            # handle stop case
+            if ego_vx == 0:
+                self._u = 0
+                lowBound = 0
+                upBound = param._J_MAX
+                val = optimize.minimize_scalar(
+                    lambda x: self._computeTotalCost(
+                        u_in=x, dT=predictStep),
+                    bounds=(lowBound, upBound), method='bounded',
+                    options={"maxiter": 5}
+                    ).x
+            else:
+                lowBound = max(self._u - param._J_MAX, param._A_MIN)
+                upBound = min(self._u + param._J_MAX, param._A_MAX)
+                if lowBound >= upBound:
+                    lowBound = param._A_MIN
+                    upBound = lowBound + param._J_MAX
+                val = optimize.minimize_scalar(
+                    lambda x: self._computeTotalCost(
+                        u_in=x, dT=predictStep),
+                    bounds=(lowBound, upBound), method='bounded',
+                    options={"maxiter": 5}
+                    ).x
+
+            self._predict(u_in=val)
+
+            # total_eventRate = sum(
+            #     list((self._p_eventRate[k]) for k in self._p_eventRate))
+
+            # check if critical event occur to perform emergency brake
+            max_eventRate = max(self._p_eventRate.values())
+            if max_eventRate > param._COLLISION_RATE_BRAKE_MIN and self.getCurrentPose().vdy.vx_ms > 0:
+                val = optimize.minimize_scalar(
+                    lambda x: self._computeTotalCost(
+                        u_in=x, dT=predictStep),
+                    bounds=(param._A_MAX_BRAKE, param._A_MIN), method='bounded',
+                    options={"maxiter": 5}
+                ).x
+            self._predict(u_in=val)
+            self._p_u = self._u + (val - self._u) * dT / predictStep
+            self._move()

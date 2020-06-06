@@ -8,25 +8,27 @@ import _param as param
 
 
 def updatePose(lastPose, u_in, dT, updateCov=False):
-    nextTimestamp_s = round(lastPose.timestamp_s + dT, 2)
     vx = lastPose.vdy.vx_ms
+    nextVDY = VehicleDynamic(vx + u_in * dT, 0)
+    nextTimestamp_s = round(lastPose.timestamp_s + dT, 2)
+
     dP = vx * dT + 0.5 * u_in * (dT**2)
     dP = max(dP, 0)
+
     dX = dP * math.cos(lastPose.yaw_rad)
     dY = dP * math.sin(lastPose.yaw_rad)
-    nextVDY = VehicleDynamic(vx + u_in * dT, 0)
+
     if vx == 0:
         next_covLatLong = updateCovLatlong(lastPose.covLatLong, dT, dP, 0)
     elif updateCov:
         next_covLatLong = updateCovLatlong(lastPose.covLatLong, dT, dP, 0)
     else:
         next_covLatLong = lastPose.covLatLong
-    nextPose = Pose(
-        x_m=lastPose.x_m + dX, y_m=lastPose.y_m + dY,
-        yaw_rad=lastPose.yaw_rad, vdy=nextVDY,
-        covLatLong=next_covLatLong,
-        timestamp_s=nextTimestamp_s
-        )
+
+    nextPose = Pose(x_m=lastPose.x_m + dX, y_m=lastPose.y_m + dY,
+                    yaw_rad=lastPose.yaw_rad, vdy=nextVDY,
+                    covLatLong=next_covLatLong, timestamp_s=nextTimestamp_s)
+
     return nextPose
 
 
@@ -41,20 +43,24 @@ def updatePoseList(lastPose, u_in, nextTimestamp_s, dT):
         l_pose(timestamp: pose): discreted pose list to given timestamp
         l_u(timestamp: u): input list to given timestamp
     """
-    assert nextTimestamp_s > lastPose.timestamp_s
-
+    # assert nextTimestamp_s > lastPose.timestamp_s
+    l_pose = {}
+    dyaw = 0
     step = int((nextTimestamp_s - lastPose.timestamp_s)/dT)
     vx = lastPose.vdy.vx_ms
-    dyaw = 0
-    l_pose = {}
+
     for k in range(1, step+1, 1):
+
         dTime = k * dT
         nextT = round(lastPose.timestamp_s + dTime, 2)
+        next_vdy = VehicleDynamic(vx + u_in * dTime, dyaw)
+
         dP = vx * dTime + 0.5 * u_in * (dTime**2)
         dP = max(dP, 0)
+
         dX = dP * math.cos(lastPose.yaw_rad)
         dY = dP * math.sin(lastPose.yaw_rad)
-        next_vdy = VehicleDynamic(vx + u_in * dTime, dyaw)
+
         # update covariance matrix from the nearest pose
         next_covLatLong = 0
         if not l_pose:
@@ -66,6 +72,7 @@ def updatePoseList(lastPose, u_in, nextTimestamp_s, dT):
                                         lastPose.y_m+dY-nearestPose.y_m])
             next_covLatLong = updateCovLatlong(nearestPose.covLatLong,
                                                dT, dPNearest, 0)
+
         nextPose = Pose(x_m=lastPose.x_m + dX, y_m=lastPose.y_m + dY,
                         yaw_rad=lastPose.yaw_rad, vdy=next_vdy,
                         covLatLong=next_covLatLong,
@@ -90,11 +97,14 @@ def updateCovLatlong(lastCovLatLong, dT, dX, dY,
     """
     x = (alpha_v_long*dX)**2
     y = (alpha_v_lat*(dY+0.05))**2
+
     if dX == 0 and dY == 0:
-        x = -0.1
-        y = -0.1
+        x = -0.3
+        y = -0.3
+
     covX = max(lastCovLatLong[0, 0] + x, 0)
     covY = max(lastCovLatLong[0, 0] + y, 0)
+
     return np.diag([covX, covY])
 
 
@@ -190,25 +200,33 @@ def FOV(pose, polys, angle, radius, nrRays=50):
     Field of view (FOV) around ego car
     """
     l_alpha = np.linspace(-angle, angle, nrRays) + pose.yaw_rad
+    l_alpha = np.append(l_alpha, np.array([pose.yaw_rad]))
+    l_alpha.sort()
+
     l1_1 = np.array([pose.x_m, pose.y_m])
-    # l1_1 += pose.heading() * param._CAR_LENGTH * 0.5
+    l1_1 += pose.heading() * param._CAR_LENGTH * 0.3
+
+    fov_range = 0
     l_fov = np.empty((0, 2))
-    l_fov = np.append(l_fov + 2*pose.heading(), np.array([l1_1]), axis=0)
+    l_fov = np.append(l_fov, np.array([l1_1]), axis=0)
 
     for k, alpha in enumerate(l_alpha):
         direction = np.array([math.cos(alpha), math.sin(alpha)])
         l1_2 = l1_1 + direction * radius
         ip = l1_2
+
         for poly in polys:
             for i in range(0, poly.shape[0], 1):
                 ip_tmp = seg_intersect(l1_1, l1_2, poly[i-1], poly[i])
-                # ip_tmp = intersect(l1_1, l1_2, poly[i-1], poly[i])  # use Shapely
                 if ip_tmp is not None:
                     if np.linalg.norm(ip_tmp-l1_1) < np.linalg.norm(ip-l1_1):
                         ip = ip_tmp + direction * 0.1
         l_fov = np.append(l_fov, np.array([ip]), axis=0)
 
-    return l_fov
+        if alpha == pose.yaw_rad:
+            fov_range = np.linalg.norm(ip - l1_1)
+
+    return l_fov, fov_range
 
 
 def inPolyPoint(point, poly):  # use Shapely, non-convex
@@ -289,28 +307,3 @@ def updatePoseTurn(lastPose, u_in, nextTimestamp_s, _dT=param._dT):
                         timestamp_s=lastPose.timestamp_s + dT)
         l_pose[lastPose.timestamp_s + dT] = nextPose
     return l_pose
-
-
-def line_intersection(line1_1, line1_2, line2_1, line2_2):
-
-    def line(p1, p2):
-        A = (p1[1] - p2[1])
-        B = (p2[0] - p1[0])
-        C = (p1[0]*p2[1] - p2[0]*p1[1])
-        return A, B, -C
-
-    L1 = line(line1_1, line1_2)
-    L2 = line(line2_1, line2_2)
-
-    D = L1[0] * L2[1] - L1[1] * L2[0]
-    Dx = L1[2] * L2[1] - L1[1] * L2[2]
-    Dy = L1[0] * L2[2] - L1[2] * L2[0]
-
-    if D != 0:
-        x = Dx / D
-        y = Dy / D
-        if (onSegment(line1_1, line1_2, [x, y]) and
-           onSegment(line2_1, line2_2, [x, y])):
-            return np.array([[x, y]])
-    else:
-        return None

@@ -18,23 +18,16 @@ class InputWidget(QWidget):
 
         """ Scenario setup """
         self.addScenarioBox()
+        
+        """ Parameter """
         self.addParamBox()
+        self.addSettingBox()
 
         """ Ego vehicle """
         self.addEgoCarBox()
 
         """ Environment """
         self.addObjectBox()
-
-        """ Parameter """
-        self.addSettingBox()
-
-        """ OK button """
-        self.okButton = QPushButton("Update setting")
-        self.okButton.setMaximumWidth(200)
-        self.okButton.setEnabled(False)
-        self.okButton.clicked.connect(self.on_okButton_clicked)
-        self.mainLayout.addWidget(self.okButton)
 
         self.mainLayout.addStretch()
         self.setLayout(self.mainLayout)
@@ -72,6 +65,7 @@ class InputWidget(QWidget):
 
         # generate button
         self.scenarioGenerateButton = QPushButton("Generate")
+        self.scenarioGenerateButton.setStyleSheet('QPushButton {color: red;}')
         self.scenarioGenerateButton.setMaximumWidth(200)
         self.scenarioGenerateButton.setEnabled(False)
         self.scenarioGenerateButton.clicked.connect(self.on_generateButton_clicked)
@@ -79,6 +73,7 @@ class InputWidget(QWidget):
 
         # reset button
         self.scenarioResetButton = QPushButton("Reset")
+        self.scenarioResetButton.setStyleSheet('QPushButton {color: blue;}')
         self.scenarioResetButton.setMaximumWidth(200)
         self.scenarioResetButton.setEnabled(False)
         self.scenarioResetButton.clicked.connect(self.on_resetButton_clicked)
@@ -132,7 +127,7 @@ class InputWidget(QWidget):
         self.carGrid.addWidget(QLabel("Longtitude velocity [m/s]"), 4, 0)
         self.carValue_longVel = QLineEdit()
         self.carValue_longVel.setMaximumWidth(100)
-        self.carValue_longVel.setText(str(10.0))
+        self.carValue_longVel.setText(str(8.0))
         self.carGrid.addWidget(self.carValue_longVel, 4, 1)
 
         self.carGrid.addWidget(QLabel("Longtitude acceleration [m/s<sup>2</sup>]"), 5, 0)
@@ -170,6 +165,7 @@ class InputWidget(QWidget):
         self.carGrid.addWidget(self.jerkValue, 9, 1)
 
         self.carAddButton = QPushButton("Add ego vehicle")
+        self.carAddButton.setStyleSheet('QPushButton {color: red;}')
         self.carAddButton.setMinimumWidth(200)
         self.carAddButton.clicked.connect(self.on_addEgoVehicleButton_clicked)
         self.carGrid.addWidget(self.carAddButton, 10, 0)
@@ -182,17 +178,22 @@ class InputWidget(QWidget):
         self.envBox = QGroupBox()
         self.envBox.setTitle("Add object")
         self.envBox.setEnabled(False)
-        self.envBoxLayout = QHBoxLayout()
+        self.envBoxLayout = QGridLayout()
         # add vehicle
         self.vehicleAddButton = QPushButton("Add vehicle")
         self.vehicleAddButton.setMinimumWidth(200)
         self.vehicleAddButton.clicked.connect(self.on_addVehicleButton_clicked)
-        self.envBoxLayout.addWidget(self.vehicleAddButton)
+        self.envBoxLayout.addWidget(self.vehicleAddButton, 0, 0)
         # add pedestrian
         self.pedestrianAddButton = QPushButton("Add pedestrian")
         self.pedestrianAddButton.setMinimumWidth(200)
         self.pedestrianAddButton.clicked.connect(self.on_addPedestrianButton_clicked)
-        self.envBoxLayout.addWidget(self.pedestrianAddButton)
+        self.envBoxLayout.addWidget(self.pedestrianAddButton, 0, 1)
+        # add static object
+        self.objectAddButton = QPushButton("Add static object")
+        self.objectAddButton.setMinimumWidth(200)
+        self.objectAddButton.clicked.connect(self.on_addObjectButton_clicked)
+        self.envBoxLayout.addWidget(self.objectAddButton, 0, 2)
 
         self.envBox.setEnabled(False)
         self.envBox.setLayout(self.envBoxLayout)
@@ -210,7 +211,19 @@ class InputWidget(QWidget):
 
         self.awareCheckBox = QCheckBox("Enable awareness rate")
         self.awareCheckBox.setChecked(True)
-        self.settingGrid.addWidget(self.awareCheckBox, 2, 0, 1, 2)
+        self.settingGrid.addWidget(self.awareCheckBox, 1, 1, 1, 2)
+
+        self.fovCheckBox = QCheckBox("Enable FOV aware")
+        self.fovCheckBox.setChecked(True)
+        self.settingGrid.addWidget(self.fovCheckBox, 2, 0)
+
+        """ Update button """
+        self.okButton = QPushButton("Update setting")
+        self.okButton.setStyleSheet('QPushButton {color: red;}')
+        self.okButton.setMaximumWidth(200)
+        self.okButton.setEnabled(False)
+        self.okButton.clicked.connect(self.on_okButton_clicked)
+        self.settingGrid.addWidget(self.okButton, 2, 1)
 
         self.settingBox.setLayout(self.settingGrid)
         self.mainLayout.addWidget(self.settingBox)
@@ -243,7 +256,7 @@ class InputWidget(QWidget):
         self.simulationTimeValue.setMaximumWidth(100)
         self.simulationTimeValue.setText(str(20.0))
         self.timeParameterGrid.addWidget(self.simulationTimeValue, 3, 1)
-        self.timeBox.setEnabled(False)
+        self.timeBox.setEnabled(True)
 
         self.timeBox.setLayout(self.timeParameterGrid)
         self.settingGrid.addWidget(self.timeBox, 0, 0)
@@ -276,11 +289,12 @@ class InputWidget(QWidget):
 
     def addParamBox(self):
         self.paramBox = QGroupBox()
-        self.paramBox.setTitle("Other parameters")
+        self.paramBox.setTitle("Risk model parameters")
         self.paramGrid = QGridLayout()
         self.hypoPedesWindow = HypothesisPedestrianWindow()
         self.hypoVehicleWindow = HypothesisVehicleWindow()
         self.riskModelWindow = RiskModelWindow()
+        self.fuModelWindow = FovUtilityModelWindow()
 
         # hypothesis
         self.hypoPedesButton = QPushButton("Hypothetical pedestrian")
@@ -294,8 +308,14 @@ class InputWidget(QWidget):
         self.hypoVehButton.clicked.connect(self.on_hypoVehicleButton_clicked)
         self.paramGrid.addWidget(self.hypoVehButton, 0, 1)
 
+        # FOV and utility
+        self.fuButton = QPushButton("FOV and utility model")
+        self.fuButton.setMinimumWidth(200)
+        self.fuButton.clicked.connect(self.on_fuButton_clicked)
+        self.paramGrid.addWidget(self.fuButton, 1, 0)
+
         # risk model
-        self.riskButton = QPushButton("Risk model")
+        self.riskButton = QPushButton("Collision model")
         self.riskButton.setMinimumWidth(200)
         self.riskButton.clicked.connect(self.on_riskButton_clicked)
         self.paramGrid.addWidget(self.riskButton, 1, 1)
@@ -319,8 +339,6 @@ class InputWidget(QWidget):
         self.scenarioGenerateButton.setEnabled(False)
         self.scenarioResetButton.setEnabled(True)
         self.carBox.setEnabled(True)
-        self.timeBox.setEnabled(True)
-        # self.paramBox.setEnabled(True)
         self.envBox.setEnabled(True)
         self.okButton.setEnabled(True)
 
@@ -331,9 +349,6 @@ class InputWidget(QWidget):
         self.scenarioButtonGroup.checkedButton().setChecked(False)
         self.scenarioButtonGroup.setExclusive(True)
         self.carBox.setEnabled(False)
-        self.envBox.setEnabled(False)
-        self.timeBox.setEnabled(False)
-        # self.paramBox.setEnabled(False)
         self.envBox.setEnabled(False)
         self.core.reset()
 
@@ -358,6 +373,9 @@ class InputWidget(QWidget):
 
     def on_addPedestrianButton_clicked(self):
         self.addPedestrianWindow = AddPedestrianWindow(core=self.core)
+    
+    def on_addObjectButton_clicked(self):
+        self.addObjectWindow = AddObjectWindow(core=self.core)
 
     def on_hypoPedestrianButton_clicked(self):
         self.hypoPedesWindow.show()
@@ -367,6 +385,9 @@ class InputWidget(QWidget):
 
     def on_riskButton_clicked(self):
         self.riskModelWindow.show()
+
+    def on_fuButton_clicked(self):
+        self.fuModelWindow.show()
 
     def _generate_fov_param(self):
         param._SCAN_RADIUS = float(self.radiusValue.text())
@@ -384,13 +405,13 @@ class InputWidget(QWidget):
         param._PREDICT_TIME = float(self.predictionTimeValue.text())
         param._PREDICT_STEP = float(self.predictionStepValue.text())
         param._SIMULATION_TIME = float(self.simulationTimeValue.text())
-
-    def _generate_risk_param(self):
-        return
+        self.core.updateSimulationTime(float(self.simulationTimeValue.text()))
+        self.core.updateTimeStep(float(self.dTValue.text()))
 
     def _generate_other_param(self):
         param._ENABLE_HYPOTHESIS = self.hypoCheckBox.isChecked()
         param._ENABLE_AWARENESS_RATE = self.awareCheckBox.isChecked()
+        param._ENABLE_FOV_AWARE = self.fovCheckBox.isChecked()
 
     def on_okButton_clicked(self):
         self._generate_car_param()
@@ -464,6 +485,7 @@ class AddVehicleWindow(QMainWindow):
         self.vehicleGrid.addWidget(self.vehicleValue_time, 5, 1)
 
         self.vehicleAddButton = QPushButton("Add and close")
+        self.vehicleAddButton.setStyleSheet('QPushButton {color: red;}')
         self.vehicleAddButton.setMinimumWidth(200)
         self.vehicleAddButton.clicked.connect(self.on_addVehicleButton_clicked)
         self.vehicleGrid.addWidget(self.vehicleAddButton, 6, 0)
@@ -545,6 +567,7 @@ class AddPedestrianWindow(QMainWindow):
         self.pedestrianGrid.addWidget(self.pedestrianValue_time, 5, 1)
 
         self.pedestrianAddButton = QPushButton("Add and close")
+        self.pedestrianAddButton.setStyleSheet('QPushButton {color: red;}')
         self.pedestrianAddButton.setMinimumWidth(200)
         self.pedestrianAddButton.clicked.connect(self.on_addPedestrianButton_clicked)
         self.pedestrianGrid.addWidget(self.pedestrianAddButton, 6, 0)
@@ -569,6 +592,60 @@ class AddPedestrianWindow(QMainWindow):
         self.close()
 
 
+class AddObjectWindow(QMainWindow):
+
+    def __init__(self, core, parent=None):
+        super(AddObjectWindow, self).__init__(parent)
+        self.core = core
+        self.setWindowTitle("Add static object")
+        self.setGeometry(100, 100, 400, 400)
+        self.mainWidget = QWidget(self)
+        self.setCentralWidget(self.mainWidget)
+        self.mainLayout = QVBoxLayout()
+
+        self.objectGrid = QGridLayout()
+        self.objectGrid.setColumnMinimumWidth(0, 200)
+
+        self.objectGrid.addWidget(QLabel("Length, width [m]"), 0, 0)
+        self.objectLengthValue = QLineEdit()
+        self.objectLengthValue.setText(str(5.0))
+        self.objectLengthValue.setMaximumWidth(100)
+        self.objectWidthValue = QLineEdit()
+        self.objectWidthValue.setText(str(5.0))
+        self.objectWidthValue.setMaximumWidth(100)
+        self.objectGrid.addWidget(self.objectLengthValue, 0, 1)
+        self.objectGrid.addWidget(self.objectWidthValue, 0, 2)
+
+        self.objectGrid.addWidget(QLabel("Corner Left (x, y) [m]"), 1, 0)
+        self.objectValue_x = QLineEdit()
+        self.objectValue_x.setMaximumWidth(100)
+        self.objectValue_y = QLineEdit()
+        self.objectValue_y.setMaximumWidth(100)
+
+        self.objectGrid.addWidget(self.objectValue_x, 1, 1)
+        self.objectGrid.addWidget(self.objectValue_y, 1, 2)
+
+        self.objectAddButton = QPushButton("Add and close")
+        self.objectAddButton.setStyleSheet('QPushButton {color: red;}')
+        self.objectAddButton.setMinimumWidth(200)
+        self.objectAddButton.clicked.connect(self.on_addObjectButton_clicked)
+        self.objectGrid.addWidget(self.objectAddButton, 2, 0)
+
+        self.mainLayout.addLayout(self.objectGrid)
+        self.mainLayout.addStretch()
+        self.mainWidget.setLayout(self.mainLayout)
+        self.show()
+
+    def on_addObjectButton_clicked(self):
+        self.core.addStaticObject(
+            x_m=float(self.objectValue_x.text()),
+            y_m=float(self.objectValue_y.text()),
+            length=float(self.objectLengthValue.text()),
+            width=float(self.objectWidthValue.text()),
+        )
+        self.close()
+
+
 class HypothesisPedestrianWindow(QMainWindow):
 
     def __init__(self, parent=None):
@@ -583,6 +660,7 @@ class HypothesisPedestrianWindow(QMainWindow):
         self.addSeverityBox()
 
         self.hypoUpdateButton = QPushButton("Update and close")
+        self.hypoUpdateButton.setStyleSheet('QPushButton {color: red;}')
         self.hypoUpdateButton.setMinimumWidth(200)
         self.hypoUpdateButton.clicked.connect(self.on_updateHypoPedes_clicked)
         self.mainLayout.addWidget(self.hypoUpdateButton)
@@ -827,6 +905,7 @@ class HypothesisVehicleWindow(QMainWindow):
         self.addSeverityBox()
 
         self.hypoUpdateButton = QPushButton("Update and close")
+        self.hypoUpdateButton.setStyleSheet('QPushButton {color: red;}')
         self.hypoUpdateButton.setMinimumWidth(200)
         self.hypoUpdateButton.clicked.connect(self.on_updateHypoVehicle_clicked)
         self.mainLayout.addWidget(self.hypoUpdateButton)
@@ -1026,6 +1105,7 @@ class RiskModelWindow(QMainWindow):
         self.addSeverityBox()
 
         self.updateButton = QPushButton("Update and close")
+        self.updateButton.setStyleSheet('QPushButton {color: red;}')
         self.updateButton.setMinimumWidth(200)
         self.updateButton.clicked.connect(self.on_update_clicked)
         self.mainLayout.addWidget(self.updateButton)
@@ -1184,4 +1264,99 @@ class RiskModelWindow(QMainWindow):
         param._COLLISION_SEVERITY_MODEL = self.severityRateModel
         param._SEVERITY_SIG_MAX = float(self.sigSeverityMaxValue.text())
         param._SEVERITY_SIG_AVG_VX = float(self.severityVelocityThresholdValue.text())
+        self.close()
+
+
+class FovUtilityModelWindow(QMainWindow):
+
+    def __init__(self, parent=None):
+        super(FovUtilityModelWindow, self).__init__(parent)
+        self.setWindowTitle("FOV and utility model parameters")
+        self.setGeometry(100, 100, 400, 400)
+        self.mainWidget = QWidget(self)
+        self.setCentralWidget(self.mainWidget)
+        self.mainLayout = QVBoxLayout()
+        self.settingBox = QGroupBox()
+        self.settingGrid = QGridLayout()
+
+        self.addFOVBox()
+        self.addUtilityBox()
+        self.mainLayout.addLayout(self.settingGrid)
+
+        self.updateButton = QPushButton("Update and close")
+        self.updateButton.setStyleSheet('QPushButton {color: red;}')
+        self.updateButton.setMinimumWidth(200)
+        self.updateButton.clicked.connect(self.on_update_clicked)
+        self.mainLayout.addWidget(self.updateButton)
+
+        self.mainLayout.addStretch()
+        self.mainWidget.setLayout(self.mainLayout)
+
+    def addUtilityBox(self):
+        self.utilityBox = QGroupBox()
+        self.utilityBox.setTitle("Utility parameters")
+        self.utilityParameterGrid = QGridLayout()
+
+        self.utilityParameterGrid.addWidget(QLabel("Cruise velocity [m/s]"), 0, 0)
+        self.cruiseSpeedValue = QLineEdit()
+        self.cruiseSpeedValue.setMaximumWidth(100)
+        self.cruiseSpeedValue.setText(str(8.0))
+        self.utilityParameterGrid.addWidget(self.cruiseSpeedValue, 0, 1)
+
+        self.utilityParameterGrid.addWidget(QLabel("Cruise weight"), 1, 0)
+        self.cruiseWeightValue = QLineEdit()
+        self.cruiseWeightValue.setMaximumWidth(100)
+        self.cruiseWeightValue.setText(str(0.001))
+        self.utilityParameterGrid.addWidget(self.cruiseWeightValue, 1, 1)
+
+        self.utilityParameterGrid.addWidget(QLabel("Comfort weight"), 2, 0)
+        self.comfortWeightValue = QLineEdit()
+        self.comfortWeightValue.setMaximumWidth(100)
+        self.comfortWeightValue.setText(str(0.005))
+        self.utilityParameterGrid.addWidget(self.comfortWeightValue, 2, 1)
+
+        self.utilityParameterGrid.addWidget(QLabel("Simulation utility [s]"), 3, 0)
+        self.jerkWeightValue = QLineEdit()
+        self.jerkWeightValue.setMaximumWidth(100)
+        self.jerkWeightValue.setText(str(0.005))
+        self.utilityParameterGrid.addWidget(self.jerkWeightValue, 3, 1)
+        self.utilityBox.setEnabled(True)
+
+        self.utilityBox.setLayout(self.utilityParameterGrid)
+        self.settingGrid.addWidget(self.utilityBox, 0, 0)
+
+    def addFOVBox(self):
+        self.fovBox = QGroupBox()
+        self.fovBox.setTitle("FOV risk model")
+        self.fovGrid = QGridLayout()
+
+        self.fovGrid.addWidget(QLabel("Maximum event rate"), 0, 0)
+        self.maxEventValue = QLineEdit()
+        self.maxEventValue .setMaximumWidth(100)
+        self.maxEventValue .setText(str(1.0))
+        self.fovGrid.addWidget(self.maxEventValue, 0, 1)
+
+        self.fovGrid.addWidget(QLabel("Event rate beta"), 1, 0)
+        self.betaValue = QLineEdit()
+        self.betaValue.setMaximumWidth(100)
+        self.betaValue.setText(str(1.0))
+        self.fovGrid.addWidget(self.betaValue, 1, 1)
+
+        self.fovGrid.addWidget(QLabel("Minimum severity"), 2, 0)
+        self.severityValue = QLineEdit()
+        self.severityValue.setMaximumWidth(100)
+        self.severityValue.setText(str(1.0))
+        self.fovGrid.addWidget(self.severityValue, 2, 1)
+
+        self.fovBox.setLayout(self.fovGrid)
+        self.settingGrid.addWidget(self.fovBox, 0, 1)
+
+    def on_update_clicked(self):
+        param._C_CRUISE = float(self.cruiseWeightValue.text())
+        param._C_V_CRUISE = float(self.cruiseSpeedValue.text())
+        param._C_COMFORT = float(self.comfortWeightValue.text())
+        param._C_JERK = float(self.jerkWeightValue.text())
+        param._FOV_EVENTRATE_MAX = float(self.maxEventValue.text())
+        param._FOV_EVENTRATE_BETA = float(self.betaValue.text())
+        param._FOV_SEVERITY_MIN = float(self.severityValue.text())
         self.close()

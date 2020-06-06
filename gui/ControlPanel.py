@@ -11,9 +11,12 @@ class ControlPanel(QGroupBox):
 
         self.core = core
         self.birdEyeView = birdEyeView
+        self.plots_refresh_timer = None
+
         self.infoPanel = infoPanel
         self.setMaximumSize(700, 200)
         self.setMinimumSize(700, 100)
+        
         self.mainLayout = QHBoxLayout()
         self.addLegendWidget()
         self.addControlBox()
@@ -38,6 +41,7 @@ class ControlPanel(QGroupBox):
 
         # restart button
         self.restartButton = QPushButton("Restart")
+        self.restartButton.setStyleSheet('QPushButton {color: blue;}')
         self.restartButton.setMaximumWidth(200)
         self.restartButton.clicked.connect(self.on_restartButton_clicked)
         self.buttonGrid.addWidget(self.restartButton, 0, 1)
@@ -50,6 +54,7 @@ class ControlPanel(QGroupBox):
 
         # simulation button
         self.simulationButton = QPushButton("Start")
+        self.simulationButton.setStyleSheet('QPushButton {color: red;}')
         self.simulationButton.setMaximumWidth(200)
         self.simulationButton.clicked.connect(self.on_simulationButton_clicked)
         self.buttonGrid.addWidget(self.simulationButton, 1, 0)
@@ -75,6 +80,11 @@ class ControlPanel(QGroupBox):
 
     def on_restartButton_clicked(self):
         self.core.restart()
+        self.plots_refresh_timer = QtCore.QTimer()
+        self.plots_refresh_timer.setSingleShot(False)
+        self.plots_refresh_timer.timeout.connect(self.on_simulation)
+        self.plots_refresh_timer.setInterval(99)
+        self.plots_refresh_timer.start()
 
     def on_simulationButton_clicked(self):
         self.plots_refresh_timer = QtCore.QTimer()

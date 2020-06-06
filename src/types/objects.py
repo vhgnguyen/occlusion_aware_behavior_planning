@@ -107,7 +107,8 @@ class Vehicle(object):
     def getCurrentPoly(self):
         return pfnc.rectangle(self._currentPose, self._length, self._width)
 
-    def predict(self, const_vx=False, dT=param._PREDICT_STEP, pT=param._PREDICT_TIME):
+    def predict(self, const_vx=False, dT=param._PREDICT_STEP,
+                pT=param._PREDICT_TIME):
         """
         Predict the vehicle motion from current state
         Args:
@@ -134,7 +135,7 @@ class Vehicle(object):
     def getPredictAt(self, timestamp_s: float):
         timestamp_s = round(timestamp_s, 2)
         if timestamp_s not in self._p_pose:
-            self.predict()
+            self.predict(dT=param._PREDICT_STEP, pT=param._PREDICT_TIME)
         pose = self._p_pose[timestamp_s]
         posePoly = pfnc.rectangle(pose, self._length, self._width)
         return pose, posePoly
@@ -162,9 +163,10 @@ class Vehicle(object):
     # -------------------- Export functions -----------------------------------
 
     def exportCurrent(self):
+        cPose = self._currentPose
         exportVehicle = {
-            'pos': [self._currentPose.x_m, self._currentPose.y_m],
-            'cov': self._currentPose.covUtm,
+            'pos': [cPose.x_m, cPose.y_m, cPose.yaw_rad],
+            'cov': cPose.covLatLong,
             'poly': self.getCurrentPoly(),
             'visible': self.isVisible(),
             'Pcol': self._Pcoll
@@ -173,10 +175,11 @@ class Vehicle(object):
 
     def exportPredictState(self):
         l_p = []
+        self._p_pose.keys()
         for p_pose in self._p_pose:
             exportP = {
-                'pos': [p_pose.x_m, p_pose.y_m],
-                'cov': p_pose.covUtm,
+                'pos': [p_pose.x_m, p_pose.y_m, p_pose.yaw_rad],
+                'cov': p_pose.covLatLong,
                 'poly': pfnc.rectangle(p_pose, self._length, self._width),
             }
             l_p.append(exportP)
@@ -189,8 +192,8 @@ class Pedestrian(object):
                  covLong, covLat, vx_ms, startTime, isStop=False,
                  appearRate=1, interactRate=1, dT=param._dT):
         self._idx = idx
-        self._length = 1
-        self._width = 1
+        self._length = 1.5
+        self._width = 1.5
 
         startTime = round(round(startTime/dT, 2) * dT, 2)
         self._startTime = startTime
@@ -268,7 +271,7 @@ class Pedestrian(object):
     def getPredictAt(self, timestamp_s: float):
         timestamp_s = round(timestamp_s, 2)
         if timestamp_s not in self._p_pose:
-            self.predict()
+            self.predict(dT=param._PREDICT_STEP, pT=param._PREDICT_TIME)
         pose = self._p_pose[timestamp_s]
         posePoly = pfnc.rectangle(pose, self._length, self._width)
         return pose, posePoly
@@ -302,9 +305,10 @@ class Pedestrian(object):
     # -------------------- Export functions -----------------------------------
 
     def exportCurrent(self):
+        cPose = self._currentPose
         exportPedes = {
-            'pos': [self._currentPose.x_m, self._currentPose.y_m],
-            'cov': self._currentPose.covUtm,
+            'pos': [cPose.x_m, cPose.y_m, cPose.yaw_rad],
+            'cov': cPose.covLatLong,
             'poly': self.getCurrentPoly(),
             'visible': self.isVisible(),
             'Pcoll': self._Pcoll,
@@ -313,54 +317,12 @@ class Pedestrian(object):
 
     def exportPredictState(self):
         l_p = []
+        self._p_pose.keys()
         for p_pose in self._p_pose:
             exportP = {
-                'pos': [p_pose.x_m, p_pose.y_m],
-                'cov': p_pose.covUtm,
+                'pos': [p_pose.x_m, p_pose.y_m, p_pose.yaw_rad],
+                'cov': p_pose.covLatLong,
                 'poly': pfnc.rectangle(p_pose, self._length, self._width),
             }
             l_p.append(exportP)
         return l_p
-
-
-# def plotAt(self, timestamp_s, ax=plt):
-#     if timestamp_s in self._l_pose:
-#         pose = self._l_pose[timestamp_s]
-#         ax.scatter(pose.x_m, pose.y_m, s=1, color='b')
-#         cov = pose.covLatLong
-#         ellipse = Ellipse([pose.x_m, pose.y_m],
-#                           width=np.sqrt(cov[0, 0])*2,
-#                           height=np.sqrt(cov[1, 1])*2,
-#                           angle=np.degrees(pose.yaw_rad),
-#                           facecolor=None,
-#                           edgecolor='blue',
-#                           alpha=0.4)
-#         ax.add_patch(ellipse)
-#     else:
-#         return
-
-# def plot(self, maxTimestamp_s, ax=plt):
-#     for timestamp_s, pose in self._l_pose.items():
-#         if timestamp_s <= maxTimestamp_s:
-#             ax.scatter(pose.x_m, pose.y_m, s=1, color='b')
-#             cov = pose.covLatLong
-#             ellipse = Ellipse(
-#                 [pose.x_m, pose.y_m],
-#                 width=np.sqrt(cov[0, 0])*2,
-#                 height=np.sqrt(cov[1, 1])*2,
-#                 angle=np.degrees(pose.yaw_rad),
-#                 facecolor=None,
-#                 edgecolor='blue',
-#                 alpha=0.4)
-#             ax.add_patch(ellipse)
-#         if timestamp_s == maxTimestamp_s:
-#             poly = self.getPoly(timestamp_s)
-#             poly = Polygon(
-#                 poly, facecolor='cyan',
-#                 edgecolor='blue', alpha=0.7, label='other vehicle'
-#             )
-#             ax.add_patch(poly)
-
-
-# def plotLine(line, ax=plt, **kwargs):
-#     ax.plot([line[0][0], line[1][0]], [line[0][1], line[1][1]], **kwargs)

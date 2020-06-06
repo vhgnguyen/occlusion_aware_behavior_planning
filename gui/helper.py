@@ -38,6 +38,7 @@ def drawPoly(poly, color, alpha, fill=True):
     if poly is None:
         return
     setColor(color=color, alpha=alpha)
+    gl.glLineWidth(0.1)
     if poly.shape[0] == 4:
         gl.glBegin(gl.GL_QUADS)
         for p in poly:
@@ -55,12 +56,22 @@ def drawPoly(poly, color, alpha, fill=True):
         gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_FILL)
 
 
+def drawHeading(poly, color, alpha, fill=True):
+    if poly is None:
+        return
+    triangle = 0.5 * np.array([poly[0] + poly[1],
+                               poly[1] + poly[2],
+                               poly[2] + poly[3]])
+    drawPoly(triangle, color=color, alpha=alpha, fill=fill)
+
+
 def drawLine(line, color, alpha, lineWidth, strip=False):
     if line is None or line.shape[0] != 2:
         return
     setColor(color=color, alpha=alpha)
     gl.glLineWidth(lineWidth)
     if strip:
+        gl.glLineWidth(0.1)
         gl.glLineStipple(1, 0xAAAA)
         gl.glEnable(gl.GL_LINE_STIPPLE)
         gl.glBegin(gl.GL_LINES)
@@ -69,6 +80,7 @@ def drawLine(line, color, alpha, lineWidth, strip=False):
         gl.glEnd()
         gl.glDisable(gl.GL_LINE_STIPPLE)
     else:
+        gl.glLineWidth(0.1)
         gl.glBegin(gl.GL_LINES)
         gl.glVertex2f(line[0][0], line[0][1])
         gl.glVertex2f(line[1][0], line[1][1])
@@ -112,28 +124,3 @@ def handleLegend(ax=plt):
             newLabels.append(label)
             newHandles.append(handle)
     ax.legend(newHandles, newLabels)
-
-
-def minFOVAngle(x_m, y_m, yaw_rad, poly):
-    """
-    Minimum facing angle of pose(x,y,theta) to a polygon
-    """
-    vector = np.array([np.cos(yaw_rad), np.sin(yaw_rad)])
-    min_angle = 10
-    min_vertex = None
-    for i, vertex in enumerate(poly):
-        p2v = np.array([vertex[0] - x_m, vertex[1] - y_m])
-        p2v = p2v / np.linalg.norm(p2v)
-        angle = np.arccos(np.dot(vector, p2v))
-        if angle < min_angle:
-            min_angle = angle
-            min_vertex = i
-    if min_angle >= np.pi/2:
-        return None
-    pose = np.array([[x_m, y_m]])
-    d = poly[min_vertex] - pose
-    if np.linalg.norm(d) < 50:
-        bound = d * 1.5   + pose
-    else:
-        bound = None
-    return bound
