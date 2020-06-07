@@ -9,7 +9,7 @@ _ENABLE_FOV_AWARE = True
 # Discreted time interval
 # ------------------------------
 _dT = 0.2
-_PREDICT_TIME = 3
+_PREDICT_TIME = 5
 _PREDICT_STEP = 0.4
 _SIMULATION_TIME = 20.0
 
@@ -32,7 +32,8 @@ _A_MIN = -3
 _A_MAX_BRAKE = -6.0
 # safe brake
 _D_BRAKE_MIN = 1
-_T_BRAKE = 0.5
+_T_BRAKE = 1
+_T_BRAKE_DELAY = 0.5
 _MIN_COL_BRAKE_VEHICLE = 0.5
 _MIN_COL_BRAKE_PEDESTRIAN = 0.3
 # jerk
@@ -79,7 +80,7 @@ _ESCAPE_RATE = 0.5
 _C_CRUISE = 0.001
 _C_V_CRUISE = 8
 _C_COMFORT = 0.001
-_C_JERK = 0.01
+_C_JERK = 0.005
 
 # ------------------------------
 # Hypothesis pedestrian model
@@ -142,4 +143,4 @@ _SEVERITY_HYPOVEH_SIG_B = 1
 _FOV_EVENTRATE_MAX = 1
 _FOV_EVENTRATE_BETA = 1
 _FOV_SEVERITY_MIN = 1
-_FOV_SEVERITY_WEIGHT = 0.1
+_FOV_SEVERITY_WEIGHT = 0.5

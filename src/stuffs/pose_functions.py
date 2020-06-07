@@ -128,7 +128,7 @@ def minFOVAngle(pose, poly):
     min_vertex = None
     for i, vertex in enumerate(poly):
         p2v = np.array([vertex[0] - pose.x_m, vertex[1] - pose.y_m])
-        p2v = p2v / np.linalg.norm(p2v)
+        p2v /= np.linalg.norm(p2v)
         # angle = np.arccos(np.clip(np.dot(vector, p2v), -1.0, 1.0))
         angle = np.arccos(np.dot(vector, p2v))
         if angle < min_angle:

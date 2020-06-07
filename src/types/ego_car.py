@@ -169,7 +169,7 @@ class EgoVehicle:
                 fov_range=self._fovRange, ego_vx=egoPose.vdy.vx_ms,
                 aBrake=param._A_MIN, dBrake=param._D_BRAKE_MIN,
                 stdLon=np.sqrt(egoPose.covLatLong[0, 0]),
-                tReact=param._T_BRAKE,
+                tReact=param._T_BRAKE_DELAY,
                 rateMax=param._FOV_EVENTRATE_MAX,
                 rateBeta=param._FOV_EVENTRATE_BETA,
                 severity_min_weight=param._FOV_SEVERITY_MIN,
@@ -466,10 +466,15 @@ class EgoVehicle:
             return
 
         if self._emergencyState:
+            lowBound = max(self._u - 1.5*param._J_MAX, param._A_MAX_BRAKE)
+            upBound = self._u - 0.5*param._J_MAX
+            if lowBound >= upBound:
+                lowBound = param._A_MAX_BRAKE
+                upBound = self._u
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(
                     u_in=x, dT=predictStep, predictTime=predictTime),
-                bounds=(param._A_MAX_BRAKE, param._A_MIN), method='bounded',
+                bounds=(lowBound, upBound), method='bounded',
                 options={"maxiter": 5}
             ).x
             self._p_u = self._u + (val - self._u) * dT / predictStep
