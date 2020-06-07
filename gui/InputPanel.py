@@ -1272,15 +1272,16 @@ class FovUtilityModelWindow(QMainWindow):
     def __init__(self, parent=None):
         super(FovUtilityModelWindow, self).__init__(parent)
         self.setWindowTitle("FOV and utility model parameters")
-        self.setGeometry(100, 100, 400, 400)
+        self.setGeometry(100, 100, 600, 200)
         self.mainWidget = QWidget(self)
         self.setCentralWidget(self.mainWidget)
         self.mainLayout = QVBoxLayout()
         self.settingBox = QGroupBox()
         self.settingGrid = QGridLayout()
 
-        self.addFOVBox()
         self.addUtilityBox()
+        self.addBrakeBox()
+        self.addFOVBox()
         self.mainLayout.addLayout(self.settingGrid)
 
         self.updateButton = QPushButton("Update and close")
@@ -1315,13 +1316,13 @@ class FovUtilityModelWindow(QMainWindow):
         self.comfortWeightValue.setText(str(0.005))
         self.utilityParameterGrid.addWidget(self.comfortWeightValue, 2, 1)
 
-        self.utilityParameterGrid.addWidget(QLabel("Simulation utility [s]"), 3, 0)
+        self.utilityParameterGrid.addWidget(QLabel("Jerk weight [s]"), 3, 0)
         self.jerkWeightValue = QLineEdit()
         self.jerkWeightValue.setMaximumWidth(100)
         self.jerkWeightValue.setText(str(0.005))
         self.utilityParameterGrid.addWidget(self.jerkWeightValue, 3, 1)
-        self.utilityBox.setEnabled(True)
 
+        self.utilityBox.setEnabled(True)
         self.utilityBox.setLayout(self.utilityParameterGrid)
         self.settingGrid.addWidget(self.utilityBox, 0, 0)
 
@@ -1348,8 +1349,47 @@ class FovUtilityModelWindow(QMainWindow):
         self.severityValue.setText(str(1.0))
         self.fovGrid.addWidget(self.severityValue, 2, 1)
 
+        self.fovGrid.addWidget(QLabel("Quadratic severity weight"), 3, 0)
+        self.severityWeightValue = QLineEdit()
+        self.severityWeightValue.setMaximumWidth(100)
+        self.severityWeightValue.setText(str(0.1))
+        self.fovGrid.addWidget(self.severityWeightValue, 3, 1)
+
         self.fovBox.setLayout(self.fovGrid)
         self.settingGrid.addWidget(self.fovBox, 0, 1)
+
+    def addBrakeBox(self):
+        self.brakeBox = QGroupBox()
+        self.brakeBox.setTitle("Safe brake parameters")
+        self.brakeParameterGrid = QGridLayout()
+
+        self.brakeParameterGrid.addWidget(QLabel("Minimum distance [m]"), 0, 0)
+        self.dBrakeValue = QLineEdit()
+        self.dBrakeValue.setMaximumWidth(100)
+        self.dBrakeValue.setText(str(1.0))
+        self.brakeParameterGrid.addWidget(self.dBrakeValue, 0, 1)
+
+        self.brakeParameterGrid.addWidget(QLabel("Time brake delay [s]"), 1, 0)
+        self.brakeDelayValue = QLineEdit()
+        self.brakeDelayValue.setMaximumWidth(100)
+        self.brakeDelayValue.setText(str(0.5))
+        self.brakeParameterGrid.addWidget(self.brakeDelayValue, 1, 1)
+
+        self.brakeParameterGrid.addWidget(QLabel("Minimum vehicle collision to brake [%]"), 2, 0)
+        self.minBrakeVehicleValue = QLineEdit()
+        self.minBrakeVehicleValue.setMaximumWidth(100)
+        self.minBrakeVehicleValue.setText(str(0.5))
+        self.brakeParameterGrid.addWidget(self.minBrakeVehicleValue, 2, 1)
+
+        self.brakeParameterGrid.addWidget(QLabel("Minimum pedestrian collision to brake [%]"), 3, 0)
+        self.minBrakePedesValue = QLineEdit()
+        self.minBrakePedesValue.setMaximumWidth(100)
+        self.minBrakePedesValue.setText(str(0.3))
+        self.brakeParameterGrid.addWidget(self.minBrakePedesValue, 3, 1)
+
+        self.brakeBox.setEnabled(True)
+        self.brakeBox.setLayout(self.brakeParameterGrid)
+        self.settingGrid.addWidget(self.brakeBox, 0, 2)
 
     def on_update_clicked(self):
         param._C_CRUISE = float(self.cruiseWeightValue.text())
@@ -1359,4 +1399,9 @@ class FovUtilityModelWindow(QMainWindow):
         param._FOV_EVENTRATE_MAX = float(self.maxEventValue.text())
         param._FOV_EVENTRATE_BETA = float(self.betaValue.text())
         param._FOV_SEVERITY_MIN = float(self.severityValue.text())
+        param._FOV_SEVERITY_WEIGHT = float(self.severityWeightValue.text())
+        param._D_BRAKE_MIN = float(self.dBrakeValue.text())
+        param._T_BRAKE = float(self.brakeDelayValue.text())
+        param._MIN_COL_BRAKE_VEHICLE = float(self.minBrakeVehicleValue.text())
+        param._MIN_COL_BRAKE_PEDESTRIAN = float(self.minBrakePedesValue.text())
         self.close()

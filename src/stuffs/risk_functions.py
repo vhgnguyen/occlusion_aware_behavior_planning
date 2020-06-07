@@ -238,17 +238,22 @@ def interactRate(a, b=8, k=1):
     return 1 - 1 / (1 + np.exp(k * (a-b)))
 
 
-def limitViewRisk(fov_range, ego_vx, aBrake, dBrake, stdLon,
+def limitViewRisk(fov_range, ego_vx, aBrake, dBrake, stdLon, tReact,
                   rateMax=param._FOV_EVENTRATE_MAX,
                   rateBeta=param._FOV_EVENTRATE_BETA,
-                  severity_min_weight=param._FOV_SEVERITY_MIN):
+                  severity_min_weight=param._FOV_SEVERITY_MIN,
+                  severity_weight=param._FOV_SEVERITY_WEIGHT):
+    ego_vx2 = ego_vx**2
+    dReact = ego_vx*tReact
+    dSafe = dBrake + stdLon + dReact
+    sBrake_max = abs(0.5 * ego_vx2 / aBrake) + dSafe
+
     # event rate
-    sBrake_max = abs(0.5 * ego_vx**2 / aBrake) + dBrake + stdLon
     eventRate = rateMax
     eventRate *= 1 - 1 / (1 + rateBeta * np.exp(-(fov_range - sBrake_max)))
     # severity
-    v_max2 = ego_vx**2 + 2*aBrake*(fov_range - stdLon - dBrake)
-    severity = max(v_max2, 0)
+    v_max2 = ego_vx2 + 2*aBrake*(fov_range - dSafe)
+    severity = severity_weight * max(v_max2, 0)
     severity += severity_min_weight
     # risk
     risk = eventRate * severity

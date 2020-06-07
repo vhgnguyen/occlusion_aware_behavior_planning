@@ -149,7 +149,9 @@ class EgoVehicle:
         return r
 
     def _riskCost(self, timestamp_s: float, u_in: float,
-                  useAwarenessRate, useFOV):
+                  useAwarenessRate, useFOV,
+                  minCollisionBrakeVehicle=param._MIN_COL_BRAKE_VEHICLE,
+                  minCollisionBrakePedes=param._MIN_COL_BRAKE_PEDESTRIAN):
         """
         Compute collision risk & event rate at given predict timestamp
         """
@@ -167,9 +169,11 @@ class EgoVehicle:
                 fov_range=self._fovRange, ego_vx=egoPose.vdy.vx_ms,
                 aBrake=param._A_MIN, dBrake=param._D_BRAKE_MIN,
                 stdLon=np.sqrt(egoPose.covLatLong[0, 0]),
+                tReact=param._T_BRAKE,
                 rateMax=param._FOV_EVENTRATE_MAX,
                 rateBeta=param._FOV_EVENTRATE_BETA,
-                severity_min_weight=param._FOV_SEVERITY_MIN)
+                severity_min_weight=param._FOV_SEVERITY_MIN,
+                severity_weight=param._FOV_SEVERITY_WEIGHT)
 
             total_risk += limitViewRisk
             total_eventRate += limitViewEvent
@@ -229,7 +233,7 @@ class EgoVehicle:
 
             self._minColValue = max(self._minColValue, vcol_indicator)
             if timestamp_s <= currentTime + self._TTB:
-                if vcol_indicator > 0.5:
+                if vcol_indicator > minCollisionBrakeVehicle:
                     self._brake = True
 
             total_risk += vcol_risk
@@ -259,7 +263,7 @@ class EgoVehicle:
 
             self._minColValue = max(self._minColValue, pcol_indicator)
             if timestamp_s <= currentTime + self._TTB:
-                if pcol_indicator > 0.3:
+                if pcol_indicator > minCollisionBrakePedes:
                     self._brake = True
 
             total_risk += pcol_risk
@@ -369,7 +373,9 @@ class EgoVehicle:
         riskCost = self._riskCost(
             timestamp_s, u_in,
             useAwarenessRate=param._ENABLE_AWARENESS_RATE,
-            useFOV=param._ENABLE_FOV_AWARE)
+            useFOV=param._ENABLE_FOV_AWARE,
+            minCollisionBrakeVehicle=param._MIN_COL_BRAKE_VEHICLE,
+            minCollisionBrakePedes=param._MIN_COL_BRAKE_PEDESTRIAN)
         cost = utilCost + riskCost
         return cost
 
@@ -391,9 +397,9 @@ class EgoVehicle:
         cost = cost * s * dT
         return cost
 
-    def _computeTTB(self, aBrake=param._A_MAX_BRAKE, delay=1):
+    def _computeTTB(self, aBrake=param._A_MAX_BRAKE, delay=param._T_BRAKE):
         ego_vx = self.getCurrentPose().vdy.vx_ms
-        self._TTB = abs(ego_vx / param._A_MAX_BRAKE) + delay
+        self._TTB = abs(ego_vx / aBrake) + delay
 
     def _move(self, dT=param._dT):
         lastPose = self.getCurrentPose()
@@ -417,8 +423,9 @@ class EgoVehicle:
     def optimizeState(self, dT=param._dT, predictStep=param._PREDICT_STEP,
                       predictTime=param._PREDICT_TIME):
         self._searchEnvironment()
-        self._computeTTB(aBrake=param._A_MAX_BRAKE)
+        self._computeTTB(aBrake=param._A_MAX_BRAKE, delay=param._T_BRAKE)
         val = 0
+        self._l_opt = []
 
         if self._stopState:
             val = optimize.minimize_scalar(
