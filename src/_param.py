@@ -79,7 +79,7 @@ _ESCAPE_RATE = 0.5
 # --- Utility weight -----------
 _C_CRUISE = 0.001
 _C_V_CRUISE = 8
-_C_COMFORT = 0.001
+_C_COMFORT = 0.005
 _C_JERK = 0.005
 
 # ------------------------------

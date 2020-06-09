@@ -102,24 +102,10 @@ class EgoVehicle:
         """
         Scan environment at current state
         """
-        currentPose = self.getCurrentPose()
-        self._l_currentObject, self._fov, self._fovRange = self._env.update(
-            pose=currentPose,
-            from_timestamp=currentPose.timestamp_s,
-            u_in=self._u, radius=param._SCAN_RADIUS,
-            hypothesis=param._ENABLE_HYPOTHESIS,
-            pVx=param._HYPOPEDES_VX,
-            pCovLat=param._HYPOPEDES_COV_LAT,
-            pCovLon=param._HYPOPEDES_COV_LON,
-            pCrossRate=param._PEDES_APPEAR_RATE_CROSS,
-            pStreetRate=param._PEDES_APPEAR_RATE_STREET,
-            pOtherRate=param._PEDES_APPEAR_RATE_OTHER,
-            pDistanceThres=param._PEDES_OTHER_MIN_THRESHOLD,
-            vVx=param._HYPOVEH_VX,
-            vCovLat=param._HYPOVEH_COV_LAT,
-            vCovLon=param._HYPOVEH_COV_LON,
-            vRate=param._APPEAR_RATE_VEH
-            )
+        if not self._env.isStarted():
+            self._env.update(self.getCurrentPose())
+        self._l_currentObject = self._env.getCurrentObjectList()
+        self._fov, self._fovRange = self._env.getFOV()
 
     def _predict(self, u_in: float, dT=param._PREDICT_STEP,
                  predictTime=param._PREDICT_TIME):
@@ -337,6 +323,9 @@ class EgoVehicle:
             hypoVeh.setCollisionProb(hvcol_indicator)
 
         self._p_eventRate.update({timestamp_s: total_eventRate})
+        self._l_opt.update({
+            round(u_in, 3): [self._brake, self._minColValue]
+        })
         return total_risk
 
     def _survivalRate(self, timestamp_s: float, dT=param._PREDICT_STEP):
@@ -425,7 +414,7 @@ class EgoVehicle:
         self._searchEnvironment()
         self._computeTTB(aBrake=param._A_MAX_BRAKE, delay=param._T_BRAKE)
         val = 0
-        self._l_opt = []
+        self._l_opt = {}
 
         if self._stopState:
             val = optimize.minimize_scalar(
@@ -434,8 +423,9 @@ class EgoVehicle:
                 bounds=(0, param._J_MAX), method='bounded',
                 options={"maxiter": 5}
                 ).x
-            self._computeTotalCost(
-                u_in=val, dT=predictStep, predictTime=predictTime)
+            # self._computeTotalCost(
+            #     u_in=val, dT=predictStep, predictTime=predictTime)
+            self._brake, self._minColValue = self._l_opt[round(val, 3)]
             if self._brake or self._minColValue > 0.7:
                 self._p_u = 0
                 self._u = 0
@@ -457,8 +447,7 @@ class EgoVehicle:
                 bounds=(lowBound, upBound), method='bounded',
                 options={"maxiter": 5}
                 ).x
-            self._computeTotalCost(
-                u_in=val, dT=predictStep, predictTime=predictTime)
+            self._brake, self._minColValue = self._l_opt[round(val, 3)]
             if self._brake:
                 self._toEmergencyState()
             self._p_u = self._u + (val - self._u) * dT / predictStep

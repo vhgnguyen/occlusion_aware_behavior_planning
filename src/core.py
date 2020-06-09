@@ -24,7 +24,9 @@ class Core(object):
             self._egoCar.optimizeState(
                 dT=param._dT, predictStep=param._PREDICT_STEP,
                 predictTime=param._PREDICT_TIME)
-            self._env.move(currentTime=self.timestamp_s, dT=param._dT)
+            self._env.move(
+                egoPose=self._egoCar.getCurrentPose(),
+                currentTime=self.timestamp_s, dT=param._dT)
             self.timestamp_s = round(self.timestamp_s + self.dT, 3)
             return True
         else:
@@ -120,8 +122,8 @@ class Core(object):
         if self._egoCar is None:
             return None
         else:
-            self._egoCar._searchEnvironment()
-        return self._egoCar._fov
+            # self._egoCar._searchEnvironment()
+            return self._egoCar._fov
 
     def getCurrentVelocity(self):
         if self._egoCar is None:

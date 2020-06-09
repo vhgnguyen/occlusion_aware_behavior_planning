@@ -25,6 +25,14 @@ class Environment(object):
         self._l_hypoPedes = []
         self._l_hypoVehicle = []
 
+        self._l_update = {}
+        self._fov = []
+        self._fovRange = 0
+        self._isStarted = False
+
+    def isStarted(self):
+        return self._isStarted
+
     def restart(self):
         for veh in self._l_vehicle:
             veh.restart()
@@ -58,7 +66,13 @@ class Environment(object):
     def addPedestrianCross(self, cross: PedestrianCross):
         self._l_cross.append(cross)
 
-    def move(self, currentTime: float, dT=param._dT):
+    def getFOV(self):
+        return self._fov, self._fovRange
+
+    def getCurrentObjectList(self):
+        return self._l_update
+
+    def move(self, egoPose, currentTime: float, dT=param._dT):
         """
         Move objects in environment to next step
         """
@@ -68,8 +82,28 @@ class Environment(object):
         for pedestrian in self._l_pedestrian:
             if currentTime >= pedestrian._startTime:
                 pedestrian.move(dT=dT)
+        self.update(egoPose=egoPose)
 
-    def update(self, pose: Pose, from_timestamp: float, u_in,
+    def update(self, egoPose):
+        self._update(
+            pose=egoPose,
+            from_timestamp=egoPose.timestamp_s,
+            radius=param._SCAN_RADIUS,
+            hypothesis=param._ENABLE_HYPOTHESIS,
+            pVx=param._HYPOPEDES_VX,
+            pCovLat=param._HYPOPEDES_COV_LAT,
+            pCovLon=param._HYPOPEDES_COV_LON,
+            pCrossRate=param._PEDES_APPEAR_RATE_CROSS,
+            pStreetRate=param._PEDES_APPEAR_RATE_STREET,
+            pOtherRate=param._PEDES_APPEAR_RATE_OTHER,
+            pDistanceThres=param._PEDES_OTHER_MIN_THRESHOLD,
+            vVx=param._HYPOVEH_VX,
+            vCovLat=param._HYPOVEH_COV_LAT,
+            vCovLon=param._HYPOVEH_COV_LON,
+            vRate=param._APPEAR_RATE_VEH
+            )
+
+    def _update(self, pose: Pose, from_timestamp: float,
                radius, hypothesis=False,
                pVx=param._HYPOPEDES_VX,
                pCovLat=param._HYPOPEDES_COV_LAT,
@@ -112,17 +146,17 @@ class Environment(object):
                     l_polys.append(vehPoly)
 
         # generate field of view
-        fov, fov_range = pfnc.FOV(
+        self._fov, self._fovRange = pfnc.FOV(
             pose=pose, polys=l_polys, angle=param._FOV_ANGLE,
             radius=radius, nrRays=param._FOV_RAYS)
-        fov_poly = Polygon(fov)
+        fov_poly = Polygon(self._fov)
 
         # generate hypothesis from static object
         for sObj in l_object:
             objPoly = sObj._poly
             if pfnc.inPolyPointList(objPoly, fov_poly) and hypothesis:
                 self._generateHypothesis(
-                    pose, objPoly, fov_poly, u_in, radius,
+                    pose, objPoly, fov_poly, radius,
                     pVx, pCovLat, pCovLon, pCrossRate, pStreetRate, pOtherRate,
                     pDistanceThres, vVx, vCovLat, vCovLon, vRate)
 
@@ -136,7 +170,7 @@ class Environment(object):
                     if pfnc.inPolyPointList(vehPoly, fov_poly):
                         if hypothesis and vehPose.vdy.vx_ms < 5:
                             self._generateHypothesis(
-                                pose, vehPoly, fov_poly, u_in, radius,
+                                pose, vehPoly, fov_poly, radius,
                                 pVx, pCovLat, pCovLon, pCrossRate, pStreetRate, pOtherRate,
                                 pDistanceThres, vVx, vCovLat, vCovLon, vRate,
                                 objectVehicle=True)
@@ -168,16 +202,14 @@ class Environment(object):
                         continue
             pedes.setDetected(False)
 
-        l_update = {'vehicle': l_vehicle,
-                    'staticObject': l_object,
-                    'pedestrian': l_pedestrian,
-                    'hypoPedestrian': self._l_hypoPedes,
-                    'hypoVehicle': self._l_hypoVehicle,
-                    'staticVehicle': l_staticVehicle}
+        self._l_update = {'vehicle': l_vehicle,
+                          'staticObject': l_object,
+                          'pedestrian': l_pedestrian,
+                          'hypoPedestrian': self._l_hypoPedes,
+                          'hypoVehicle': self._l_hypoVehicle,
+                          'staticVehicle': l_staticVehicle}
 
-        return l_update, fov, fov_range
-
-    def _generateHypothesis(self, pose, objPoly, fov_poly, u_in, radius, pVx,
+    def _generateHypothesis(self, pose, objPoly, fov_poly, radius, pVx,
                             pCovLat, pCovLon, pCrossRate, pStreetRate, pOtherRate,
                             pDistanceThres, vVx, vCovLat, vCovLon, vRate,
                             objectVehicle=False):
@@ -256,6 +288,7 @@ class Environment(object):
         # find intersection with roads
         for road in self._l_road:
             lane_heading = np.array([np.cos(road.theta), np.sin(road.theta)])
+            lane_heading1 = lane_heading * radius
             if road.left is not None:
                 ip_l = pfnc.seg_intersect(l1_1, l1_2, road.left[0], road.left[1])
                 if ip_l is not None:
@@ -326,8 +359,7 @@ class Environment(object):
                         interactRate=interactRate)
                     self._l_hypoPedes.append(hypoPedes)
 
-    def updateAt(self, pose, from_timestamp, u_in,
-                 radius, hypothesis):
+    def updateAt(self, pose, from_timestamp, radius, hypothesis):
         """
         Get environment around a given position
         """
@@ -367,7 +399,7 @@ class Environment(object):
         for sObj in self._l_staticObject:
             objPoly = sObj._poly
             if pfnc.inPolyPointList(objPoly, fov_poly) and hypothesis:
-                self._generateHypothesis(pose, objPoly, fov_poly, u_in, radius)
+                self._generateHypothesis(pose, objPoly, fov_poly, radius)
 
         # check other moving vehicle in FOV
         for veh in self._l_vehicle:
@@ -378,7 +410,7 @@ class Environment(object):
             if np.linalg.norm(vehPos - currentPos) < radius:
                 vehPoly = veh.getPoly(from_timestamp)
                 if hypothesis and vehPose.vdy.vx_ms == 0:
-                    self._generateHypothesis(pose, vehPoly, fov_poly, u_in, radius)
+                    self._generateHypothesis(pose, vehPoly, fov_poly, radius)
                 if pfnc.inPolyPointList(vehPoly, fov_poly):
                     veh.setDetected(True)
                     if vehPose.vdy.vx_ms > 0:

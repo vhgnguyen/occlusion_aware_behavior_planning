@@ -252,7 +252,7 @@ def limitViewRisk(fov_range, ego_vx, aBrake, dBrake, stdLon, tReact,
     eventRate = rateMax
     eventRate *= 1 - 1 / (1 + rateBeta * np.exp(-(fov_range - sBrake_max)))
     # severity
-    v_max2 = ego_vx2 + 2*aBrake*(fov_range - dSafe)
+    v_max2 = ego_vx2 + 2*aBrake*(fov_range - dReact)
     severity = severity_weight * max(v_max2, 0)
     severity += severity_min_weight
     # risk

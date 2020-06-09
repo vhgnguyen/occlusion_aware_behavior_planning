@@ -1313,7 +1313,7 @@ class FovUtilityModelWindow(QMainWindow):
         self.utilityParameterGrid.addWidget(QLabel("Comfort weight"), 2, 0)
         self.comfortWeightValue = QLineEdit()
         self.comfortWeightValue.setMaximumWidth(100)
-        self.comfortWeightValue.setText(str(0.001))
+        self.comfortWeightValue.setText(str(0.005))
         self.utilityParameterGrid.addWidget(self.comfortWeightValue, 2, 1)
 
         self.utilityParameterGrid.addWidget(QLabel("Jerk weight [s]"), 3, 0)
