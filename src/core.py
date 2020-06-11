@@ -37,6 +37,18 @@ class Core(object):
         self._env = Environment()
         self.timestamp_s = 0
 
+    def restart(self):
+        if self._egoCar is None:
+            return
+        self.timestamp_s = 0
+        self._egoCar.restart()
+        self._env.restart()
+
+    def replay(self):
+        if self._egoCar is None:
+            return
+        # bool for replay
+
     def getCurrentTime(self):
         return self.timestamp_s
 
@@ -53,7 +65,6 @@ class Core(object):
 
     def addEgoVehicle(self, length, width, x_m, y_m, theta, cov_long, cov_lat,
                       vx_ms, u_in, startTime):
-
         startPose = Pose(
             x_m=x_m, y_m=y_m, yaw_rad=theta,
             covLatLong=np.diag([cov_long, cov_lat]),
@@ -62,6 +73,7 @@ class Core(object):
             length=length, width=width, env=self._env,
             startPose=startPose, u_in=u_in)
         print("Ego vehicle added.")
+        self.restart()
 
     def addOtherVehicle(self, length, width, x_m, y_m, to_x_m, to_y_m,
                         cov_long, cov_lat, vx_ms, startTime, isStop=False):
@@ -196,15 +208,3 @@ class Core(object):
         if self._egoCar is None:
             return
         self._egoCar.saveRisk(path, fileName)
-
-    def restart(self):
-        if self._egoCar is None:
-            return
-        self.timestamp_s = 0
-        self._egoCar.restart()
-        self._env.restart()
-
-    def replay(self):
-        if self._egoCar is None:
-            return
-        # bool for replay

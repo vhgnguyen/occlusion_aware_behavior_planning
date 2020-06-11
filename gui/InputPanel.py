@@ -354,7 +354,6 @@ class InputWidget(QWidget):
 
     def on_addEgoVehicleButton_clicked(self):
         self.okButton.setEnabled(True)
-
         self.core.addEgoVehicle(
             length=float(self.carLengthValue.text()),
             width=float(self.carWidthValue.text()),

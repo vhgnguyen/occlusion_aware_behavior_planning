@@ -159,6 +159,7 @@ class Vehicle(object):
         firstPose = self._l_pose[t]
         self._l_pose = {t: firstPose}
         self._currentPose = firstPose
+        self._p_pose = {}
 
     # -------------------- Export functions -----------------------------------
 
@@ -301,6 +302,7 @@ class Pedestrian(object):
         firstPose = self._l_pose[t]
         self._l_pose = {t: firstPose}
         self._currentPose = firstPose
+        self._p_pose = {}
 
     # -------------------- Export functions -----------------------------------
 

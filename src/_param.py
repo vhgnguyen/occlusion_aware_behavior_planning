@@ -91,7 +91,7 @@ _COLLISION_HYPOPEDES_RATE_MAX = 2.
 _HYPOPEDES_COV_LON = 1
 _HYPOPEDES_COV_LAT = 1
 # --- Hypothesis velocity ------
-_HYPOPEDES_VX = 2.0
+_HYPOPEDES_VX = 3.0
 # _HYPOPEDES_OFFSET_VX = 2.0
 # --- Hypothesis appear rate ---
 _PEDES_APPEAR_RATE_CROSS = 1
@@ -105,7 +105,7 @@ _EVENT_RATE_HYPOPEDES_SIG_BETA = 10
 # --- Severity model -----------
 _SEVERITY_HYPOPEDES_MODEL = 'gompertz'
 _SEVERITY_HYPOPEDES_AVG_VX = 5.
-_SEVERITY_HYPOPEDES_MIN_WEIGHT = 2.
+_SEVERITY_HYPOPEDES_MIN_WEIGHT = 5.
 # sigmoid severity
 _SEVERITY_HYPOPEDES_SIG_MAX = 5.
 _SEVERITY_HYPOPEDES_SIG_BETA = 1.
@@ -119,20 +119,20 @@ _SEVERITY_HYPOPEDES_GOM_BETA = 4.
 # --- Maximum event rate -------
 _COLLISION_HYPOVEH_RATE_MAX = 3.
 # --- Hypothesis covariance
-_HYPOVEH_COV_LON = 1
+_HYPOVEH_COV_LON = 2
 _HYPOVEH_COV_LAT = 0.5
 # --- Hypothesis velocity ------
-_HYPOVEH_VX = 8
+_HYPOVEH_VX = _C_V_CRUISE
 # --- Hypothesis appear rate ---
 _APPEAR_RATE_VEH = 1
 # --- Event rate model ---------
 _EVENT_RATE_HYPOVEH_MODEL = 'exponential'
-_EVENT_RATE_HYPOVEH_EXP_BETA = 1.0
+_EVENT_RATE_HYPOVEH_EXP_BETA = 3.0
 _EVENT_RATE_HYPOVEH_SIG_BETA = 10
 # --- Severity model -----------
 _SEVERITY_HYPOVEH_MODEL = 'sigmoid'
 _SEVERITY_HYPOVEH_AVG_VX = 10.
-_SEVERITY_HYPOVEH_MIN_WEIGHT = 2.
+_SEVERITY_HYPOVEH_MIN_WEIGHT = 5.
 # sigmoid severity
 _SEVERITY_HYPOVEH_SIG_MAX = 5.
 _SEVERITY_HYPOVEH_SIG_B = 1

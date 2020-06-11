@@ -38,6 +38,8 @@ class Environment(object):
             veh.restart()
         for pedes in self._l_pedestrian:
             pedes.restart()
+        self._l_update = {}
+        self._isStarted = False
 
     def setScenario(self, scenario):
         self._l_staticObject, self._l_cross, self._l_road = sc.setScenario(scenario)
@@ -102,6 +104,8 @@ class Environment(object):
             vCovLon=param._HYPOVEH_COV_LON,
             vRate=param._APPEAR_RATE_VEH
             )
+        if not self._isStarted:
+            self._isStarted = True
 
     def _update(self, pose: Pose, from_timestamp: float,
                radius, hypothesis=False,

@@ -423,10 +423,8 @@ class EgoVehicle:
                 bounds=(0, param._J_MAX), method='bounded',
                 options={"maxiter": 5}
                 ).x
-            # self._computeTotalCost(
-            #     u_in=val, dT=predictStep, predictTime=predictTime)
             self._brake, self._minColValue = self._l_opt[round(val, 3)]
-            if self._brake or self._minColValue > 0.7:
+            if self._brake or self._minColValue > 0.5:
                 self._p_u = 0
                 self._u = 0
             else:
@@ -666,50 +664,3 @@ class EgoVehicle:
         return l_cost
 
     # ------------------- Backup function ---------------------
-    def optimize(self, dT=param._dT, predictStep=param._PREDICT_STEP):
-            val = 0
-            ego_vx = self.getCurrentPose().vdy.vx_ms
-            # search environment
-            self._searchEnvironment()
-
-            # handle stop case
-            if ego_vx == 0:
-                self._u = 0
-                lowBound = 0
-                upBound = param._J_MAX
-                val = optimize.minimize_scalar(
-                    lambda x: self._computeTotalCost(
-                        u_in=x, dT=predictStep),
-                    bounds=(lowBound, upBound), method='bounded',
-                    options={"maxiter": 5}
-                    ).x
-            else:
-                lowBound = max(self._u - param._J_MAX, param._A_MIN)
-                upBound = min(self._u + param._J_MAX, param._A_MAX)
-                if lowBound >= upBound:
-                    lowBound = param._A_MIN
-                    upBound = lowBound + param._J_MAX
-                val = optimize.minimize_scalar(
-                    lambda x: self._computeTotalCost(
-                        u_in=x, dT=predictStep),
-                    bounds=(lowBound, upBound), method='bounded',
-                    options={"maxiter": 5}
-                    ).x
-
-            self._predict(u_in=val)
-
-            # total_eventRate = sum(
-            #     list((self._p_eventRate[k]) for k in self._p_eventRate))
-
-            # check if critical event occur to perform emergency brake
-            max_eventRate = max(self._p_eventRate.values())
-            if max_eventRate > param._COLLISION_RATE_BRAKE_MIN and self.getCurrentPose().vdy.vx_ms > 0:
-                val = optimize.minimize_scalar(
-                    lambda x: self._computeTotalCost(
-                        u_in=x, dT=predictStep),
-                    bounds=(param._A_MAX_BRAKE, param._A_MIN), method='bounded',
-                    options={"maxiter": 5}
-                ).x
-            self._predict(u_in=val)
-            self._p_u = self._u + (val - self._u) * dT / predictStep
-            self._move()
