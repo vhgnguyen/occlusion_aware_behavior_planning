@@ -9,7 +9,7 @@ _ENABLE_FOV_AWARE = True
 # Discreted time interval
 # ------------------------------
 _dT = 0.2
-_PREDICT_TIME = 5
+_PREDICT_TIME = 3
 _PREDICT_STEP = 0.4
 _SIMULATION_TIME = 20.0
 
@@ -51,7 +51,7 @@ _ALPHA_V_LAT = 0.05
 _COLLISION_ORTHO_THRES = 0.3  # 15 degree
 
 # --- Collision severity -------
-_SEVERITY_MIN_WEIGHT_CONST = 1.
+_SEVERITY_MIN_WEIGHT_CONST = 10.
 _COLLISION_SEVERITY_MODEL = 'sigmoid'
 # quadratic model
 _SEVERITY_QUAD_WEIGHT = 0.10
@@ -89,12 +89,12 @@ _C_JERK = 0.01
 # Hypothesis pedestrian model
 # ------------------------------
 # --- Maximum event rate -------
-_COLLISION_HYPOPEDES_RATE_MAX = 2.
+_COLLISION_HYPOPEDES_RATE_MAX = 3.
 # --- Hypothesis covariance
 _HYPOPEDES_COV_LON = 1
 _HYPOPEDES_COV_LAT = 1
 # --- Hypothesis velocity ------
-_HYPOPEDES_VX = 3.0
+_HYPOPEDES_VX = 2.0
 # _HYPOPEDES_OFFSET_VX = 2.0
 # --- Hypothesis appear rate ---
 _PEDES_APPEAR_RATE_CROSS = 1
