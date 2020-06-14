@@ -35,13 +35,16 @@ class EgoVehicle:
         # current state
         self._currentPose = startPose
         self._u = u_in
-        self._minColValue = 0
-        self._minRiskValue = 0
 
         # optimization state machine
         self._stopState = False
+        self._driveOffState = False
         self._defaultState = True
         self._emergencyState = False
+
+        # emergency brake
+        self._minColValue = 0
+        self._minRiskValue = 0
         self._TTB = 0
         self._brake = False
 
@@ -51,7 +54,7 @@ class EgoVehicle:
         self._fovRange = None
         self._l_currentObject = {}
 
-        # moved poses
+        # record
         self._l_u = {startPose.timestamp_s: u_in}
         self._l_pose = {startPose.timestamp_s: startPose}
 
@@ -75,7 +78,6 @@ class EgoVehicle:
             pose = self._l_pose[timestamp_s]
             return pfnc.rectangle(pose, self.length, self.width)
         else:
-            print("Ego: No state at: ", timestamp_s)
             return None
 
     def getCurrentPoly(self):
@@ -86,14 +88,12 @@ class EgoVehicle:
             pose = self._p_pose[timestamp_s]
             return pfnc.rectangle(pose, self.length, self.width)
         else:
-            print("Ego: No predict state at: ", timestamp_s)
             return None
 
     def getPoseAt(self, timestamp_s: float):
         if timestamp_s in self._l_pose:
             return self._l_pose[timestamp_s]
         else:
-            print("Ego: No pose at: ", timestamp_s)
             return None
 
     # ------------------- Opt function ---------------------
@@ -164,7 +164,7 @@ class EgoVehicle:
             total_risk += limitViewRisk
             total_eventRate += limitViewEvent
 
-        egoPolygon = Polygon(egoPoly + egoPose.heading())
+        egoPolygon = Polygon(egoPoly + egoPose.heading()*param._D_BRAKE_MIN)
 
         for sobj in l_obj['staticObject']:
             sPolygon = Polygon(sobj._poly)
@@ -210,7 +210,7 @@ class EgoVehicle:
                 exp_beta=param._COLLISION_RATE_EXP_BETA)
 
             vcol_severity = rfnc.collisionEventSeverity(
-                ego_vx=egoPose.vdy.vx_ms, obj_vx=vehPose.vdy.vx_ms,
+                ego_vx=egoPose.vxUtm, obj_vx=vehPose.vxUtm,
                 method=param._COLLISION_SEVERITY_MODEL)
 
             vcol_risk = rfnc.collisionRisk(
@@ -240,8 +240,9 @@ class EgoVehicle:
                 exp_beta=param._COLLISION_RATE_EXP_BETA_PEDES)
 
             pcol_severity = rfnc.collisionEventSeverity(
-                ego_vx=egoPose.vdy.vx_ms, obj_vx=pPose.vdy.vx_ms,
-                method=param._COLLISION_SEVERITY_MODEL)
+                ego_vx=egoPose.vxUtm, obj_vx=pPose.vxUtm,
+                method=param._COLLISION_SEVERITY_MODEL,
+                sig_vx=param._SEVERITY_SIG_AVG_VX_PEDES)
 
             pcol_risk = rfnc.collisionRisk(
                 col_severity=pcol_severity,
@@ -273,7 +274,7 @@ class EgoVehicle:
                 hpcol_rate *= hypoPedes._interactRate
 
             hpcol_severity = rfnc.collisionSeverityHypoPedes(
-                ego_vx=egoPose.vdy.vx_ms, obj_vx=hPose.vdy.vx_ms,
+                ego_vx=egoPose.vxUtm, obj_vx=hPose.vxUtm,
                 method=param._SEVERITY_HYPOPEDES_MODEL,
                 min_weight=param._SEVERITY_HYPOPEDES_MIN_WEIGHT,
                 avg_vx=param._SEVERITY_HYPOPEDES_AVG_VX,
@@ -306,7 +307,7 @@ class EgoVehicle:
                 hvcol_rate *= hypoVeh._interactRate
 
             hvcol_severity = rfnc.collisionSeverityHypoVeh(
-                ego_vx=egoPose.vdy.vx_ms, obj_vx=hvPose.vdy.vx_ms,
+                ego_vx=egoPose.vxUtm, obj_vx=hvPose.vxUtm,
                 method=param._SEVERITY_HYPOVEH_MODEL,
                 quad_weight=param._SEVERITY_QUAD_WEIGHT,
                 min_weight=param._SEVERITY_HYPOVEH_MIN_WEIGHT,
@@ -346,7 +347,10 @@ class EgoVehicle:
         """
         p_pose = self._p_pose[timestamp_s]
         utCost = 0
-        utCost += wV * (p_pose.vdy.vx_ms-vx)**2
+        if p_pose.vdy.vx_ms > vx:
+            utCost += 10 * wV * (p_pose.vdy.vx_ms-vx)**2
+        else:
+            utCost += wV * (p_pose.vdy.vx_ms-vx)**2
         utCost += wA * (u_in**2)
         utCost += wJ * ((u_in - self._u)**2)
         return utCost
@@ -377,6 +381,7 @@ class EgoVehicle:
         self._brake = False
         self._minColValue = 0
         self._p_eventRate = {}
+
         self._predict(u_in, dT=dT, predictTime=predictTime)
 
         for k in self._p_pose:
@@ -405,16 +410,18 @@ class EgoVehicle:
         self._l_pose.update({nextTimestamp_s: nextPose})
         self._l_u.update({nextTimestamp_s: self._u})
 
-        if self.getCurrentPose().vdy.vx_ms == 0 and self._emergencyState:
+        if self.getCurrentPose().vdy.vx_ms == 0:
             self._toStopState()
             self._u = 0
+        if self.getCurrentPose().vdy.vx_ms > 5 and self._driveOffState:
+            self._toDefaultState()
 
     def optimizeState(self, dT=param._dT, predictStep=param._PREDICT_STEP,
                       predictTime=param._PREDICT_TIME):
         self._searchEnvironment()
         self._computeTTB(aBrake=param._A_MAX_BRAKE, delay=param._T_BRAKE)
-        val = 0
         self._l_opt = {}
+        val = 0
 
         if self._stopState:
             val = optimize.minimize_scalar(
@@ -428,8 +435,27 @@ class EgoVehicle:
                 self._p_u = 0
                 self._u = 0
             else:
-                self._toDefaultState()
+                self._toDriveOffState
                 self._p_u = self._u + (val - self._u) * dT / predictStep
+            self._move()
+            return
+
+        if self._driveOffState:
+            lowBound = max(self._u - param._J_MAX, 0.5*param._A_MIN)
+            upBound = min(self._u + param._J_MAX, 0.5*param._A_MAX)
+            if lowBound >= upBound:
+                lowBound = 0.5*param._A_MIN
+                upBound = lowBound + param._J_MAX
+            val = optimize.minimize_scalar(
+                lambda x: self._computeTotalCost(
+                    u_in=x, dT=predictStep, predictTime=predictTime),
+                bounds=(lowBound, upBound), method='bounded',
+                options={"maxiter": 5}
+                ).x
+            self._brake, self._minColValue = self._l_opt[round(val, 3)]
+            if self._brake:
+                self._toEmergencyState()
+            self._p_u = self._u + (val - self._u) * dT / predictStep
             self._move()
             return
 
@@ -453,8 +479,8 @@ class EgoVehicle:
             return
 
         if self._emergencyState:
-            lowBound = max(self._u - 1.5*param._J_MAX, param._A_MAX_BRAKE)
-            upBound = self._u - 0.5*param._J_MAX
+            lowBound = max(self._u - param._J_MAX_BRAKE, param._A_MAX_BRAKE)
+            upBound = self._u - param._J_MAX_BRAKE
             if lowBound >= upBound:
                 lowBound = param._A_MAX_BRAKE
                 upBound = self._u
@@ -470,16 +496,25 @@ class EgoVehicle:
 
     def _toStopState(self):
         self._stopState = True
+        self._driveOffState = False
+        self._defaultState = False
+        self._emergencyState = False
+
+    def _toDriveOffState(self):
+        self._stopState = False
+        self._driveOffState = True
         self._defaultState = False
         self._emergencyState = False
 
     def _toDefaultState(self):
         self._stopState = False
+        self._driveOffState = False
         self._defaultState = True
         self._emergencyState = False
 
     def _toEmergencyState(self):
         self._stopState = False
+        self._driveOffState = False
         self._defaultState = False
         self._emergencyState = True
 
@@ -492,6 +527,7 @@ class EgoVehicle:
         self._u = self._l_u[t]
         self._l_u = {t: self._l_u[t]}
         self._currentPose = firstPose
+        self._toDefaultState()
 
     def exportPredictState(self):
         l_p = []

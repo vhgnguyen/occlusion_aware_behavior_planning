@@ -228,11 +228,15 @@ class Environment(object):
 
         # get occlusion boundary
         ca = math.cos(alpha)
+        vx = pose.heading()
         l1_1 = np.array([pose.x_m, pose.y_m])
+        l_vx = l1_1 + vx * radius
+
+        # compute end of occlusion point
         dS = np.sqrt((randVertex[0]-pose.x_m)**2 + (randVertex[1]-pose.y_m)**2)
-        d2MP = (dS + dThres) * ca
-        MP = pose.heading() * d2MP + l1_1
-        interactRate = rfnc.interactRate(d2MP)
+        d2MP = (dS+dThres) * ca
+        MP = l1_1 + d2MP * vx
+        interactRate = rfnc.interactRate(d2MP+dThres)
 
         # compute distance to ostacle bound vertex
         p2r = randVertex - l1_1
@@ -258,36 +262,38 @@ class Environment(object):
                     continue
                 d2MP_r = (l1_ip_r + dThres) * ca
             if d2MP_l < d2MP_r:
-                MP_l = d2MP_l * pose.heading() + l1_1
+                MP_l = d2MP_l * vx + l1_1
                 ip_l += p2r_norm * dThres
                 heading = MP_l - ip_l
                 heading /= np.linalg.norm(heading)
                 ip_l -= heading * dThres
-                hypoPedes = Pedestrian(
-                    idx=99, from_x_m=ip_l[0], from_y_m=ip_l[1],
-                    to_x_m=MP_l[0], to_y_m=MP_l[1],
-                    covLong=pCovLon, covLat=pCovLat, vx_ms=pVx,
-                    startTime=pose.timestamp_s, appearRate=pCrossRate,
-                    interactRate=interactRate)
-                crossPedes = True
-                if abs(abs(hypoPedes.theta) - abs(c.theta)) < np.pi/3:
-                    self._l_hypoPedes.append(hypoPedes)
+                if np.linalg.norm(ip_l - MP_l) < pDistanceThres:
+                    hypoPedes = Pedestrian(
+                        idx=99, from_x_m=ip_l[0], from_y_m=ip_l[1],
+                        to_x_m=MP_l[0], to_y_m=MP_l[1],
+                        covLong=pCovLon, covLat=pCovLat, vx_ms=pVx,
+                        startTime=pose.timestamp_s, appearRate=pCrossRate,
+                        interactRate=interactRate)
+                    crossPedes = True
+                    if abs(abs(hypoPedes.theta) - abs(c.theta)) < np.pi/3:
+                        self._l_hypoPedes.append(hypoPedes)
 
             elif d2MP_l > d2MP_r:
-                MP_r = d2MP_r * pose.heading() + l1_1
+                MP_r = d2MP_r * vx + l1_1
                 ip_r += p2r_norm * dThres
                 heading = MP_r - ip_r
                 heading /= np.linalg.norm(heading)
                 ip_r -= heading * dThres
-                hypoPedes = Pedestrian(
-                    idx=99, from_x_m=ip_r[0], from_y_m=ip_r[1],
-                    to_x_m=MP_r[0], to_y_m=MP_r[1],
-                    covLong=pCovLon, covLat=pCovLat, vx_ms=pVx,
-                    startTime=pose.timestamp_s, appearRate=pCrossRate,
-                    interactRate=interactRate)
-                crossPedes = True
-                if abs(abs(hypoPedes.theta) - abs(c.theta)) < np.pi/3:
-                    self._l_hypoPedes.append(hypoPedes)
+                if np.linalg.norm(ip_r - MP_r) < pDistanceThres:
+                    hypoPedes = Pedestrian(
+                        idx=99, from_x_m=ip_r[0], from_y_m=ip_r[1],
+                        to_x_m=MP_r[0], to_y_m=MP_r[1],
+                        covLong=pCovLon, covLat=pCovLat, vx_ms=pVx,
+                        startTime=pose.timestamp_s, appearRate=pCrossRate,
+                        interactRate=interactRate)
+                    crossPedes = True
+                    if abs(abs(hypoPedes.theta) - abs(c.theta)) < np.pi/3:
+                        self._l_hypoPedes.append(hypoPedes)
 
         # find intersection with roads
         for road in self._l_road:
@@ -313,7 +319,9 @@ class Environment(object):
             if ip_l is not None and ip_m is not None:
                 endPos = (ip_l + ip_m) / 2
                 startPos = endPos + lane_heading * 2 * dThres
-                if not pfnc.inPolyPoint(startPos, fov_poly):
+            # if not pfnc.inPolyPoint(startPos, fov_poly):
+                checkCross1 = pfnc.seg_intersect(l1_1, l_vx, startPos, startPos-lane_heading1)
+                if pfnc.doIntersect(l1_1, l_vx, startPos, startPos-lane_heading1):
                     hypoVeh = Vehicle(
                         idx=99, length=param._CAR_LENGTH, width=param._CAR_WIDTH,
                         from_x_m=startPos[0], from_y_m=startPos[1],
@@ -327,7 +335,9 @@ class Environment(object):
             if ip_r is not None and ip_m is not None:
                 endPos = (ip_r + ip_m) / 2
                 startPos = endPos - lane_heading * 2 * dThres
-                if not pfnc.inPolyPoint(startPos, fov_poly):
+                # if not pfnc.inPolyPoint(startPos, fov_poly):
+                checkCross2 = pfnc.seg_intersect(l1_1, l_vx, startPos, startPos+lane_heading1)
+                if pfnc.doIntersect(l1_1, l_vx, startPos, startPos+lane_heading1):
                     hypoVeh = Vehicle(
                         idx=99, length=param._CAR_LENGTH, width=param._CAR_WIDTH,
                         from_x_m=startPos[0], from_y_m=startPos[1],

@@ -134,7 +134,7 @@ def minFOVAngle(pose, poly):
         if angle < min_angle:
             min_angle = angle
             min_vertex = i
-    if min_angle >= np.pi/2:
+    if min_angle >= np.pi:
         min_angle = None
     return poly[min_vertex], min_angle
 
@@ -229,12 +229,14 @@ def FOV(pose, polys, angle, radius, nrRays=50):
     return l_fov, fov_range
 
 
-def inPolyPoint(point, poly):  # use Shapely, non-convex
+# check if a point lies in a polygon (use Shapely, non-convex)
+def inPolyPoint(point, poly):
     point = Point(point)
     return point.within(poly)
 
 
-def inPolyPointList(pointList, poly):  # use Shapely, non-convex
+# check if any point in list lies in a polygon (use Shapely, non-convex)
+def inPolyPointList(pointList, poly):
     for pt in pointList:
         point = Point(pt)
         if point.within(poly):
@@ -242,17 +244,63 @@ def inPolyPointList(pointList, poly):  # use Shapely, non-convex
     return False
 
 
-def inPolygonPoint(point, poly):  # use scipy, only convex
+# check if a point lies in a polygon (use scipy, only convex)
+def inPolygonPoint(point, poly):
     poly = Delaunay(poly)
+    # return np.count_nonzero(poly.find_simplex(point) >= 0) > 0
     return poly.find_simplex(point) >= 0
 
 
-def inPolygon(point, poly):  # use scipy, only convex
-    """
-    Test if points list p in poly
-    """
-    poly = Delaunay(poly)
-    return np.count_nonzero(poly.find_simplex(point) >= 0) > 0
+def orientation(p, q, r):
+    # to find the orientation of an ordered triplet (p,q,r)
+    # function returns the following values:
+    # 0 : Colinear points
+    # 1 : Clockwise points
+    # 2 : Counterclockwise
+
+    # See https://www.geeksforgeeks.org/orientation-3-ordered-points/amp/  
+    # for details of below formula.
+
+    val = (float(q[1]-p[1])*(r[0]-q[0]))-(float(q[0]-p[0])*(r[1]-q[1]))
+    if (val > 0):
+        # Clockwise orientation
+        return 1
+    elif (val < 0):
+        # Counterclockwise orientation
+        return 2
+    else:
+        # Colinear orientation
+        return 0
+
+
+# The main function that returns true if
+# the line segment 'p1q1' and 'p2q2' intersect.
+def doIntersect(p1, q1, p2, q2):
+    # Find the 4 orientations required for
+    # the general and special cases
+    o1 = orientation(p1, q1, p2)
+    o2 = orientation(p1, q1, q2)
+    o3 = orientation(p2, q2, p1)
+    o4 = orientation(p2, q2, q1)
+    # General case
+    if ((o1 != o2) and (o3 != o4)):
+        return True
+    # Special Cases
+    # p1 , q1 and p2 are colinear and p2 lies on segment p1q1
+    if ((o1 == 0) and onSegment(p1, p2, q1)):
+        return True
+    # p1 , q1 and q2 are colinear and q2 lies on segment p1q1
+    if ((o2 == 0) and onSegment(p1, q2, q1)):
+        return True
+    # p2 , q2 and p1 are colinear and p1 lies on segment p2q2
+    if ((o3 == 0) and onSegment(p2, p1, q2)):
+        return True
+    # p2 , q2 and q1 are colinear and q1 lies on segment p2q2
+    if ((o4 == 0) and onSegment(p2, q1, q2)):
+        return True
+    # If none of the cases
+    return False
+
 
 # ---------------------- BACK UP FUNCTIONS -----------------------------
 
