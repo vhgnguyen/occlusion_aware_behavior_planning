@@ -24,8 +24,8 @@ class EgoVehicle:
     """
 
     def __init__(self, length, width, env, startPose, u_in):
-        self.length = length
-        self.width = width
+        self._length = length
+        self._width = width
 
         # prediction params
         self._p_u = None
@@ -76,17 +76,17 @@ class EgoVehicle:
         """
         if timestamp_s in self._l_pose:
             pose = self._l_pose[timestamp_s]
-            return pfnc.rectangle(pose, self.length, self.width)
+            return pfnc.rectangle(pose, self._length, self._width)
         else:
             return None
 
     def getCurrentPoly(self):
-        return pfnc.rectangle(self._currentPose, self.length, self.width)
+        return pfnc.rectangle(self._currentPose, self._length, self._width)
 
     def getPredictPoly(self, timestamp_s: float):
         if timestamp_s in self._p_pose:
             pose = self._p_pose[timestamp_s]
-            return pfnc.rectangle(pose, self.length, self.width)
+            return pfnc.rectangle(pose, self._length, self._width)
         else:
             return None
 
@@ -435,7 +435,7 @@ class EgoVehicle:
                 self._p_u = 0
                 self._u = 0
             else:
-                self._toDriveOffState
+                self._toDriveOffState()
                 self._p_u = self._u + (val - self._u) * dT / predictStep
             self._move()
             return
@@ -531,7 +531,8 @@ class EgoVehicle:
 
     def exportPredictState(self):
         l_p = []
-        for p_pose in self._p_pose:
+        for k in self._p_pose:
+            p_pose = self._p_pose[k]
             exportP = {
                 'pos': [p_pose.x_m, p_pose.y_m],
                 'cov': p_pose.covUtm,

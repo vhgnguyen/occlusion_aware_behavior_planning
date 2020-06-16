@@ -348,7 +348,8 @@ class Environment(object):
                     self._l_hypoVehicle.append(hypoVeh)
                     crossRoad = True
 
-        # if not crossPedes and not crossRoad:
+        if crossPedes:
+            return
         startPos = randVertex + p2r_norm * dThres
         d = np.linalg.norm(startPos - MP)
         if d < pDistanceThres:

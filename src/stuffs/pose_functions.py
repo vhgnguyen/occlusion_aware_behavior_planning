@@ -103,7 +103,7 @@ def updateCovLatlong(lastCovLatLong, dT, dX, dY,
         y = -0.3
 
     covX = max(lastCovLatLong[0, 0] + x, 0)
-    covY = max(lastCovLatLong[0, 0] + y, 0)
+    covY = max(lastCovLatLong[1, 1] + y, 0)
 
     return np.diag([covX, covY])
 

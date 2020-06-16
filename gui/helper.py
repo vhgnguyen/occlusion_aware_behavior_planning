@@ -38,23 +38,24 @@ def drawPoly(poly, color, alpha, fill=True):
     if poly is None:
         return
     setColor(color=color, alpha=alpha)
-    gl.glLineWidth(0.1)
+
+    gl.glLineWidth(0.05)
+    if fill:
+        gl.glPolygonMode(gl.GL_FRONT, gl.GL_FILL)
+    else:
+        gl.glPolygonMode(gl.GL_FRONT, gl.GL_LINE)
+
     if poly.shape[0] == 4:
         gl.glBegin(gl.GL_QUADS)
         for p in poly:
-            gl.glVertex2f(p[0], p[1])
+            gl.glVertex3f(p[0], p[1], 0)
         gl.glEnd()
     else:
-        if fill:
-            gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_FILL)
-        else:
-            gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_LINE)
         gl.glBegin(gl.GL_POLYGON)
         for p in poly:
-            gl.glVertex2f(p[0], p[1])
+            gl.glVertex3f(p[0], p[1], 0)
         gl.glEnd()
-        gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_FILL)
-
+    gl.glPolygonMode(gl.GL_FRONT, gl.GL_FILL)
 
 def drawHeading(poly, color, alpha, fill=True):
     if poly is None:
@@ -108,6 +109,14 @@ def plotPolygon(poly, facecolor, edgecolor, alpha, label=None, ax=plt,
             alpha=alpha
         )
         ax.add_patch(t)
+
+
+def plotEllipse(x, y, a, l, w,
+                facecolor, edgecolor, alpha, label=None, ax=plt):
+    print(a)
+    e = Ellipse(xy=(x, y), width=l, height=w, angle=np.rad2deg(a), linewidth=0.5,
+                edgecolor=edgecolor, facecolor=facecolor, alpha=alpha)
+    ax.add_patch(e)
 
 
 def plotLine(line, ax=plt, **kwargs):

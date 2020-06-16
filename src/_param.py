@@ -10,7 +10,7 @@ _ENABLE_FOV_AWARE = True
 # ------------------------------
 _dT = 0.2
 _PREDICT_TIME = 3
-_PREDICT_STEP = 0.4
+_PREDICT_STEP = 0.2
 _SIMULATION_TIME = 20.0
 
 # ------------------------------
@@ -41,7 +41,7 @@ _J_MAX_BRAKE = 10
 _J_MAX_S = 5
 _J_MAX = _J_MAX_S * _PREDICT_STEP
 # velocity uncertainty
-_ALPHA_V_LONG = 0.2
+_ALPHA_V_LONG = 0.5
 _ALPHA_V_LAT = 0.05
 
 # ------------------------------
@@ -51,17 +51,17 @@ _ALPHA_V_LAT = 0.05
 _COLLISION_ORTHO_THRES = 0.3  # 15 degree
 
 # --- Collision severity -------
-_SEVERITY_MIN_WEIGHT_CONST = 10.
+_SEVERITY_MIN_WEIGHT_CONST = 5.
 _COLLISION_SEVERITY_MODEL = 'sigmoid'
 # quadratic model
 _SEVERITY_QUAD_WEIGHT = 0.10
 # sigmoid model
-_SEVERITY_SIG_MAX = 10.
+_SEVERITY_SIG_MAX = 5.
 _SEVERITY_SIG_AVG_VX = 8.
 _SEVERITY_SIG_AVG_VX_PEDES = 5.
 _SEVERITY_SIG_B = 1.
 # gompertz model
-_SEVERITY_GOM_MAX = 10.
+_SEVERITY_GOM_MAX = 5.
 _SEVERITY_GOM_AVG_VX = 10.
 _SEVERITY_GOM_BETA = 4.
 
@@ -72,7 +72,7 @@ _COLLISION_RATE_MAX = 10.
 _COLLISION_EVENT_RATE_MODEL = 'exponential'
 # exponential model
 _COLLISION_RATE_EXP_BETA = 10.
-_COLLISION_RATE_EXP_BETA_PEDES = 10.
+_COLLISION_RATE_EXP_BETA_PEDES = 7.
 # sigmoid model
 _COLLISION_RATE_SIG_BETA = 10.
 
@@ -89,10 +89,10 @@ _C_JERK = 0.01
 # Hypothesis pedestrian model
 # ------------------------------
 # --- Maximum event rate -------
-_COLLISION_HYPOPEDES_RATE_MAX = 3.
+_COLLISION_HYPOPEDES_RATE_MAX = 1.
 # --- Hypothesis covariance
 _HYPOPEDES_COV_LON = 1
-_HYPOPEDES_COV_LAT = 1
+_HYPOPEDES_COV_LAT = 0.5
 # --- Hypothesis velocity ------
 _HYPOPEDES_VX = 2.0
 # _HYPOPEDES_OFFSET_VX = 2.0
@@ -120,9 +120,9 @@ _SEVERITY_HYPOPEDES_GOM_BETA = 4.
 # Hypothesis vehicle model
 # ------------------------------
 # --- Maximum event rate -------
-_COLLISION_HYPOVEH_RATE_MAX = 3.
+_COLLISION_HYPOVEH_RATE_MAX = 1.
 # --- Hypothesis covariance
-_HYPOVEH_COV_LON = 2
+_HYPOVEH_COV_LON = 1
 _HYPOVEH_COV_LAT = 0.5
 # --- Hypothesis velocity ------
 _HYPOVEH_VX = _C_V_CRUISE
@@ -135,9 +135,9 @@ _EVENT_RATE_HYPOVEH_SIG_BETA = 10
 # --- Severity model -----------
 _SEVERITY_HYPOVEH_MODEL = 'sigmoid'
 _SEVERITY_HYPOVEH_AVG_VX = 10.
-_SEVERITY_HYPOVEH_MIN_WEIGHT = 2.
+_SEVERITY_HYPOVEH_MIN_WEIGHT = 0.5
 # sigmoid severity
-_SEVERITY_HYPOVEH_SIG_MAX = 2.
+_SEVERITY_HYPOVEH_SIG_MAX = 5.
 _SEVERITY_HYPOVEH_SIG_B = 1
 
 # ------------------------------

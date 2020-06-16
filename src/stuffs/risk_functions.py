@@ -234,7 +234,7 @@ def collisionRisk(col_severity, col_rate):
     return col_rate * col_severity
 
 
-def interactRate(a, b=7, k=1):
+def interactRate(a, b=4, k=1):
     return 1 - 1 / (1 + np.exp(k * (a-b)))
 
 

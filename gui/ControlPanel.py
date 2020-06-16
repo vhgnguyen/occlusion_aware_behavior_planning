@@ -1,5 +1,5 @@
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import (QGroupBox, QHBoxLayout, QPushButton, QGridLayout)
+from PyQt5.QtWidgets import (QGroupBox, QHBoxLayout, QPushButton, QGridLayout, QCheckBox)
 
 from BirdEyeView import LegendWidget
 
@@ -71,8 +71,16 @@ class ControlPanel(QGroupBox):
         self.stopSimulationButton.clicked.connect(self.on_stopSimulation_clicked)
         self.buttonGrid.addWidget(self.stopSimulationButton, 1, 1)
 
+        self.enablePredictButton = QCheckBox("Show prediction")
+        self.enablePredictButton.setChecked(False)
+        self.enablePredictButton.stateChanged.connect(self.predictCheckBox)
+        self.buttonGrid.addWidget(self.enablePredictButton, 2, 0)
+
         self.buttonBox.setLayout(self.buttonGrid)
         self.mainLayout.addWidget(self.buttonBox)
+    
+    def predictCheckBox(self, checked):
+        self.birdEyeView._drawPredict = checked
 
     def on_refreshButton_clicked(self):
         self.birdEyeView.update()

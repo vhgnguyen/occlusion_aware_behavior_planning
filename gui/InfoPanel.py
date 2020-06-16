@@ -179,6 +179,134 @@ class InfoPanel(QGroupBox):
         fig, ax = plt.subplots(figsize=(14, 6))
         pose = self.core.getCurrentEgoPos()
 
+        self.plotRoad(ax=ax)
+        self.plotFOV(ax=ax)
+        self.plotStaticObject(ax=ax)
+        self.plotPedestrianCross(ax=ax)
+        self.plotEgoVehicle(ax=ax)
+        self.plotPedestrian(ax=ax)
+        self.plotVehicle(ax=ax)
+
+        helper.handleLegend(ax=plt)
+        ax.axis('equal')
+        ax.set_xlim(pose[0]-40, pose[0]+40)
+        ax.set_ylim(pose[1]-20, pose[1]+20)
+        ax.set_xlabel("x[m]")
+        ax.set_ylabel("y[m]")
+        self._plotScene, self._ax = fig, ax
+        plt.show()
+
+    def plotPedestrian(self, ax):
+        # plot other pedestrian
+        pedesList = self.core.exportCurrentPedestrian()
+        hypoPList = self.core.exportHypoPedestrian()
+
+        for hypoP in hypoPList:
+            hp = hypoP['p']
+            a = 1
+            b = len(hp)
+            for i in range(0, b, int(b/5)):
+                hpp = hp[i]
+                a = max(a-0.15, 0.1)
+                pose = hpp['pos']
+                lw = hpp['std']
+                helper.plotEllipse(
+                    x=pose[0], y=pose[1], a=pose[2], l=lw[0]*2, w=lw[1]*2,
+                    facecolor='pink', edgecolor='tab:pink', alpha=a, ax=ax)
+
+            hc = hypoP['c']
+            helper.plotPolygon(
+                hc['poly'], facecolor='pink', edgecolor='k',
+                alpha=1, label="hypothesis pedestrian", ax=ax,
+                heading=True, hcolor='k')
+
+        for pedes in pedesList:
+            c = pedes['c']
+            p = pedes['p']
+
+            a = 1
+            b = len(p)
+            for i in range(0, b, int(b/5)):
+                pp = p[i]
+                a = max(a-0.15, 0.1)
+                pose = pp['pos']
+                lw = pp['std']
+                if c['visible']:
+                    helper.plotEllipse(
+                        x=pose[0], y=pose[1], a=pose[2], l=lw[0]*2, w=lw[1]*2,
+                        facecolor='lime', edgecolor='tab:pink', alpha=a, ax=ax)
+                else:
+                    helper.plotEllipse(
+                        x=pose[0], y=pose[1], a=pose[2], l=lw[0]*2, w=lw[1]*2,
+                        facecolor='salmon', edgecolor='tab:pink', alpha=a, ax=ax)
+
+            if c['visible']:
+                helper.plotPolygon(
+                    c['poly'], facecolor='pink', edgecolor='lime',
+                    alpha=1, label="detected pedestrian", ax=ax,
+                    heading=True, hcolor='lime')
+            else:
+                helper.plotPolygon(
+                    c['poly'], facecolor='pink', edgecolor='r',
+                    alpha=1, label="undetected pedestrian", ax=ax,
+                    heading=True, hcolor='r')
+
+    def plotVehicle(self, ax):
+        # plot other vehicle
+        vehicleList = self.core.exportCurrentVehicle()
+        hypoList = self.core.exportHypoVehicle()
+
+        for hypo in hypoList:
+            hp = hypo['p']
+            a = 1
+            b = len(hp)
+            for i in range(0, b, int(b/5)):
+                hpp = hp[i]
+                a = max(a-0.15, 0.1)
+                pose = hpp['pos']
+                lw = hpp['std']
+                helper.plotEllipse(
+                    x=pose[0], y=pose[1], a=pose[2], l=lw[0]*2, w=lw[1]*2,
+                    facecolor='pink', edgecolor='tab:pink', alpha=a, ax=ax)
+
+            hc = hypo['c']
+            helper.plotPolygon(
+                    hc['poly'], facecolor='yellow', edgecolor='k',
+                    alpha=1, label="hypothesis vehicle", ax=ax,
+                    heading=True, hcolor='k')
+
+        for veh in vehicleList:
+            c = veh['c']
+            p = veh['p']
+
+            a = 1
+            b = len(p)
+            for i in range(0, b, int(b/5)):
+                pp = p[i]
+                a = max(a-0.15, 0.1)
+                pose = pp['pos']
+                lw = pp['std']
+                if c['visible']:
+                    helper.plotEllipse(
+                        x=pose[0], y=pose[1], a=pose[2], l=lw[0]*2, w=lw[1]*2,
+                        facecolor='lime', edgecolor='tab:pink', alpha=a, ax=ax)
+                else:
+                    helper.plotEllipse(
+                        x=pose[0], y=pose[1], a=pose[2], l=lw[0]*2, w=lw[1]*2,
+                        facecolor='lightcoral', edgecolor='tab:pink', alpha=a, ax=ax)
+
+            if c['visible']:
+                helper.plotPolygon(
+                    c['poly'], facecolor='yellow', edgecolor='lime',
+                    alpha=1, label="detected vehicle", ax=ax,
+                    heading=True, hcolor='lime')
+            else:
+                helper.plotPolygon(
+                    c['poly'], facecolor='yellow', edgecolor='r',
+                    alpha=1, label="undetected vehicle", ax=ax,
+                    heading=True, hcolor='r')
+
+    def plotRoad(self, ax):
         # plot road
         for road in self.core._env._l_road:
             # draw left boundary
@@ -191,11 +319,13 @@ class InfoPanel(QGroupBox):
             helper.plotLine(
                 road.lane, ax=ax, color='gray', linestyle='--')
 
+    def plotFOV(self, ax):
         # plot FOV
         helper.plotPolygon(
-            self.core.getCurrentFOV(), facecolor='lightskyblue', edgecolor='b',
-            alpha=0.6, ax=ax, label="FOV")
+            self.core.getCurrentFOV(), facecolor='gainsboro', edgecolor='lightcoral',
+            alpha=0.7, ax=ax, label="FOV")
 
+    def plotStaticObject(self, ax):
         # plot static object
         objectList = self.core._env._l_staticObject
         for obj in objectList:
@@ -203,6 +333,7 @@ class InfoPanel(QGroupBox):
                 obj._poly, facecolor='gray', edgecolor='gray',
                 alpha=1, label=None, ax=ax)
 
+    def plotPedestrianCross(self, ax):
         # plot pedestrian cross
         crossList = self.core._env._l_cross
         for cross in crossList:
@@ -220,60 +351,14 @@ class InfoPanel(QGroupBox):
                 cPoly = np.array([p1, p2, p3, p4])
                 helper.plotPolygon(
                     cPoly, facecolor='k', edgecolor='k',
-                    alpha=1, label=None, ax=ax,
+                    alpha=0.5, label=None, ax=ax,
                     )
 
+    def plotEgoVehicle(self, ax):
         # plot ego vehicle
         helper.plotPolygon(
             self.core.getCurrentEgoPoly(), facecolor='b', edgecolor='b',
             alpha=1, label='ego vehicle', ax=ax,
             heading=True, hcolor='k')
 
-        # plot other vehicle
-        vehicleList = self.core.exportCurrentVehicle()
-        hypoList = self.core.exportHypoVehicle()
-        for vehicle in vehicleList:
-            if vehicle['visible']:
-                helper.plotPolygon(
-                    vehicle['poly'], facecolor='yellow', edgecolor='lime',
-                    alpha=1, label="detected vehicle", ax=ax,
-                    heading=True, hcolor='lime')
-            else:
-                helper.plotPolygon(
-                    vehicle['poly'], facecolor='yellow', edgecolor='r',
-                    alpha=1, label="undetected vehicle", ax=ax,
-                    heading=True, hcolor='r')
-        for hypoV in hypoList:
-            helper.plotPolygon(
-                    hypoV['poly'], facecolor='yellow', edgecolor='k',
-                    alpha=1, label="hypothesis vehicle", ax=ax,
-                    heading=True, hcolor='k')
 
-        # plot other pedestrian
-        pedesList = self.core.exportCurrentPedestrian()
-        hypoPList = self.core.exportHypoPedestrian()
-        for pedes in pedesList:
-            if pedes['visible']:
-                helper.plotPolygon(
-                    pedes['poly'], facecolor='pink', edgecolor='lime',
-                    alpha=1, label="detected pedestrian", ax=ax,
-                    heading=True, hcolor='lime')
-            else:
-                helper.plotPolygon(
-                    pedes['poly'], facecolor='pink', edgecolor='r',
-                    alpha=1, label="undetected pedestrian", ax=ax,
-                    heading=True, hcolor='r')
-        for hypoP in hypoPList:
-            helper.plotPolygon(
-                    hypoP['poly'], facecolor='pink', edgecolor='k',
-                    alpha=1, label="hypothesis pedestrian", ax=ax,
-                    heading=True, hcolor='k')
-
-        helper.handleLegend(ax=plt)
-        ax.axis('equal')
-        ax.set_xlim(pose[0]-40, pose[0]+40)
-        ax.set_ylim(pose[1]-20, pose[1]+20)
-        ax.set_xlabel("x[m]")
-        ax.set_ylabel("y[m]")
-        self._plotScene, self._ax = fig, ax
-        plt.show()

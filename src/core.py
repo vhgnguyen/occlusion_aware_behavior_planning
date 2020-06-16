@@ -118,6 +118,11 @@ class Core(object):
             return None
         return self._egoCar.getCurrentPoly()
 
+    def getPredictEgo(self):
+        if self._egoCar is None:
+            return None
+        return self._egoCar.exportPredictState()
+
     def getCurrentEgoPos(self):
         if self._egoCar is None:
             return None
@@ -153,30 +158,34 @@ class Core(object):
         pedesList = []
         for pedes in self._env._l_pedestrian:
             if pedes.getCurrentTimestamp() == self.timestamp_s:
-                pedesExport = pedes.exportCurrent()
-                pedesList.append(pedesExport)
+                c = pedes.exportCurrent()
+                p = pedes.exportPredict()
+                pedesList.append({'c': c, 'p': p})
         return pedesList
 
     def exportCurrentVehicle(self):
         vehList = []
         for vehicle in self._env._l_vehicle:
             if vehicle.getCurrentTimestamp() == self.timestamp_s:
-                vehExport = vehicle.exportCurrent()
-                vehList.append(vehExport)
+                c = vehicle.exportCurrent()
+                p = vehicle.exportPredict()
+                vehList.append({'c': c, 'p': p})
         return vehList
 
     def exportHypoPedestrian(self):
         hypoList = []
         for pedes in self._env._l_hypoPedes:
-            pedesExport = pedes.exportCurrent()
-            hypoList.append(pedesExport)
+            c = pedes.exportCurrent()
+            p = pedes.exportPredict()
+            hypoList.append({'c': c, 'p': p})
         return hypoList
 
     def exportHypoVehicle(self):
         hypoList = []
-        for veh in self._env._l_hypoVehicle:
-            vehExport = veh.exportCurrent()
-            hypoList.append(vehExport)
+        for vehicle in self._env._l_hypoVehicle:
+            c = vehicle.exportCurrent()
+            p = vehicle.exportPredict()
+            hypoList.append({'c': c, 'p': p})
         return hypoList
 
     def plotDynamic(self):

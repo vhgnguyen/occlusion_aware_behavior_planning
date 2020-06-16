@@ -49,6 +49,7 @@ class Vehicle(object):
         self._idx = idx
         self._length = length
         self._width = width
+        self._lw_std = np.array([self._length/2, self._width/2])
 
         startTime = round(round(startTime/dT, 2) * dT, 2)
         self._startTime = startTime
@@ -73,6 +74,8 @@ class Vehicle(object):
         self._l_pose = {startPose.timestamp_s: startPose}
         # for hypothetical object
         self._interactRate = interactRate
+
+        self.predict(dT=param._PREDICT_STEP, pT=param._PREDICT_TIME)
 
     def isVisible(self):
         return self._isDetected
@@ -134,8 +137,8 @@ class Vehicle(object):
 
     def getPredictAt(self, timestamp_s: float):
         timestamp_s = round(timestamp_s, 2)
-        if timestamp_s not in self._p_pose:
-            self.predict(dT=param._PREDICT_STEP, pT=param._PREDICT_TIME)
+        # if timestamp_s not in self._p_pose:
+        #     self.predict(dT=param._PREDICT_STEP, pT=param._PREDICT_TIME)
         pose = self._p_pose[timestamp_s]
         posePoly = pfnc.rectangle(pose, self._length, self._width)
         return pose, posePoly
@@ -153,6 +156,7 @@ class Vehicle(object):
             )
         self._currentPose = nextPose
         self._l_pose.update({nextTimestamp_s: nextPose})
+        self.predict(dT=param._PREDICT_STEP, pT=param._PREDICT_TIME)
 
     def restart(self):
         t = min(self._l_pose)
@@ -167,20 +171,23 @@ class Vehicle(object):
         cPose = self._currentPose
         exportVehicle = {
             'pos': [cPose.x_m, cPose.y_m, cPose.yaw_rad],
-            'cov': cPose.covLatLong,
+            'cov': cPose.covLatLong + self._lw_std,
             'poly': self.getCurrentPoly(),
             'visible': self.isVisible(),
             'Pcol': self._Pcoll
             }
         return exportVehicle
 
-    def exportPredictState(self):
+    def exportPredict(self):
         l_p = []
         self._p_pose.keys()
-        for p_pose in self._p_pose:
+        for k in self._p_pose:
+            p_pose = self._p_pose[k]
+            stdLon = np.sqrt(p_pose.covLatLong[0, 0])
+            stdLat = np.sqrt(p_pose.covLatLong[1, 1])
             exportP = {
                 'pos': [p_pose.x_m, p_pose.y_m, p_pose.yaw_rad],
-                'cov': p_pose.covLatLong,
+                'std': np.array([stdLon, stdLat]) + self._lw_std,
                 'poly': pfnc.rectangle(p_pose, self._length, self._width),
             }
             l_p.append(exportP)
@@ -195,6 +202,7 @@ class Pedestrian(object):
         self._idx = idx
         self._length = 1.5
         self._width = 1.5
+        self._lw_std = np.array([self._length/2, self._width/2])
 
         startTime = round(round(startTime/dT, 2) * dT, 2)
         self._startTime = startTime
@@ -219,6 +227,8 @@ class Pedestrian(object):
         self._l_pose = {startPose.timestamp_s: startPose}
         # for hypothetical objects
         self._interactRate = interactRate
+
+        self.predict(dT=param._PREDICT_STEP, pT=param._PREDICT_TIME)
 
     def isVisible(self):
         return self._isDetected
@@ -271,8 +281,8 @@ class Pedestrian(object):
 
     def getPredictAt(self, timestamp_s: float):
         timestamp_s = round(timestamp_s, 2)
-        if timestamp_s not in self._p_pose:
-            self.predict(dT=param._PREDICT_STEP, pT=param._PREDICT_TIME)
+        # if timestamp_s not in self._p_pose:
+        #     self.predict(dT=param._PREDICT_STEP, pT=param._PREDICT_TIME)
         pose = self._p_pose[timestamp_s]
         posePoly = pfnc.rectangle(pose, self._length, self._width)
         return pose, posePoly
@@ -296,6 +306,7 @@ class Pedestrian(object):
                 timestamp_s=nextTimestamp_s)
         self._currentPose = nextPose
         self._l_pose.update({nextTimestamp_s: nextPose})
+        self.predict(dT=param._PREDICT_STEP, pT=param._PREDICT_TIME)
 
     def restart(self):
         t = min(self._l_pose)
@@ -310,20 +321,23 @@ class Pedestrian(object):
         cPose = self._currentPose
         exportPedes = {
             'pos': [cPose.x_m, cPose.y_m, cPose.yaw_rad],
-            'cov': cPose.covLatLong,
+            'cov': cPose.covLatLong + self._lw_std,
             'poly': self.getCurrentPoly(),
             'visible': self.isVisible(),
             'Pcoll': self._Pcoll,
             }
         return exportPedes
 
-    def exportPredictState(self):
+    def exportPredict(self):
         l_p = []
         self._p_pose.keys()
-        for p_pose in self._p_pose:
+        for k in self._p_pose:
+            p_pose = self._p_pose[k]
+            stdLon = np.sqrt(p_pose.covLatLong[0, 0])
+            stdLat = np.sqrt(p_pose.covLatLong[1, 1])
             exportP = {
                 'pos': [p_pose.x_m, p_pose.y_m, p_pose.yaw_rad],
-                'cov': p_pose.covLatLong,
+                'std': np.array([stdLon, stdLat]) + self._lw_std,
                 'poly': pfnc.rectangle(p_pose, self._length, self._width),
             }
             l_p.append(exportP)
