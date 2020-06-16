@@ -123,14 +123,15 @@ def minFOVAngle(pose, poly):
     """
     Minimum facing angle of pose(x,y,theta) to a polygon
     """
-    vector = np.array([np.cos(pose.yaw_rad), np.sin(pose.yaw_rad)])
     min_angle = 10
     min_vertex = None
+    pos = np.array([pose.x_m, pose.y_m])
+    pos += pose.heading() * param._CAR_LENGTH * 0.3
     for i, vertex in enumerate(poly):
-        p2v = np.array([vertex[0] - pose.x_m, vertex[1] - pose.y_m])
+        p2v = np.array([vertex[0] - pos[0], vertex[1] - pos[1]])
         p2v /= np.linalg.norm(p2v)
         # angle = np.arccos(np.clip(np.dot(vector, p2v), -1.0, 1.0))
-        angle = np.arccos(np.dot(vector, p2v))
+        angle = np.arccos(np.dot(pose.heading(), p2v))
         if angle < min_angle:
             min_angle = angle
             min_vertex = i

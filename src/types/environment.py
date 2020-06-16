@@ -234,7 +234,7 @@ class Environment(object):
         l_vx = l1_1 + vx * radius
 
         # compute end of occlusion point
-        dS = np.sqrt((randVertex[0]-pose.x_m)**2 + (randVertex[1]-pose.y_m)**2)
+        dS = np.sqrt((randVertex[0]-l1_1[0])**2 + (randVertex[1]-l1_1[1])**2)
         d2MP = (dS+dThres) * ca
         MP = l1_1 + d2MP * vx
         interactRate = rfnc.interactRate(d2MP+dThres)
