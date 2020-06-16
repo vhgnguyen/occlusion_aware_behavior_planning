@@ -355,10 +355,19 @@ class InfoPanel(QGroupBox):
                     )
 
     def plotEgoVehicle(self, ax):
-        # plot ego vehicle
+        # plot ego vehicle       
+        p = self.core.getPredictEgo()
+        b = len(p)
+        a = 0.7
+        for i in range(0, b, int(b/5)):
+            pp = p[i]
+            a = max(a-0.15, 0.1)
+            pose = pp['pos']
+            lw = pp['std']
+            helper.plotEllipse(
+                x=pose[0], y=pose[1], a=pose[2], l=lw[0]*2, w=lw[1]*2,
+                facecolor='cornflowerblue', edgecolor='b', alpha=a, ax=ax)
         helper.plotPolygon(
             self.core.getCurrentEgoPoly(), facecolor='b', edgecolor='b',
             alpha=1, label='ego vehicle', ax=ax,
             heading=True, hcolor='k')
-
-

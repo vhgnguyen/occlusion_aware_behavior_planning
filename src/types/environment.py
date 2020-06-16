@@ -230,6 +230,7 @@ class Environment(object):
         ca = math.cos(alpha)
         vx = pose.heading()
         l1_1 = np.array([pose.x_m, pose.y_m])
+        l1_1 += pose.heading() * param._CAR_LENGTH * 0.3
         l_vx = l1_1 + vx * radius
 
         # compute end of occlusion point

@@ -26,6 +26,7 @@ class EgoVehicle:
     def __init__(self, length, width, env, startPose, u_in):
         self._length = length
         self._width = width
+        self._lw_std = np.array([self._length/2, self._width/2])
 
         # prediction params
         self._p_u = None
@@ -537,11 +538,14 @@ class EgoVehicle:
 
     def exportPredictState(self):
         l_p = []
+        self._p_pose.keys()
         for k in self._p_pose:
             p_pose = self._p_pose[k]
+            stdLon = np.sqrt(p_pose.covLatLong[0, 0])
+            stdLat = np.sqrt(p_pose.covLatLong[1, 1])
             exportP = {
-                'pos': [p_pose.x_m, p_pose.y_m],
-                'cov': p_pose.covUtm,
+                'pos': [p_pose.x_m, p_pose.y_m, p_pose.yaw_rad],
+                'std': np.array([stdLon, stdLat]) + self._lw_std,
                 'poly': pfnc.rectangle(p_pose, self._length, self._width),
             }
             l_p.append(exportP)
