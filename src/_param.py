@@ -51,28 +51,27 @@ _ALPHA_V_LAT = 0.05
 _COLLISION_ORTHO_THRES = 0.3  # 15 degree
 
 # --- Collision severity -------
-_SEVERITY_MIN_WEIGHT_CONST = 5.
+_SEVERITY_MIN_WEIGHT_CONST = 10.
 _COLLISION_SEVERITY_MODEL = 'sigmoid'
 # quadratic model
 _SEVERITY_QUAD_WEIGHT = 0.10
 # sigmoid model
-_SEVERITY_SIG_MAX = 5.
+_SEVERITY_SIG_MAX = 10.
 _SEVERITY_SIG_AVG_VX = 8.
-_SEVERITY_SIG_AVG_VX_PEDES = 5.
+_SEVERITY_SIG_AVG_VX_PEDES = 3.
 _SEVERITY_SIG_B = 1.
 # gompertz model
-_SEVERITY_GOM_MAX = 5.
+_SEVERITY_GOM_MAX = 10.
 _SEVERITY_GOM_AVG_VX = 10.
 _SEVERITY_GOM_BETA = 4.
 
 # --- Collision event rate -----
 # collision emergency brake minimum rate
-_COLLISION_RATE_BRAKE_MIN = 7.
-_COLLISION_RATE_MAX = 10.
+_COLLISION_RATE_MAX = 3.
 _COLLISION_EVENT_RATE_MODEL = 'exponential'
 # exponential model
-_COLLISION_RATE_EXP_BETA = 10.
-_COLLISION_RATE_EXP_BETA_PEDES = 7.
+_COLLISION_RATE_EXP_BETA = 7.
+_COLLISION_RATE_EXP_BETA_PEDES = 3.
 # sigmoid model
 _COLLISION_RATE_SIG_BETA = 10.
 
@@ -82,8 +81,8 @@ _ESCAPE_RATE = 1
 # --- Utility weight -----------
 _C_CRUISE = 0.001
 _C_V_CRUISE = 8
-_C_COMFORT = 0.005
-_C_JERK = 0.01
+_C_COMFORT = 0.001
+_C_JERK = 0.005
 
 # ------------------------------
 # Hypothesis pedestrian model
@@ -108,7 +107,7 @@ _EVENT_RATE_HYPOPEDES_SIG_BETA = 10
 # --- Severity model -----------
 _SEVERITY_HYPOPEDES_MODEL = 'gompertz'
 _SEVERITY_HYPOPEDES_AVG_VX = 6.
-_SEVERITY_HYPOPEDES_MIN_WEIGHT = 2.
+_SEVERITY_HYPOPEDES_MIN_WEIGHT = 0.5
 # sigmoid severity
 _SEVERITY_HYPOPEDES_SIG_MAX = 2.
 _SEVERITY_HYPOPEDES_SIG_BETA = 1.

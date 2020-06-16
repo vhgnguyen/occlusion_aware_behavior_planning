@@ -198,7 +198,8 @@ class EgoVehicle:
 
         for veh in l_obj['vehicle']:
             vehPose, vehPoly = veh.getPredictAt(timestamp_s)
-
+            if vehPose is None:
+                continue
             vcol_indicator = rfnc.collisionIndicator(
                 egoPose=egoPose, egoPoly=egoPoly,
                 objPose=vehPose, objPoly=vehPoly)
@@ -228,7 +229,8 @@ class EgoVehicle:
 
         for pedes in l_obj['pedestrian']:
             pPose, pPoly = pedes.getPredictAt(timestamp_s)
-
+            if pPose is None:
+                continue
             pcol_indicator = rfnc.collisionIndicator(
                 egoPose=egoPose, egoPoly=egoPoly,
                 objPose=pPose, objPoly=pPoly)
@@ -259,7 +261,8 @@ class EgoVehicle:
 
         for hypoPedes in l_obj['hypoPedestrian']:
             hPose, hPoly = hypoPedes.getPredictAt(timestamp_s)
-
+            if hPose is None:
+                continue
             hpcol_indicator = rfnc.collisionIndicator(
                 egoPose=egoPose, egoPoly=egoPoly,
                 objPose=hPose, objPoly=hPoly)
@@ -293,6 +296,9 @@ class EgoVehicle:
 
         for hypoVeh in l_obj['hypoVehicle']:
             hvPose, hvPoly = hypoVeh.getPredictAt(timestamp_s)
+            if hvPose is None:
+                continue
+      
             hvcol_indicator = rfnc.collisionIndicator(
                 egoPose=egoPose, egoPoly=egoPoly,
                 objPose=hvPose, objPoly=hvPoly)
@@ -348,9 +354,9 @@ class EgoVehicle:
         p_pose = self._p_pose[timestamp_s]
         utCost = 0
         if p_pose.vdy.vx_ms > vx:
-            utCost += 10 * wV * (p_pose.vdy.vx_ms-vx)**2
+            utCost += 10 * wV * ((p_pose.vdy.vx_ms-vx)**2)
         else:
-            utCost += wV * (p_pose.vdy.vx_ms-vx)**2
+            utCost += wV * ((p_pose.vdy.vx_ms-vx)**2)
         utCost += wA * (u_in**2)
         utCost += wJ * ((u_in - self._u)**2)
         return utCost

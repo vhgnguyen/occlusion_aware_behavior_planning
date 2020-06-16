@@ -113,7 +113,6 @@ def plotPolygon(poly, facecolor, edgecolor, alpha, label=None, ax=plt,
 
 def plotEllipse(x, y, a, l, w,
                 facecolor, edgecolor, alpha, label=None, ax=plt):
-    print(a)
     e = Ellipse(xy=(x, y), width=l, height=w, angle=np.rad2deg(a), linewidth=0.5,
                 edgecolor=edgecolor, facecolor=facecolor, alpha=alpha)
     ax.add_patch(e)

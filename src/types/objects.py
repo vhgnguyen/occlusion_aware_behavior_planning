@@ -137,7 +137,8 @@ class Vehicle(object):
 
     def getPredictAt(self, timestamp_s: float):
         timestamp_s = round(timestamp_s, 2)
-        # if timestamp_s not in self._p_pose:
+        if timestamp_s not in self._p_pose:
+            return None, None
         #     self.predict(dT=param._PREDICT_STEP, pT=param._PREDICT_TIME)
         pose = self._p_pose[timestamp_s]
         posePoly = pfnc.rectangle(pose, self._length, self._width)
@@ -281,7 +282,8 @@ class Pedestrian(object):
 
     def getPredictAt(self, timestamp_s: float):
         timestamp_s = round(timestamp_s, 2)
-        # if timestamp_s not in self._p_pose:
+        if timestamp_s not in self._p_pose:
+            return None, None
         #     self.predict(dT=param._PREDICT_STEP, pT=param._PREDICT_TIME)
         pose = self._p_pose[timestamp_s]
         posePoly = pfnc.rectangle(pose, self._length, self._width)

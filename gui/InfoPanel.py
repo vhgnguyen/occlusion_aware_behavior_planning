@@ -203,7 +203,7 @@ class InfoPanel(QGroupBox):
 
         for hypoP in hypoPList:
             hp = hypoP['p']
-            a = 1
+            a = 0.7
             b = len(hp)
             for i in range(0, b, int(b/5)):
                 hpp = hp[i]
@@ -224,7 +224,7 @@ class InfoPanel(QGroupBox):
             c = pedes['c']
             p = pedes['p']
 
-            a = 1
+            a = 0.7
             b = len(p)
             for i in range(0, b, int(b/5)):
                 pp = p[i]
@@ -234,20 +234,20 @@ class InfoPanel(QGroupBox):
                 if c['visible']:
                     helper.plotEllipse(
                         x=pose[0], y=pose[1], a=pose[2], l=lw[0]*2, w=lw[1]*2,
-                        facecolor='lime', edgecolor='tab:pink', alpha=a, ax=ax)
+                        facecolor='lime', edgecolor='g', alpha=a, ax=ax)
                 else:
                     helper.plotEllipse(
                         x=pose[0], y=pose[1], a=pose[2], l=lw[0]*2, w=lw[1]*2,
-                        facecolor='salmon', edgecolor='tab:pink', alpha=a, ax=ax)
+                        facecolor='salmon', edgecolor='r', alpha=a, ax=ax)
 
             if c['visible']:
                 helper.plotPolygon(
-                    c['poly'], facecolor='pink', edgecolor='lime',
+                    c['poly'], facecolor='pink', edgecolor='k',
                     alpha=1, label="detected pedestrian", ax=ax,
                     heading=True, hcolor='lime')
             else:
                 helper.plotPolygon(
-                    c['poly'], facecolor='pink', edgecolor='r',
+                    c['poly'], facecolor='pink', edgecolor='k',
                     alpha=1, label="undetected pedestrian", ax=ax,
                     heading=True, hcolor='r')
 
@@ -258,7 +258,7 @@ class InfoPanel(QGroupBox):
 
         for hypo in hypoList:
             hp = hypo['p']
-            a = 1
+            a = 0.7
             b = len(hp)
             for i in range(0, b, int(b/5)):
                 hpp = hp[i]
@@ -267,11 +267,11 @@ class InfoPanel(QGroupBox):
                 lw = hpp['std']
                 helper.plotEllipse(
                     x=pose[0], y=pose[1], a=pose[2], l=lw[0]*2, w=lw[1]*2,
-                    facecolor='pink', edgecolor='tab:pink', alpha=a, ax=ax)
+                    facecolor='yellow', edgecolor='gold', alpha=a, ax=ax)
 
             hc = hypo['c']
             helper.plotPolygon(
-                    hc['poly'], facecolor='yellow', edgecolor='k',
+                    hc['poly'], facecolor='gold', edgecolor='k',
                     alpha=1, label="hypothesis vehicle", ax=ax,
                     heading=True, hcolor='k')
 
@@ -279,7 +279,7 @@ class InfoPanel(QGroupBox):
             c = veh['c']
             p = veh['p']
 
-            a = 1
+            a = 0.7
             b = len(p)
             for i in range(0, b, int(b/5)):
                 pp = p[i]
@@ -289,20 +289,20 @@ class InfoPanel(QGroupBox):
                 if c['visible']:
                     helper.plotEllipse(
                         x=pose[0], y=pose[1], a=pose[2], l=lw[0]*2, w=lw[1]*2,
-                        facecolor='lime', edgecolor='tab:pink', alpha=a, ax=ax)
+                        facecolor='lime', edgecolor='g', alpha=a, ax=ax)
                 else:
                     helper.plotEllipse(
                         x=pose[0], y=pose[1], a=pose[2], l=lw[0]*2, w=lw[1]*2,
-                        facecolor='lightcoral', edgecolor='tab:pink', alpha=a, ax=ax)
+                        facecolor='lightcoral', edgecolor='r', alpha=a, ax=ax)
 
             if c['visible']:
                 helper.plotPolygon(
-                    c['poly'], facecolor='yellow', edgecolor='lime',
+                    c['poly'], facecolor='gold', edgecolor='k',
                     alpha=1, label="detected vehicle", ax=ax,
                     heading=True, hcolor='lime')
             else:
                 helper.plotPolygon(
-                    c['poly'], facecolor='yellow', edgecolor='r',
+                    c['poly'], facecolor='gold', edgecolor='k',
                     alpha=1, label="undetected vehicle", ax=ax,
                     heading=True, hcolor='r')
 
