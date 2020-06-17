@@ -7,3 +7,4 @@ PyQt5-sip>=12.7.0
 scipy>=1.3.3
 tripy
 quadpy>=0.13.6
+Shapely>=1.7.0

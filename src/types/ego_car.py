@@ -48,6 +48,7 @@ class EgoVehicle:
         self._minRiskValue = 0
         self._TTB = 0
         self._brake = False
+        self._safeV = startPose.vdy.vx_ms
 
         # environment information
         self._env = env
@@ -58,6 +59,7 @@ class EgoVehicle:
         # record
         self._l_u = {startPose.timestamp_s: u_in}
         self._l_pose = {startPose.timestamp_s: startPose}
+        self._l_jerk = {startPose.timestamp_s: 0}
 
     def getCurrentPose(self):
         return self._currentPose
@@ -108,6 +110,18 @@ class EgoVehicle:
         self._l_currentObject = self._env.getCurrentObjectList()
         self._fov, self._fovRange = self._env.getFOV()
 
+        # get FOV distance of obstacle
+        fovDistance = self._l_currentObject['fovDistance']
+        for k in fovDistance:
+            objD = fovDistance[k]
+            d = [i for i in objD[3:] if i > 0]
+            if len(d) > 0:
+                minD = min(d)
+                self._safeV = self._computeSafeVelocity(d=minD)
+            else:
+                self._safeV = self.getCurrentLongtitudeVelocity()
+        self._l_safeV.update({self.getCurrentTimestamp(): self._safeV})
+
     def _predict(self, u_in: float, dT=param._PREDICT_STEP,
                  predictTime=param._PREDICT_TIME):
         """
@@ -151,7 +165,7 @@ class EgoVehicle:
         total_risk = 0
         total_eventRate = 0
 
-        if useFOV:
+        if useFOV and self._fovRange < 30:
             limitViewEvent, limitViewRisk = rfnc.limitViewRisk(
                 fov_range=self._fovRange, ego_vx=egoPose.vdy.vx_ms,
                 aBrake=param._A_MIN, dBrake=param._D_BRAKE_MIN,
@@ -399,23 +413,27 @@ class EgoVehicle:
         return cost
 
     def _computeTTB(self, aBrake=param._A_MAX_BRAKE, delay=param._T_BRAKE):
-        ego_vx = self.getCurrentPose().vdy.vx_ms
+        ego_vx = self.getCurrentLongtitudeVelocity()
         self._TTB = abs(ego_vx / aBrake) + delay
+
+    def _computeSafeVelocity(self, d, dSafe=param._D_BRAKE_MIN):
+        d = max(d-dSafe, 0)
+        return d / self._TTB
 
     def _move(self, dT=param._dT):
         lastPose = self.getCurrentPose()
         nextTimestamp_s = round(lastPose.timestamp_s + dT, 2)
+        if self._p_u is None:
+            self._p_u = self._u
+        nextPose = pfnc.updatePose(
+            lastPose=lastPose, u_in=self._p_u, dT=dT)
 
-        if self._p_u is not None:
-            nextPose = pfnc.updatePose(
-                lastPose=lastPose, u_in=self._p_u, dT=dT)
-            self._u = self._p_u
-        else:
-            nextPose = pfnc.updatePose(
-                lastPose=lastPose, u_in=self._u, dT=dT)
+        jerk = (self._p_u - self._u) / dT
+        self._u = self._p_u
         self._currentPose = nextPose
         self._l_pose.update({nextTimestamp_s: nextPose})
         self._l_u.update({nextTimestamp_s: self._u})
+        self._l_jerk.update({nextTimestamp_s: jerk})
 
         if self.getCurrentPose().vdy.vx_ms == 0:
             self._toStopState()
@@ -425,8 +443,8 @@ class EgoVehicle:
 
     def optimizeState(self, dT=param._dT, predictStep=param._PREDICT_STEP,
                       predictTime=param._PREDICT_TIME):
-        self._searchEnvironment()
         self._computeTTB(aBrake=param._A_MAX_BRAKE, delay=param._T_BRAKE)
+        self._searchEnvironment()
         self._l_opt = {}
         val = 0
 
@@ -554,13 +572,13 @@ class EgoVehicle:
     # ------------------- Export function ---------------------
 
     def plotDynamicDistance(self):
-        fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(14, 6))
+        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(18, 6))
         self._plotVelocity(ax=ax[0], xDistance=True)
         self._plotAcceleration(ax=ax[1], xDistance=True)
         plt.show()
 
     def plotDynamic(self):
-        fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(14, 6))
+        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(18, 6))
         self._plotVelocity(ax=ax[0])
         self._plotAcceleration(ax=ax[1])
         plt.show()

@@ -4,6 +4,7 @@
 _ENABLE_HYPOTHESIS = True
 _ENABLE_AWARENESS_RATE = True
 _ENABLE_FOV_AWARE = True
+_AWARENESS_DISTANCE = 4
 
 # ------------------------------
 # Discreted time interval
@@ -18,7 +19,7 @@ _SIMULATION_TIME = 20.0
 # ------------------------------
 _SCAN_RADIUS = 50.
 _FOV_ANGLE = 3.14159 - 0.001
-_FOV_RAYS = 100
+_FOV_RAYS = 200
 
 # ------------------------------
 # Ego Vehicle
@@ -80,9 +81,9 @@ _ESCAPE_RATE = 1
 
 # --- Utility weight -----------
 _C_CRUISE = 0.001
-_C_V_CRUISE = 8
+_C_V_CRUISE = 8.0
 _C_COMFORT = 0.001
-_C_JERK = 0.005
+_C_JERK = 0.01
 
 # ------------------------------
 # Hypothesis pedestrian model
@@ -98,7 +99,7 @@ _HYPOPEDES_VX = 2.0
 # --- Hypothesis appear rate ---
 _PEDES_APPEAR_RATE_CROSS = 1
 _PEDES_APPEAR_RATE_STREET = 0.5
-_PEDES_APPEAR_RATE_OTHER = 0.2
+_PEDES_APPEAR_RATE_OTHER = 0.1
 _PEDES_OTHER_MIN_THRESHOLD = 5
 # --- Event rate model ---------
 _EVENT_RATE_HYPOPEDES_MODEL = 'sigmoid'
@@ -107,7 +108,7 @@ _EVENT_RATE_HYPOPEDES_SIG_BETA = 10
 # --- Severity model -----------
 _SEVERITY_HYPOPEDES_MODEL = 'gompertz'
 _SEVERITY_HYPOPEDES_AVG_VX = 6.
-_SEVERITY_HYPOPEDES_MIN_WEIGHT = 0.5
+_SEVERITY_HYPOPEDES_MIN_WEIGHT = 2
 # sigmoid severity
 _SEVERITY_HYPOPEDES_SIG_MAX = 2.
 _SEVERITY_HYPOPEDES_SIG_BETA = 1.
@@ -121,7 +122,7 @@ _SEVERITY_HYPOPEDES_GOM_BETA = 4.
 # --- Maximum event rate -------
 _COLLISION_HYPOVEH_RATE_MAX = 1.
 # --- Hypothesis covariance
-_HYPOVEH_COV_LON = 1
+_HYPOVEH_COV_LON = 2
 _HYPOVEH_COV_LAT = 0.5
 # --- Hypothesis velocity ------
 _HYPOVEH_VX = _C_V_CRUISE
@@ -134,7 +135,7 @@ _EVENT_RATE_HYPOVEH_SIG_BETA = 10
 # --- Severity model -----------
 _SEVERITY_HYPOVEH_MODEL = 'sigmoid'
 _SEVERITY_HYPOVEH_AVG_VX = 10.
-_SEVERITY_HYPOVEH_MIN_WEIGHT = 0.5
+_SEVERITY_HYPOVEH_MIN_WEIGHT = 2
 # sigmoid severity
 _SEVERITY_HYPOVEH_SIG_MAX = 5.
 _SEVERITY_HYPOVEH_SIG_B = 1

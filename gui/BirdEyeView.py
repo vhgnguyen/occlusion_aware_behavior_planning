@@ -190,7 +190,7 @@ class BirdEyeView(QOpenGLWidget):
 
             if self._drawPredict:
                 p = pedes['p']
-                for i in range(0, len(p), 3):
+                for i in range(0, len(p), ):
                     pp = p[i]
                     helper.drawPoly(pp['poly'], color='pink', alpha=0.1, fill=False)    
 
@@ -201,7 +201,7 @@ class BirdEyeView(QOpenGLWidget):
 
             if self._drawPredict:
                 hp = hypo['p']
-                for i in range(0, len(hp), 3):
+                for i in range(0, len(hp), 2):
                     hpp = hp[i]
                     helper.drawPoly(hpp['poly'], color='pink', alpha=0.1, fill=False)    
 
@@ -219,7 +219,7 @@ class BirdEyeView(QOpenGLWidget):
 
             if self._drawPredict:
                 p = vehicle['p']
-                for i in range(0, len(p), 3):
+                for i in range(0, len(p), 2):
                     pp = p[i]
                     helper.drawPoly(pp['poly'], color='pink', alpha=0.1, fill=False)   
 
@@ -230,7 +230,7 @@ class BirdEyeView(QOpenGLWidget):
 
             if self._drawPredict:
                 hp = hypo['p']
-                for i in range(0, len(hp), 3):
+                for i in range(0, len(hp), 2):
                     hpp = hp[i]
                     helper.drawPoly(hpp['poly'], color='pink', alpha=0.1, fill=False)    
 
@@ -244,7 +244,7 @@ class BirdEyeView(QOpenGLWidget):
             self._y_center = pos[1]
             p_pose = self.core.getPredictEgo()
             if self._drawPredict:
-                for i in range(0, len(p_pose), 3):
+                for i in range(0, len(p_pose), 2):
                     pp = p_pose[i]
                     helper.drawPoly(pp['poly'], color='pink', alpha=0.1, fill=False)  
 
