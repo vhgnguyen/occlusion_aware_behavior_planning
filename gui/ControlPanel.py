@@ -76,11 +76,19 @@ class ControlPanel(QGroupBox):
         self.enablePredictButton.stateChanged.connect(self.predictCheckBox)
         self.buttonGrid.addWidget(self.enablePredictButton, 2, 0)
 
+        self.enablePredictHypoButton = QCheckBox("Show prediction hypothesis")
+        self.enablePredictHypoButton.setChecked(False)
+        self.enablePredictHypoButton.stateChanged.connect(self.predictHypoCheckBox)
+        self.buttonGrid.addWidget(self.enablePredictHypoButton, 2, 1)
+
         self.buttonBox.setLayout(self.buttonGrid)
         self.mainLayout.addWidget(self.buttonBox)
     
     def predictCheckBox(self, checked):
         self.birdEyeView._drawPredict = checked
+            
+    def predictHypoCheckBox(self, checked):
+        self.birdEyeView._drawPredictHypo = checked
 
     def on_refreshButton_clicked(self):
         self.birdEyeView.update()

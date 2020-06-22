@@ -27,6 +27,7 @@ class EgoVehicle:
         self._length = length
         self._width = width
         self._lw_std = np.array([self._length/2, self._width/2])
+        self._isStarted = False
 
         # prediction params
         self._p_u = None
@@ -59,7 +60,19 @@ class EgoVehicle:
         # record
         self._l_u = {startPose.timestamp_s: u_in}
         self._l_pose = {startPose.timestamp_s: startPose}
+        self._l_distance = {startPose.timestamp_s: 0}
         self._l_jerk = {startPose.timestamp_s: 0}
+        self._l_safeV = {}
+
+        # hypothetical
+        self._l_hypo = {}
+    
+    def isStarted(self):
+        return self._isStarted
+    
+    def start(self):
+        if not self._isStarted:
+            self._isStarted = True
 
     def getCurrentPose(self):
         return self._currentPose
@@ -72,6 +85,11 @@ class EgoVehicle:
 
     def getCurrentTimestamp(self):
         return self._currentPose.timestamp_s
+
+    def getTravelDistance(self):
+        sP = self._l_pose[min(self._l_pose)]
+        cP = self.getCurrentPose()
+        return np.sqrt((cP.x_m-sP.x_m)**2 + (cP.y_m-sP.y_m)**2)
 
     def getPoly(self, timestamp_s: float):
         """
@@ -112,14 +130,17 @@ class EgoVehicle:
 
         # get FOV distance of obstacle
         fovDistance = self._l_currentObject['fovDistance']
+        minD = self._fovRange
         for k in fovDistance:
             objD = fovDistance[k]
             d = [i for i in objD[3:] if i > 0]
             if len(d) > 0:
-                minD = min(d)
-                self._safeV = self._computeSafeVelocity(d=minD)
-            else:
-                self._safeV = self.getCurrentLongtitudeVelocity()
+                tmp_D = min(d)
+                minD = min(tmp_D, minD, self._fovRange)
+        safeV = self._computeSafeVelocity(
+            d=minD, aBrake=param._A_MAX_BRAKE,
+            dSafe=param._D_BRAKE_MIN, delay=param._T_BRAKE_DELAY)
+        self._safeV = min(max(safeV, 0), param._C_V_CRUISE)
         self._l_safeV.update({self.getCurrentTimestamp(): self._safeV})
 
     def _predict(self, u_in: float, dT=param._PREDICT_STEP,
@@ -274,80 +295,84 @@ class EgoVehicle:
             total_eventRate += pcol_rate
             pedes.setCollisionProb(pcol_indicator)
 
-        for hypoPedes in l_obj['hypoPedestrian']:
-            hPose, hPoly = hypoPedes.getPredictAt(timestamp_s)
-            if hPose is None:
-                continue
-            hpcol_indicator = rfnc.collisionIndicator(
-                egoPose=egoPose, egoPoly=egoPoly,
-                objPose=hPose, objPoly=hPoly)
+        if not self._stopState:
+            for hypoPedes in l_obj['hypoPedestrian']:
+                hPose, hPoly = hypoPedes.getPredictAt(timestamp_s)
+                if hPose is None:
+                    continue
+                hpcol_indicator = rfnc.collisionIndicator(
+                    egoPose=egoPose, egoPoly=egoPoly,
+                    objPose=hPose, objPoly=hPoly)
 
-            hpcol_rate = rfnc.collisionEventRate(
-                collisionIndicator=hpcol_indicator*hypoPedes._appearRate,
-                eventRate_max=param._COLLISION_HYPOPEDES_RATE_MAX,
-                method=param._EVENT_RATE_HYPOPEDES_MODEL,
-                exp_beta=param._EVENT_RATE_HYPOPEDES_EXP_BETA,
-                sig_beta=param._EVENT_RATE_HYPOPEDES_SIG_BETA)
-            if useAwarenessRate:
-                hpcol_rate *= hypoPedes._interactRate
+                hpcol_rate = rfnc.collisionEventRate(
+                    collisionIndicator=hpcol_indicator*hypoPedes._appearRate,
+                    eventRate_max=param._COLLISION_HYPOPEDES_RATE_MAX,
+                    method=param._EVENT_RATE_HYPOPEDES_MODEL,
+                    exp_beta=param._EVENT_RATE_HYPOPEDES_EXP_BETA,
+                    sig_beta=param._EVENT_RATE_HYPOPEDES_SIG_BETA)
+                if useAwarenessRate:
+                    hpcol_rate *= hypoPedes._interactRate
 
-            hpcol_severity = rfnc.collisionSeverityHypoPedes(
-                ego_vx=egoPose.vxUtm, obj_vx=hPose.vxUtm,
-                method=param._SEVERITY_HYPOPEDES_MODEL,
-                min_weight=param._SEVERITY_HYPOPEDES_MIN_WEIGHT,
-                avg_vx=param._SEVERITY_HYPOPEDES_AVG_VX,
-                sig_max=param._SEVERITY_HYPOPEDES_SIG_MAX,
-                sig_beta=param._SEVERITY_HYPOPEDES_SIG_BETA,
-                gom_max=param._SEVERITY_HYPOPEDES_GOM_MAX,
-                gom_beta=param._SEVERITY_HYPOPEDES_GOM_BETA)
+                hpcol_severity = rfnc.collisionSeverityHypoPedes(
+                    ego_vx=egoPose.vxUtm, obj_vx=hPose.vxUtm,
+                    method=param._SEVERITY_HYPOPEDES_MODEL,
+                    min_weight=param._SEVERITY_HYPOPEDES_MIN_WEIGHT,
+                    avg_vx=param._SEVERITY_HYPOPEDES_AVG_VX,
+                    sig_max=param._SEVERITY_HYPOPEDES_SIG_MAX,
+                    sig_beta=param._SEVERITY_HYPOPEDES_SIG_BETA,
+                    gom_max=param._SEVERITY_HYPOPEDES_GOM_MAX,
+                    gom_beta=param._SEVERITY_HYPOPEDES_GOM_BETA)
 
-            hpcol_risk = rfnc.collisionRisk(
-                col_severity=hpcol_severity,
-                col_rate=hpcol_rate)
+                hpcol_risk = rfnc.collisionRisk(
+                    col_severity=hpcol_severity,
+                    col_rate=hpcol_rate)
 
-            total_risk += hpcol_risk
-            total_eventRate += hpcol_rate
-            hypoPedes.setCollisionProb(hpcol_indicator)
+                self._minColHP = max(self._minColHP, hpcol_indicator)
+                self._minEventHP = max(self._minEventHP, hpcol_rate)
+                self._minRiskHP = max(self._minRiskHP, hpcol_risk)
 
-        for hypoVeh in l_obj['hypoVehicle']:
-            hvPose, hvPoly = hypoVeh.getPredictAt(timestamp_s)
-            if hvPose is None:
-                continue
-      
-            hvcol_indicator = rfnc.collisionIndicator(
-                egoPose=egoPose, egoPoly=egoPoly,
-                objPose=hvPose, objPoly=hvPoly)
+                total_risk += hpcol_risk
+                total_eventRate += hpcol_rate
 
-            hvcol_rate = rfnc.collisionEventRate(
-                collisionIndicator=hvcol_indicator*hypoVeh._appearRate,
-                method=param._EVENT_RATE_HYPOVEH_MODEL,
-                eventRate_max=param._COLLISION_HYPOVEH_RATE_MAX,
-                exp_beta=param._EVENT_RATE_HYPOVEH_EXP_BETA,
-                sig_beta=param._EVENT_RATE_HYPOVEH_SIG_BETA)
-            if useAwarenessRate:
-                hvcol_rate *= hypoVeh._interactRate
+            for hypoVeh in l_obj['hypoVehicle']:
+                hvPose, hvPoly = hypoVeh.getPredictAt(timestamp_s)
+                if hvPose is None:
+                    continue
+        
+                hvcol_indicator = rfnc.collisionIndicator(
+                    egoPose=egoPose, egoPoly=egoPoly,
+                    objPose=hvPose, objPoly=hvPoly)
 
-            hvcol_severity = rfnc.collisionSeverityHypoVeh(
-                ego_vx=egoPose.vxUtm, obj_vx=hvPose.vxUtm,
-                method=param._SEVERITY_HYPOVEH_MODEL,
-                quad_weight=param._SEVERITY_QUAD_WEIGHT,
-                min_weight=param._SEVERITY_HYPOVEH_MIN_WEIGHT,
-                sig_max=param._SEVERITY_HYPOVEH_SIG_MAX,
-                sig_avg_vx=param._SEVERITY_HYPOVEH_AVG_VX,
-                sig_beta=param._SEVERITY_HYPOVEH_SIG_B)
+                hvcol_rate = rfnc.collisionEventRate(
+                    collisionIndicator=hvcol_indicator*hypoVeh._appearRate,
+                    method=param._EVENT_RATE_HYPOVEH_MODEL,
+                    eventRate_max=param._COLLISION_HYPOVEH_RATE_MAX,
+                    exp_beta=param._EVENT_RATE_HYPOVEH_EXP_BETA,
+                    sig_beta=param._EVENT_RATE_HYPOVEH_SIG_BETA)
+                if useAwarenessRate:
+                    hvcol_rate *= hypoVeh._interactRate
 
-            hvcol_risk = rfnc.collisionRisk(
-                col_severity=hvcol_severity,
-                col_rate=hvcol_rate)
+                hvcol_severity = rfnc.collisionSeverityHypoVeh(
+                    ego_vx=egoPose.vxUtm, obj_vx=hvPose.vxUtm,
+                    method=param._SEVERITY_HYPOVEH_MODEL,
+                    quad_weight=param._SEVERITY_QUAD_WEIGHT,
+                    min_weight=param._SEVERITY_HYPOVEH_MIN_WEIGHT,
+                    sig_max=param._SEVERITY_HYPOVEH_SIG_MAX,
+                    sig_avg_vx=param._SEVERITY_HYPOVEH_AVG_VX,
+                    sig_beta=param._SEVERITY_HYPOVEH_SIG_B)
 
-            total_risk += hvcol_risk
-            total_eventRate += hvcol_rate
-            hypoVeh.setCollisionProb(hvcol_indicator)
+                hvcol_risk = rfnc.collisionRisk(
+                    col_severity=hvcol_severity,
+                    col_rate=hvcol_rate)
+
+                total_risk += hvcol_risk
+                total_eventRate += hvcol_rate
 
         self._p_eventRate.update({timestamp_s: total_eventRate})
         self._l_opt.update({
             round(u_in, 3): [self._brake, self._minColValue]
         })
+        # self._l_hypoRate.update({round(u_in, 3): [self._minColHP, self._minEventHP, self._minRiskHP]})
         return total_risk
 
     def _survivalRate(self, timestamp_s: float, dT=param._PREDICT_STEP):
@@ -401,6 +426,9 @@ class EgoVehicle:
         cost = 0
         self._brake = False
         self._minColValue = 0
+        self._minColHP = 0
+        self._minEventHP = 0
+        self._minRiskHP = 0
         self._p_eventRate = {}
 
         self._predict(u_in, dT=dT, predictTime=predictTime)
@@ -410,15 +438,21 @@ class EgoVehicle:
             s = self._survivalRate(k, dT=dT)
             cost += dCost * s
         cost = cost * s * dT
+
+        self._l_hypoRate.update({round(u_in, 3): [self._minColHP, self._minEventHP, self._minRiskHP]})
+
         return cost
 
     def _computeTTB(self, aBrake=param._A_MAX_BRAKE, delay=param._T_BRAKE):
         ego_vx = self.getCurrentLongtitudeVelocity()
         self._TTB = abs(ego_vx / aBrake) + delay
 
-    def _computeSafeVelocity(self, d, dSafe=param._D_BRAKE_MIN):
+    def _computeSafeVelocity(self, d, aBrake=param._A_MAX_BRAKE,
+                             dSafe=param._D_BRAKE_MIN,
+                             delay=param._T_BRAKE_DELAY):
+        dSafe = dSafe + delay*self.getCurrentLongtitudeVelocity()
         d = max(d-dSafe, 0)
-        return d / self._TTB
+        return np.sqrt(-2*aBrake*d) + aBrake*delay
 
     def _move(self, dT=param._dT):
         lastPose = self.getCurrentPose()
@@ -432,13 +466,14 @@ class EgoVehicle:
         self._u = self._p_u
         self._currentPose = nextPose
         self._l_pose.update({nextTimestamp_s: nextPose})
+        self._l_distance.update({nextTimestamp_s: self.getTravelDistance()})
         self._l_u.update({nextTimestamp_s: self._u})
         self._l_jerk.update({nextTimestamp_s: jerk})
 
         if self.getCurrentPose().vdy.vx_ms == 0:
             self._toStopState()
             self._u = 0
-        if self.getCurrentPose().vdy.vx_ms > 5 and self._driveOffState:
+        if self.getCurrentPose().vdy.vx_ms > 2 and self._driveOffState:
             self._toDefaultState()
 
     def optimizeState(self, dT=param._dT, predictStep=param._PREDICT_STEP,
@@ -446,6 +481,7 @@ class EgoVehicle:
         self._computeTTB(aBrake=param._A_MAX_BRAKE, delay=param._T_BRAKE)
         self._searchEnvironment()
         self._l_opt = {}
+        self._l_hypoRate = {}
         val = 0
 
         if self._stopState:
@@ -456,7 +492,7 @@ class EgoVehicle:
                 options={"maxiter": 5}
                 ).x
             self._brake, self._minColValue = self._l_opt[round(val, 3)]
-            if self._brake or self._minColValue > 0.5:
+            if self._brake or self._minColValue > 0.3:
                 self._p_u = 0
                 self._u = 0
             else:
@@ -477,9 +513,14 @@ class EgoVehicle:
                 bounds=(lowBound, upBound), method='bounded',
                 options={"maxiter": 5}
                 ).x
+
+            hypo = self._l_hypoRate[round(val, 3)]
+            self._l_hypo.update({self.getCurrentTimestamp(): hypo})
+
             self._brake, self._minColValue = self._l_opt[round(val, 3)]
             if self._brake:
                 self._toEmergencyState()
+
             self._p_u = self._u + (val - self._u) * dT / predictStep
             self._move()
             return
@@ -496,25 +537,31 @@ class EgoVehicle:
                 bounds=(lowBound, upBound), method='bounded',
                 options={"maxiter": 5}
                 ).x
+
+            hypo = self._l_hypoRate[round(val, 3)]
+            self._l_hypo.update({self.getCurrentTimestamp(): hypo})
+
             self._brake, self._minColValue = self._l_opt[round(val, 3)]
             if self._brake:
                 self._toEmergencyState()
+
             self._p_u = self._u + (val - self._u) * dT / predictStep
             self._move()
             return
 
         if self._emergencyState:
             lowBound = max(self._u - param._J_MAX_BRAKE, param._A_MAX_BRAKE)
-            upBound = self._u - param._J_MAX_BRAKE
+            upBound = min(self._u + param._J_MAX_BRAKE, param._A_MIN)
             if lowBound >= upBound:
                 lowBound = param._A_MAX_BRAKE
-                upBound = self._u
+                upBound = param._A_MAX_BRAKE + param._J_MAX_BRAKE
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(
                     u_in=x, dT=predictStep, predictTime=predictTime),
                 bounds=(lowBound, upBound), method='bounded',
                 options={"maxiter": 5}
             ).x
+            
             self._p_u = self._u + (val - self._u) * dT / predictStep
             self._move()
             return
@@ -551,8 +598,12 @@ class EgoVehicle:
         self._l_pose = {t: firstPose}
         self._u = self._l_u[t]
         self._l_u = {t: self._l_u[t]}
+        if t in self._l_safeV:
+            self._l_safeV = {t: self._l_safeV[t]}
         self._currentPose = firstPose
         self._toDefaultState()
+        self._isStarted = False
+        self._l_hypo = {}
 
     def exportPredictState(self):
         l_p = []
@@ -571,16 +622,32 @@ class EgoVehicle:
 
     # ------------------- Export function ---------------------
 
-    def plotDynamicDistance(self):
+    def getComfortScore(self):
+        sum_u = 0
+        for uu in self._l_u.values():
+            sum_u = sum_u + abs(uu)
+        return sum_u / max(self._l_u)
+
+    def exportDynamic(self):
+        l_d = np.empty((0, 5))
+        for t, pose in self._l_pose.items():
+            d = self._l_distance[t]
+            l_d = np.append(
+                l_d, np.array([[t, d, pose.vdy.vx_ms, self._l_u[t], self._l_jerk[t]]]), axis=0)
+        return l_d
+
+    def plotDynamicDistance(self, safeV=False):
         fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(18, 6))
-        self._plotVelocity(ax=ax[0], xDistance=True)
+        self._plotVelocity(ax=ax[0], xDistance=True, safeV=safeV)
         self._plotAcceleration(ax=ax[1], xDistance=True)
+        self._plotJerk(ax=ax[2], xDistance=True)
         plt.show()
 
-    def plotDynamic(self):
+    def plotDynamic(self, safeV=False):
         fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(18, 6))
-        self._plotVelocity(ax=ax[0])
+        self._plotVelocity(ax=ax[0], safeV=safeV)
         self._plotAcceleration(ax=ax[1])
+        self._plotJerk(ax=ax[2])
         plt.show()
 
     def saveDynamic(self, path, fileName):
@@ -606,52 +673,53 @@ class EgoVehicle:
     def saveRisk(self, path, fileName):
         return
 
-    def _plotVelocity(self, ax=plt, xDistance=False):
-        l_vdy = np.empty((0, 2))
+    def _plotVelocity(self, ax=plt, xDistance=False, safeV=False):
+        l_vdy = np.empty((0, 4))
+        l_safeV = sorted(self._l_safeV.items())
+        sv_t, sv_x = zip(*l_safeV)
+        l_vdy = self.exportDynamic()
         if xDistance:
-            startPose = self._l_pose[min(self._l_pose)]
-            startPos = np.array([[startPose.x_m, startPose.y_m]])
-            for t, pose in self._l_pose.items():
-                pos = np.array([[pose.x_m, pose.y_m]])
-                d = np.linalg.norm(pos - startPos)
-                l_vdy = np.append(
-                    l_vdy, np.array([[d, pose.vdy.vx_ms]]), axis=0)
-            ax.plot(l_vdy[:, 0], l_vdy[:, 1], 'b-', label='velocity')
+            ax.plot(l_vdy[:, 1], l_vdy[:, 2], 'b-', label='velocity')
+            if safeV:
+                ax.plot(l_vdy[:-1, 1], sv_x, 'k--', label='safe velocity')
             ax.set_xlabel("Travel distance [s]")
             ax.set_ylabel("Velocity [m/s]")
             ax.set_ylim(0, 15)
         else:
-            for t, pose in self._l_pose.items():
-                l_vdy = np.append(
-                    l_vdy, np.array([[t, pose.vdy.vx_ms]]), axis=0)
-
-            ax.plot(l_vdy[:, 0], l_vdy[:, 1], 'b-', label='velocity')
+            ax.plot(l_vdy[:, 0], l_vdy[:, 2], 'b-', label='velocity')
+            if safeV:
+                ax.plot(sv_t, sv_x, 'k--', label='safe velocity')
             ax.set_xlabel("Time [s]")
             ax.set_ylabel("Velocity [m/s]")
             ax.set_ylim(0, 15)
         ax.legend()
 
     def _plotAcceleration(self, ax=plt, xDistance=False):
-        l_u = sorted(self._l_u.items())
-        x, y = zip(*l_u)
+        l_vdy = self.exportDynamic()
         if xDistance:
-            l_acc = np.empty((0, 2))
-            startPose = self._l_pose[min(self._l_pose)]
-            startPos = np.array([[startPose.x_m, startPose.y_m]])
-            for t, pose in self._l_pose.items():
-                pos = np.array([[pose.x_m, pose.y_m]])
-                d = np.linalg.norm(pos - startPos)
-                l_acc = np.append(
-                    l_acc, np.array([[d, self._l_u[t]]]), axis=0)
-            ax.plot(l_acc[:, 0], l_acc[:, 1], 'r-', label='acceleration')
+            ax.plot(l_vdy[:, 1], l_vdy[:, 3], 'r-', label='acceleration')
             ax.set_xlabel("Travel distance [s]")
-            ax.set_ylabel("Acceleration [$m/s_2$]")
+            ax.set_ylabel("Acceleration [$m/s^2$]")
             ax.set_ylim(-6, 3)
         else:
-            ax.plot(x, y, 'r-', label='acceleration')
+            ax.plot(l_vdy[:, 0], l_vdy[:, 3], 'r-', label='acceleration')
             ax.set_xlabel("Time [s]")
-            ax.set_ylabel("Acceleration [$m/s_2$]")
+            ax.set_ylabel("Acceleration [$m/s^2$]")
             ax.set_ylim(-6, 3)
+        ax.legend()
+
+    def _plotJerk(self, ax=plt, xDistance=False):
+        l_vdy = self.exportDynamic()
+        if xDistance:
+            ax.plot(l_vdy[:, 1], l_vdy[:, 4], 'r-', 'r-', label='jerk')
+            ax.set_xlabel("Travel distance [s]")
+            ax.set_ylabel("Jerk [$m/s^3$]")
+            ax.set_ylim(-10, 10)
+        else:
+            ax.plot(l_vdy[:, 0], l_vdy[:, 4], label='jerk')
+            ax.set_xlabel("Time [s]")
+            ax.set_ylabel("Jerk [$m/s^3$]")
+            ax.set_ylim(-10, 10)
         ax.legend()
 
     def plotPassedCost(self):

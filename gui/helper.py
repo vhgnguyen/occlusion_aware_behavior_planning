@@ -139,10 +139,26 @@ class PlotScene(object):
     def __init__(self, core):
         self.core = core
         self._dAlpha = 0.1
+        self._poseCenter = True
+        self._x = 0
+        self._y = 0
+        self._h = 40
+        self._w = 80
 
-    def plotScene(self):
-        fig, ax = plt.subplots(figsize=(14, 6))
-        pose = self.core.getCurrentEgoPos()
+    def setCoordinate(self, x, y, h, w, poseCenter=True):
+        self._x = x
+        self._y = y
+        self._h = h
+        self._w = w
+        self._poseCenter = poseCenter
+
+    def plotScene(self, h, w):
+        fig, ax = plt.subplots(figsize=(w, h))
+        if self.core._egoCar is not None:
+            pose = self.core.getCurrentEgoPos()
+            if self._poseCenter:
+                self._x = pose[0]
+                self._y = pose[1]
 
         self.plotRoad(ax=ax)
         self.plotFOV(ax=ax)
@@ -151,16 +167,33 @@ class PlotScene(object):
         self.plotEgoVehicle(ax=ax)
         self.plotPedestrian(ax=ax)
         self.plotVehicle(ax=ax)
-
-        handleLegend(ax=plt)
+        self.plotTextBox(ax=ax)
+        # handleLegend(ax=plt)
         ax.axis('equal')
-        ax.set_xlim(pose[0]-40, pose[0]+40)
-        ax.set_ylim(pose[1]-20, pose[1]+20)
+        ax.set_xlim(self._x-self._w/2, self._x+self._w/2)
+        ax.set_ylim(self._y-self._h/2, self._y+self._h/2)
         ax.set_xlabel("x[m]")
         ax.set_ylabel("y[m]")
         plt.show()
 
+    def plotTextBox(self, ax):
+        s = self.core.getTravelDistance()
+        v = self.core.getCurrentVelocity()
+        a = self.core.getCurrentAcceleration()
+
+        textstr = '\n'.join((
+            r'$s_{lon}=%.2f \, m$,  $v_{lon}=%.2f \, m/s$,  $a_{lon}=%.2f \, m/s^2$' % (s, v, a, ),
+            r'$t=%.2f \, s$' % (self.core.getCurrentTime(), ))
+            )
+        # these are matplotlib.patch.Patch properties
+        props = dict(boxstyle='round', facecolor='none', alpha=0.5)
+        # place a text box in upper left in axes coords
+        ax.text(0.05, 0.05, textstr, transform=ax.transAxes, fontsize=12,
+                verticalalignment='bottom', bbox=props)
+
     def plotPedestrian(self, ax):
+        if self.core._egoCar is None:
+            return
         # plot other pedestrian
         pedesList = self.core.exportCurrentPedestrian()
         hypoPList = self.core.exportHypoPedestrian()
@@ -169,7 +202,7 @@ class PlotScene(object):
             hp = hypoP['p']
             a = 0.7
             b = len(hp)
-            for i in range(0, b, int(b/5)):
+            for i in range(0, b, int(b/6)):
                 hpp = hp[i]
                 a = max(a-self._dAlpha, 0.1)
                 pose = hpp['pos']
@@ -190,7 +223,7 @@ class PlotScene(object):
 
             a = 0.7
             b = len(p)
-            for i in range(0, b, int(b/5)):
+            for i in range(0, b, int(b/6)):
                 pp = p[i]
                 a = max(a-self._dAlpha, 0.1)
                 pose = pp['pos']
@@ -206,16 +239,18 @@ class PlotScene(object):
 
             if c['visible']:
                 plotPolygon(
-                    c['poly'], facecolor='pink', edgecolor='k',
+                    c['poly'], facecolor='pink', edgecolor='lime',
                     alpha=1, label="detected pedestrian", ax=ax,
                     heading=True, hcolor='lime')
             else:
                 plotPolygon(
-                    c['poly'], facecolor='pink', edgecolor='k',
+                    c['poly'], facecolor='pink', edgecolor='r',
                     alpha=1, label="undetected pedestrian", ax=ax,
                     heading=True, hcolor='r')
 
     def plotVehicle(self, ax):
+        if self.core._egoCar is None:
+            return
         # plot other vehicle
         vehicleList = self.core.exportCurrentVehicle()
         hypoList = self.core.exportHypoVehicle()
@@ -224,7 +259,7 @@ class PlotScene(object):
             hp = hypo['p']
             a = 0.7
             b = len(hp)
-            for i in range(0, b, int(b/5)):
+            for i in range(0, b, int(b/6)):
                 hpp = hp[i]
                 a = max(a-self._dAlpha, 0.1)
                 pose = hpp['pos']
@@ -245,7 +280,7 @@ class PlotScene(object):
 
             a = 0.7
             b = len(p)
-            for i in range(0, b, int(b/5)):
+            for i in range(0, b, int(b/6)):
                 pp = p[i]
                 a = max(a-self._dAlpha, 0.1)
                 pose = pp['pos']
@@ -261,12 +296,12 @@ class PlotScene(object):
 
             if c['visible']:
                 plotPolygon(
-                    c['poly'], facecolor='gold', edgecolor='k',
+                    c['poly'], facecolor='gold', edgecolor='lime',
                     alpha=1, label="detected vehicle", ax=ax,
                     heading=True, hcolor='lime')
             else:
                 plotPolygon(
-                    c['poly'], facecolor='gold', edgecolor='k',
+                    c['poly'], facecolor='gold', edgecolor='r',
                     alpha=1, label="undetected vehicle", ax=ax,
                     heading=True, hcolor='r')
 
@@ -284,6 +319,10 @@ class PlotScene(object):
                 road.lane, ax=ax, color='gray', linestyle='--')
 
     def plotFOV(self, ax):
+        if self.core._egoCar is None:
+            return
+        if not self.core._egoCar.isStarted():
+            return
         # plot FOV
         plotPolygon(
             self.core.getCurrentFOV(), facecolor='gainsboro', edgecolor='lightcoral',
@@ -319,18 +358,21 @@ class PlotScene(object):
                     )
 
     def plotEgoVehicle(self, ax):
-        # plot ego vehicle       
-        p = self.core.getPredictEgo()
-        b = len(p)
-        a = 0.7
-        for i in range(0, b, int(b/5)):
-            pp = p[i]
-            a = max(a-self._dAlpha, 0.1)
-            pose = pp['pos']
-            lw = pp['std']
-            plotEllipse(
-                x=pose[0], y=pose[1], a=pose[2], l=lw[0]*2, w=lw[1]*2,
-                facecolor='cornflowerblue', edgecolor='b', alpha=a, ax=ax)
+        if self.core._egoCar is None:
+            return
+        # plot ego vehicle 
+        if self.core._egoCar.isStarted():
+            p = self.core.getPredictEgo()
+            b = len(p)
+            a = 0.7
+            for i in range(0, b, int(b/6)):
+                pp = p[i]
+                a = max(a-self._dAlpha, 0.1)
+                pose = pp['pos']
+                lw = pp['std']
+                plotEllipse(
+                    x=pose[0], y=pose[1], a=pose[2], l=lw[0]*2, w=lw[1]*2,
+                    facecolor='cornflowerblue', edgecolor='b', alpha=a, ax=ax)
         plotPolygon(
             self.core.getCurrentEgoPoly(), facecolor='b', edgecolor='b',
             alpha=1, label='ego vehicle', ax=ax,

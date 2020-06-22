@@ -22,6 +22,7 @@ class BirdEyeView(QOpenGLWidget):
 
         # draw prediction
         self._drawPredict = False
+        self._drawPredictHypo = False
 
         # world coordinate
         self._rulerScale = 5
@@ -179,41 +180,58 @@ class BirdEyeView(QOpenGLWidget):
     def drawPedestrian(self):
         pedesList = self.core.exportCurrentPedestrian()
         hypoList = self.core.exportHypoPedestrian()
-        for pedes in pedesList:
-            c = pedes['c']
-            if c['visible']:
-                helper.drawPoly(c['poly'], color='lightGreen', alpha=0.5)
-                helper.drawHeading(c['poly'], color='black', alpha=0.5)
-            else:
-                helper.drawPoly(c['poly'], color='lightRed', alpha=0.5)
-                helper.drawHeading(c['poly'], color='black', alpha=0.5)
-
-            if self._drawPredict:
-                p = pedes['p']
-                for i in range(0, len(p), ):
-                    pp = p[i]
-                    helper.drawPoly(pp['poly'], color='pink', alpha=0.1, fill=False)    
 
         for hypo in hypoList:
             hc = hypo['c']
             helper.drawPoly(hc['poly'], color='pink', alpha=0.3)
             helper.drawHeading(hc['poly'], color='black',alpha=0.3)
 
-            if self._drawPredict:
+            if self._drawPredictHypo:
                 hp = hypo['p']
                 for i in range(0, len(hp), 2):
                     hpp = hp[i]
                     helper.drawPoly(hpp['poly'], color='pink', alpha=0.1, fill=False)    
 
+        for pedes in pedesList:
+            c = pedes['c']
+            c_color = 'lightGreen'
+            if c['visible']:
+                helper.drawPoly(c['poly'], color=c_color, alpha=0.5)
+                helper.drawHeading(c['poly'], color='black', alpha=0.5)
+            else:
+                c_color = 'lightRed'
+                helper.drawPoly(c['poly'], color=c_color, alpha=0.5)
+                helper.drawHeading(c['poly'], color='black', alpha=0.5)
+
+            if self._drawPredict:
+                p = pedes['p']
+                for i in range(0, len(p), ):
+                    pp = p[i]
+                    helper.drawPoly(pp['poly'], color=c_color, alpha=0.1, fill=False)    
+
     def drawOtherVehicle(self):
         vehicleList = self.core.exportCurrentVehicle()
         hypoList = self.core.exportHypoVehicle()
+
+        for hypo in hypoList:
+            hc = hypo['c']
+            helper.drawPoly(hc['poly'], color='yellow', alpha=0.3)
+            helper.drawHeading(hc['poly'], color='black',alpha=0.3)
+
+            if self._drawPredictHypo:
+                hp = hypo['p']
+                for i in range(0, len(hp), 2):
+                    hpp = hp[i]
+                    helper.drawPoly(hpp['poly'], color='yellow', alpha=0.1, fill=False)  
+
         for vehicle in vehicleList:
             c = vehicle['c']
+            c_color = 'green'
             if c['visible']:
                 helper.drawPoly(c['poly'], color='green', alpha=0.5)
                 helper.drawHeading(c['poly'], color='black', alpha=0.5)
             else:
+                c_color = 'red'
                 helper.drawPoly(c['poly'], color='red', alpha=0.5)
                 helper.drawHeading(c['poly'], color='black', alpha=0.5)
 
@@ -221,32 +239,23 @@ class BirdEyeView(QOpenGLWidget):
                 p = vehicle['p']
                 for i in range(0, len(p), 2):
                     pp = p[i]
-                    helper.drawPoly(pp['poly'], color='pink', alpha=0.1, fill=False)   
-
-        for hypo in hypoList:
-            hc = hypo['c']
-            helper.drawPoly(hc['poly'], color='yellow', alpha=0.3)
-            helper.drawHeading(hc['poly'], color='black',alpha=0.3)
-
-            if self._drawPredict:
-                hp = hypo['p']
-                for i in range(0, len(hp), 2):
-                    hpp = hp[i]
-                    helper.drawPoly(hpp['poly'], color='pink', alpha=0.1, fill=False)    
+                    helper.drawPoly(pp['poly'], color=c_color, alpha=0.1, fill=False)   
 
     def drawEgoVehicle(self):
         egoPoly = self.core.getCurrentEgoPoly()
         pos = self.core.getCurrentEgoPos()
-        helper.drawPoly(egoPoly, color='blue', alpha=1)
-        helper.drawHeading(egoPoly, color='black', alpha=1)
         if pos is not None:
+            helper.drawPoly(egoPoly, color='blue', alpha=1)
+            helper.drawHeading(egoPoly, color='black', alpha=1)
+
             self._x_center = pos[0]
             self._y_center = pos[1]
+
             p_pose = self.core.getPredictEgo()
             if self._drawPredict:
                 for i in range(0, len(p_pose), 2):
                     pp = p_pose[i]
-                    helper.drawPoly(pp['poly'], color='pink', alpha=0.1, fill=False)  
+                    helper.drawPoly(pp['poly'], color='blue', alpha=0.1, fill=False)  
 
 
     def drawFOV(self):

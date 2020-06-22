@@ -218,7 +218,8 @@ def collisionEventRate(collisionIndicator,
             * (1.0 - np.exp(-exp_beta*collisionIndicator)) \
             / (1.0 - np.exp(-exp_beta))
     if method == 'sigmoid':
-        return eventRate_max/(1.0+np.exp(-sig_beta*(collisionIndicator-0.5)))
+        t = max(collisionIndicator, 0.005)
+        return eventRate_max / (1 + (t / (1-t))**(-sig_beta))
 
 
 def collisionRisk(col_severity, col_rate):

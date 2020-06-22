@@ -21,6 +21,8 @@ class Core(object):
     def move(self):
         if (self._egoCar is not None and
            self.timestamp_s + self.dT <= self.simulationTime):
+            if self.timestamp_s == 0:
+                self._egoCar.start()
             self._egoCar.optimizeState(
                 dT=param._dT, predictStep=param._PREDICT_STEP,
                 predictTime=param._PREDICT_TIME)
@@ -152,6 +154,11 @@ class Core(object):
             return None
         return self._egoCar.getCurrentLongtitudeAcceleration()
 
+    def getTravelDistance(self):
+        if self._egoCar is None:
+            return None
+        return self._egoCar.getTravelDistance()
+
     # environment
 
     def exportCurrentPedestrian(self):
@@ -188,15 +195,15 @@ class Core(object):
             hypoList.append({'c': c, 'p': p})
         return hypoList
 
-    def plotDynamic(self):
+    def plotDynamic(self, safeVelocity=False):
         if self._egoCar is None:
             return
-        self._egoCar.plotDynamic()
+        self._egoCar.plotDynamic(safeVelocity)
 
-    def plotDynamicDistance(self):
+    def plotDynamicDistance(self, safeVelocity=False):
         if self._egoCar is None:
             return
-        self._egoCar.plotDynamicDistance()
+        self._egoCar.plotDynamicDistance(safeVelocity)
 
     def plotRisk(self):
         if self._egoCar is None:

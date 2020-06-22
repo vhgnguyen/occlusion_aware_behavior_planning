@@ -126,7 +126,7 @@ def minFOVAngle(pose, poly):
     min_angle = 10
     min_vertex = None
     pos = np.array([pose.x_m, pose.y_m])
-    pos += pose.heading() * param._CAR_LENGTH * 0.3
+    pos = pos + pose.heading() * param._CAR_LENGTH * 0.3
     for i, vertex in enumerate(poly):
         p2v = np.array([vertex[0] - pos[0], vertex[1] - pos[1]])
         p2v /= np.linalg.norm(p2v)
@@ -205,7 +205,7 @@ def FOV(pose, polys, angle, radius, nrRays=50):
     l_alpha.sort()
 
     l1_1 = np.array([pose.x_m, pose.y_m])
-    l1_1 += pose.heading() * param._CAR_LENGTH * 0.3
+    l1_1 = l1_1 + pose.heading() * param._CAR_LENGTH * 0.3
 
     fov_range = 0
     l_fov = np.empty((0, 2))
