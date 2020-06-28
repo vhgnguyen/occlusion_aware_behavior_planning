@@ -435,10 +435,10 @@ class AddVehicleWindow(QMainWindow):
 
         self.vehicleGrid.addWidget(QLabel("Length, width [m]"), 0, 0)
         self.vehLengthValue = QLineEdit()
-        self.vehLengthValue.setText(str(3.5))
+        self.vehLengthValue.setText(str(4.88))
         self.vehLengthValue.setMaximumWidth(100)
         self.vehWidthValue = QLineEdit()
-        self.vehWidthValue.setText(str(2.0))
+        self.vehWidthValue.setText(str(1.88))
         self.vehWidthValue.setMaximumWidth(100)
         self.vehicleGrid.addWidget(self.vehLengthValue, 0, 1)
         self.vehicleGrid.addWidget(self.vehWidthValue, 0, 2)
@@ -473,7 +473,7 @@ class AddVehicleWindow(QMainWindow):
 
         self.vehicleGrid.addWidget(QLabel("Longtitude velocity [m/s]"), 4, 0)
         self.vehicleValue_longVel = QLineEdit()
-        self.vehicleValue_longVel.setText(str(10.0))
+        self.vehicleValue_longVel.setText(str(8.0))
         self.vehicleValue_longVel.setMaximumWidth(100)
         self.vehicleGrid.addWidget(self.vehicleValue_longVel, 4, 1)
 

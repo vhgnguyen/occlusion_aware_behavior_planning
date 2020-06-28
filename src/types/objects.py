@@ -49,7 +49,10 @@ class Vehicle(object):
         self._idx = idx
         self._length = length
         self._width = width
-        self._lw_std = np.array([self._length/2, self._width/2])
+        self._lw_std = np.array([self._length/2, self._width/2])  # std offset
+        self._isDetected = False
+        self._detectedTime = None  # position where first detected
+        self._Pcoll = 0  # maximum collision probability with ego
 
         startTime = round(round(startTime/dT, 2) * dT, 2)
         self._startTime = startTime
@@ -60,22 +63,31 @@ class Vehicle(object):
             vdy=VehicleDynamic(vx_ms, 0), timestamp_s=startTime)
 
         if isStop:
+            # deaccleration if stop
             self._u = pfnc.computeAccToStop(
                 from_x_m=from_x_m, from_y_m=from_y_m,
                 to_x_m=to_x_m, to_y_m=to_y_m, vx_ms=vx_ms)
         else:
             self._u = 0
 
-        self._p_pose = {}
-        self._isDetected = False
-        self._appearRate = appearRate
-        self._Pcoll = 0
-        self._currentPose = startPose
-        self._l_pose = {startPose.timestamp_s: startPose}
         # for hypothetical object
+        self._appearRate = appearRate
         self._interactRate = interactRate
 
+        # pose
+        self._p_pose = {}
+        self._currentPose = startPose
+        self._l_pose = {startPose.timestamp_s: startPose}
+
+        # first states prediction
         self.predict(dT=param._PREDICT_STEP, pT=param._PREDICT_TIME)
+
+    def setDetectedTime(self):
+        if self._detectedTime is None:
+            self._detectedTime = self.getCurrentTimestamp()
+
+    def getDetectedTime(self):
+        return self._detectedTime
 
     def isVisible(self):
         return self._isDetected
@@ -203,7 +215,11 @@ class Pedestrian(object):
         self._idx = idx
         self._length = 1.5
         self._width = 1.5
-        self._lw_std = np.array([self._length/2, self._width/2])
+        self._lw_std = np.array([self._length/2, self._width/2])  # std offset
+        self._isDetected = False
+        self._detectedTime = None  # position where first detected
+        self._Pcoll = 0  # maximum collision probability with ego
+        self._u = 0
 
         startTime = round(round(startTime/dT, 2) * dT, 2)
         self._startTime = startTime
@@ -214,22 +230,30 @@ class Pedestrian(object):
             vdy=VehicleDynamic(vx_ms, 0), timestamp_s=startTime)
 
         if isStop:
+            # add stop timestamp
             s = np.sqrt((from_x_m-to_x_m)**2 + (from_y_m-to_y_m)**2)
             self._stopTimestamp_s = startTime + s / vx_ms
         else:
             self._stopTimestamp_s = 99999
 
-        self._u = 0
-        self._isDetected = False
+        # for hypothetical object
         self._appearRate = appearRate
-        self._p_pose = {}
-        self._Pcoll = 0
-        self._currentPose = startPose
-        self._l_pose = {startPose.timestamp_s: startPose}
-        # for hypothetical objects
         self._interactRate = interactRate
 
+        # pose
+        self._p_pose = {}
+        self._currentPose = startPose
+        self._l_pose = {startPose.timestamp_s: startPose}
+
+        # first states prediction
         self.predict(dT=param._PREDICT_STEP, pT=param._PREDICT_TIME)
+
+    def setDetectedTime(self):
+        if self._detectedTime is None:
+            self._detectedTime = self.getCurrentTimestamp()
+
+    def getDetectedTime(self):
+        return self._detectedTime
 
     def isVisible(self):
         return self._isDetected

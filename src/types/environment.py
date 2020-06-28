@@ -136,12 +136,12 @@ class Environment(object):
         # find static object
         for sObj in self._l_staticObject:
             objPoly = sObj._poly
-            # d2ego = np.linalg.norm(objPoly - currentPos, axis=1)
-            # if ((d2ego) < radius).any():
-            l_object.append(sObj)
-            l_polys.append(objPoly)
+            d2ego = np.linalg.norm(objPoly - currentPos, axis=1)
+            if ((d2ego) < radius).any():
+                l_object.append(sObj)
+                l_polys.append(objPoly)
 
-        # find vehicle
+        # find vehicle poly 
         for veh in self._l_vehicle:
             vehPose = veh.getCurrentPose()
             if vehPose.timestamp_s == from_timestamp:
@@ -172,27 +172,30 @@ class Environment(object):
             vehPose = veh.getCurrentPose()
             if vehPose.timestamp_s == from_timestamp:
                 vehPos = np.array([vehPose.x_m, vehPose.y_m])
-                if np.linalg.norm(vehPos - currentPos) < searchRadius:
-                    vehPoly = veh.getCurrentPoly()
-                    if pfnc.inPolyPointList(vehPoly, fov_poly):
-                        if hypothesis and vehPose.vdy.vx_ms < 2:
-                            l_fov_d, hasHypo = self._generateHypothesis(
-                                pose, vehPoly, fov_poly, radius,
-                                pVx, pCovLat, pCovLon, pCrossRate, pStreetRate, pOtherRate,
-                                pDistanceThres, vVx, vCovLat, vCovLon, vRate,
-                                objectVehicle=True)
-                            if hasHypo:
-                                l_fov.update({veh._idx: l_fov_d})
-                        veh.setDetected(True)
-                        if vehPose.vdy.vx_ms > 0:
-                            l_vehicle.append(veh)
-                        else:
-                            l_staticVehicle.append(veh)
-                        continue
+                # if np.linalg.norm(vehPos - currentPos) < searchRadius:
+                vehPoly = veh.getCurrentPoly()
+                if pfnc.inPolyPointList(vehPoly, fov_poly):
+                    veh.setDetected(True)
+                    veh.setDetectedTime()
+                    # generate hypothesis with low speed vehicle
+                    if hypothesis and vehPose.vdy.vx_ms < 3:
+                        l_fov_d, hasHypo = self._generateHypothesis(
+                            pose, vehPoly, fov_poly, radius,
+                            pVx, pCovLat, pCovLon, pCrossRate, pStreetRate, pOtherRate,
+                            pDistanceThres, vVx, vCovLat, vCovLon, vRate,
+                            objectVehicle=True)
+                        if hasHypo:
+                            l_fov.update({veh._idx: l_fov_d})
+                    if vehPose.vdy.vx_ms > 0.5:
+                        l_vehicle.append(veh)
                     else:
-                        veh.setDetected(False)
-                        continue
-            veh.setDetected(False)
+                        l_staticVehicle.append(veh)
+                    continue
+                else:
+                    veh.setDetected(False)
+                    continue
+            # else:
+            #     veh.setDetected(False)
 
         # check pedestrian in FOV
         for pedes in self._l_pedestrian:
@@ -203,6 +206,7 @@ class Environment(object):
                     # if pfnc.inPolygonPoint(pedesPos, fov):
                     if pfnc.inPolyPoint(pedesPos, fov_poly):
                         pedes.setDetected(True)
+                        pedes.setDetectedTime()
                         if pedesPose.vdy.vx_ms > 0:
                             l_pedestrian.append(pedes)
                         continue
@@ -218,6 +222,7 @@ class Environment(object):
                           'hypoVehicle': self._l_hypoVehicle,
                           'staticVehicle': l_staticVehicle,
                           'fovDistance': l_fov}
+        del l_fov, l_vehicle, l_staticVehicle, l_pedestrian, l_object, l_polys, currentPos, searchRadius
 
     def _generateHypothesis(self, pose, objPoly, fov_poly, radius, pVx,
                             pCovLat, pCovLon, pCrossRate, pStreetRate, pOtherRate,
@@ -238,7 +243,7 @@ class Environment(object):
         sa = math.sin(alpha)
         vx = pose.heading()
         l1_1 = np.array([pose.x_m, pose.y_m])
-        l1_1 = l1_1 + pose.heading() * param._CAR_LENGTH * 0.3
+        l1_1 = l1_1 + pose.heading() * param._CAR_LENGTH * 0.5
         l_vx = l1_1 + vx * radius
 
         # compute end of occlusion point

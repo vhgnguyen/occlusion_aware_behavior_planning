@@ -153,7 +153,7 @@ class PlotScene(object):
         self._poseCenter = poseCenter
 
     def plotScene(self, h, w):
-        fig, ax = plt.subplots(figsize=(w, h))
+        fig, ax = plt.subplots(figsize=(18, 12))
         if self.core._egoCar is not None:
             pose = self.core.getCurrentEgoPos()
             if self._poseCenter:
@@ -168,7 +168,18 @@ class PlotScene(object):
         self.plotPedestrian(ax=ax)
         self.plotVehicle(ax=ax)
         self.plotTextBox(ax=ax)
-        # handleLegend(ax=plt)
+
+        # self.plotPriorSign(x=-20, y=-8, ax=ax, size=3)
+        # self.plotPriorSign(x=20, y=8, ax=ax, size=3)
+        # self.plotInferiorSign(x=10, y=-15, ax=ax, size=3)
+        # self.plotInferiorSign(x=-12, y=15, ax=ax, size=3)
+
+        # self.plotInferiorSign(x=-20, y=-8, ax=ax, size=3)
+        # self.plotInferiorSign(x=20, y=8, ax=ax, size=3)
+        # self.plotPriorSign(x=10, y=-15, ax=ax, size=3)
+        # self.plotPriorSign(x=-12, y=15, ax=ax, size=3)
+
+        handleLegend(ax=plt)
         ax.axis('equal')
         ax.set_xlim(self._x-self._w/2, self._x+self._w/2)
         ax.set_ylim(self._y-self._h/2, self._y+self._h/2)
@@ -214,7 +225,7 @@ class PlotScene(object):
             hc = hypoP['c']
             plotPolygon(
                 hc['poly'], facecolor='pink', edgecolor='k',
-                alpha=1, label="hypothesis pedestrian", ax=ax,
+                alpha=1, label="hypothetical pedestrian", ax=ax,
                 heading=True, hcolor='k')
 
         for pedes in pedesList:
@@ -271,7 +282,7 @@ class PlotScene(object):
             hc = hypo['c']
             plotPolygon(
                     hc['poly'], facecolor='gold', edgecolor='k',
-                    alpha=1, label="hypothesis vehicle", ax=ax,
+                    alpha=1, label="hypothetical vehicle", ax=ax,
                     heading=True, hcolor='k')
 
         for veh in vehicleList:
@@ -335,6 +346,7 @@ class PlotScene(object):
             plotPolygon(
                 obj._poly, facecolor='gray', edgecolor='gray',
                 alpha=1, label=None, ax=ax)
+            ax.text(obj._center[0], obj._center[1], s=str(obj._idx), fontsize=20)
 
     def plotPedestrianCross(self, ax):
         # plot pedestrian cross
@@ -377,3 +389,42 @@ class PlotScene(object):
             self.core.getCurrentEgoPoly(), facecolor='b', edgecolor='b',
             alpha=1, label='ego vehicle', ax=ax,
             heading=True, hcolor='k')
+
+    def plotPriorSign(self, x, y, ax, size=3):
+        r1 = rectangle(x, y, size, size, np.pi/4)
+        r2 = rectangle(x, y+size/20, size*0.65, size*0.65, np.pi/4)
+        r11 = Polygon(
+            r1, facecolor='white', edgecolor='k', lw=1)
+        r21 = Polygon(
+            r2, facecolor='gold', edgecolor='k')
+
+        # r1 = Rectangle(
+        #     [x, y], width=size, height=size, angle=45,
+        #     facecolor='white', edgecolor='k')
+        # r2 = Rectangle(
+        #     [x, y+size/5], width=size*0.65, height=size*0.65, angle=45,
+        #     facecolor='gold', edgecolor='k')
+
+        ax.add_patch(r11)
+        ax.add_patch(r21)
+
+    def plotInferiorSign(self, x, y, ax, size=3):
+        x1 =  size/2
+        y1 =  size*0.866025
+        t1 = ((x, y), (x+size, y), (x+x1, y-y1))
+        p1 = Polygon(
+            t1, facecolor='white', edgecolor='red', lw=3)
+        ax.add_patch(p1)
+
+
+def rectangle(x, y, length, width, alpha):
+    """
+    Return rectangle centered at given position
+    """
+    r = np.array([[np.cos(alpha), -np.sin(alpha)],
+                 [np.sin(alpha), np.cos(alpha)]])
+    poly = np.array([[-length/2, -width/2],
+                     [length/2, -width/2],
+                     [length/2, width/2],
+                     [-length/2, width/2]])
+    return np.dot(poly, r) + np.array([[x, y]])

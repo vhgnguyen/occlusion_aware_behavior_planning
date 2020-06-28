@@ -46,9 +46,9 @@ class EgoVehicle:
 
         # emergency brake
         self._minColValue = 0
-        self._minRiskValue = 0
         self._TTB = 0
         self._brake = False
+        self._brakeAcc = []
         self._safeV = startPose.vdy.vx_ms
 
         # environment information
@@ -63,13 +63,11 @@ class EgoVehicle:
         self._l_distance = {startPose.timestamp_s: 0}
         self._l_jerk = {startPose.timestamp_s: 0}
         self._l_safeV = {}
+        self._l_fov = {}
 
-        # hypothetical
-        self._l_hypo = {}
-    
     def isStarted(self):
         return self._isStarted
-    
+
     def start(self):
         if not self._isStarted:
             self._isStarted = True
@@ -137,6 +135,7 @@ class EgoVehicle:
             if len(d) > 0:
                 tmp_D = min(d)
                 minD = min(tmp_D, minD, self._fovRange)
+        self._l_fov.update({self.getCurrentTimestamp(): fovDistance})
         safeV = self._computeSafeVelocity(
             d=minD, aBrake=param._A_MAX_BRAKE,
             dSafe=param._D_BRAKE_MIN, delay=param._T_BRAKE_DELAY)
@@ -186,7 +185,7 @@ class EgoVehicle:
         total_risk = 0
         total_eventRate = 0
 
-        if useFOV and self._fovRange < 30:
+        if useFOV:
             limitViewEvent, limitViewRisk = rfnc.limitViewRisk(
                 fov_range=self._fovRange, ego_vx=egoPose.vdy.vx_ms,
                 aBrake=param._A_MIN, dBrake=param._D_BRAKE_MIN,
@@ -208,7 +207,7 @@ class EgoVehicle:
                 sO_eventRate = param._COLLISION_RATE_MAX
                 sO_severity = rfnc.collisionEventSeverity(
                     ego_vx=egoPose.vdy.vx_ms, obj_vx=0,
-                    method=param._COLLISION_SEVERITY_MODEL)
+                    method=param._COLLISION_SEVERITY_MODEL) + 10000
 
                 total_eventRate += sO_eventRate
                 total_risk += sO_eventRate*sO_severity
@@ -224,7 +223,7 @@ class EgoVehicle:
                 sV_eventRate = param._COLLISION_RATE_MAX
                 sV_severity = rfnc.collisionEventSeverity(
                     ego_vx=egoPose.vdy.vx_ms, obj_vx=0,
-                    method=param._COLLISION_SEVERITY_MODEL)
+                    method=param._COLLISION_SEVERITY_MODEL)+10000
                 total_eventRate += sV_eventRate
                 total_risk += sV_eventRate*sV_severity
 
@@ -327,10 +326,6 @@ class EgoVehicle:
                     col_severity=hpcol_severity,
                     col_rate=hpcol_rate)
 
-                self._minColHP = max(self._minColHP, hpcol_indicator)
-                self._minEventHP = max(self._minEventHP, hpcol_rate)
-                self._minRiskHP = max(self._minRiskHP, hpcol_risk)
-
                 total_risk += hpcol_risk
                 total_eventRate += hpcol_rate
 
@@ -338,7 +333,7 @@ class EgoVehicle:
                 hvPose, hvPoly = hypoVeh.getPredictAt(timestamp_s)
                 if hvPose is None:
                     continue
-        
+
                 hvcol_indicator = rfnc.collisionIndicator(
                     egoPose=egoPose, egoPoly=egoPoly,
                     objPose=hvPose, objPoly=hvPoly)
@@ -372,7 +367,6 @@ class EgoVehicle:
         self._l_opt.update({
             round(u_in, 3): [self._brake, self._minColValue]
         })
-        # self._l_hypoRate.update({round(u_in, 3): [self._minColHP, self._minEventHP, self._minRiskHP]})
         return total_risk
 
     def _survivalRate(self, timestamp_s: float, dT=param._PREDICT_STEP):
@@ -426,9 +420,6 @@ class EgoVehicle:
         cost = 0
         self._brake = False
         self._minColValue = 0
-        self._minColHP = 0
-        self._minEventHP = 0
-        self._minRiskHP = 0
         self._p_eventRate = {}
 
         self._predict(u_in, dT=dT, predictTime=predictTime)
@@ -438,8 +429,6 @@ class EgoVehicle:
             s = self._survivalRate(k, dT=dT)
             cost += dCost * s
         cost = cost * s * dT
-
-        self._l_hypoRate.update({round(u_in, 3): [self._minColHP, self._minEventHP, self._minRiskHP]})
 
         return cost
 
@@ -481,18 +470,17 @@ class EgoVehicle:
         self._computeTTB(aBrake=param._A_MAX_BRAKE, delay=param._T_BRAKE)
         self._searchEnvironment()
         self._l_opt = {}
-        self._l_hypoRate = {}
         val = 0
 
         if self._stopState:
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(
                     u_in=x, dT=predictStep, predictTime=predictTime),
-                bounds=(0, param._J_MAX), method='bounded',
+                bounds=(-param._J_MAX, param._J_MAX), method='bounded',
                 options={"maxiter": 5}
                 ).x
             self._brake, self._minColValue = self._l_opt[round(val, 3)]
-            if self._brake or self._minColValue > 0.3:
+            if self._brake or self._minColValue > 0.1:
                 self._p_u = 0
                 self._u = 0
             else:
@@ -514,15 +502,12 @@ class EgoVehicle:
                 options={"maxiter": 5}
                 ).x
 
-            hypo = self._l_hypoRate[round(val, 3)]
-            self._l_hypo.update({self.getCurrentTimestamp(): hypo})
-
             self._brake, self._minColValue = self._l_opt[round(val, 3)]
-            if self._brake:
+            if self._brake or self._minColValue > 0.1:
                 self._toEmergencyState()
-
-            self._p_u = self._u + (val - self._u) * dT / predictStep
-            self._move()
+            else:
+                self._p_u = self._u + (val - self._u) * dT / predictStep
+                self._move()
             return
 
         if self._defaultState:
@@ -538,31 +523,30 @@ class EgoVehicle:
                 options={"maxiter": 5}
                 ).x
 
-            hypo = self._l_hypoRate[round(val, 3)]
-            self._l_hypo.update({self.getCurrentTimestamp(): hypo})
-
             self._brake, self._minColValue = self._l_opt[round(val, 3)]
             if self._brake:
                 self._toEmergencyState()
-
-            self._p_u = self._u + (val - self._u) * dT / predictStep
-            self._move()
-            return
+            else:
+                self._p_u = self._u + (val - self._u) * dT / predictStep
+                self._move()
+                return
 
         if self._emergencyState:
             lowBound = max(self._u - param._J_MAX_BRAKE, param._A_MAX_BRAKE)
-            upBound = min(self._u + param._J_MAX_BRAKE, param._A_MIN)
+            upBound = min(self._u + 0.5*param._J_MAX_BRAKE, -1)
             if lowBound >= upBound:
                 lowBound = param._A_MAX_BRAKE
-                upBound = param._A_MAX_BRAKE + param._J_MAX_BRAKE
+                upBound = -1
             val = optimize.minimize_scalar(
                 lambda x: self._computeTotalCost(
                     u_in=x, dT=predictStep, predictTime=predictTime),
                 bounds=(lowBound, upBound), method='bounded',
                 options={"maxiter": 5}
             ).x
-            
+
             self._p_u = self._u + (val - self._u) * dT / predictStep
+            if self._p_u < 0:
+                self._brakeAcc.append(abs(self._p_u))
             self._move()
             return
 
@@ -603,7 +587,6 @@ class EgoVehicle:
         self._currentPose = firstPose
         self._toDefaultState()
         self._isStarted = False
-        self._l_hypo = {}
 
     def exportPredictState(self):
         l_p = []
@@ -621,6 +604,25 @@ class EgoVehicle:
         return l_p
 
     # ------------------- Export function ---------------------
+
+    def collision(self, obj):
+        k = self.getCurrentTimestamp()
+        egoPose = self.getCurrentPose()
+        egoPoly = self.getCurrentPoly()
+        if obj.getCurrentTimestamp() != k:
+            return False, 0
+        if egoPose.vdy.vx_ms < 1:
+            return False, 0
+        oPose = obj.getCurrentPose()
+        oPoly = obj.getCurrentPoly()
+        pcol = rfnc.collisionIndicator(
+            egoPose=egoPose, egoPoly=egoPoly,
+            objPose=oPose, objPoly=oPoly)
+        if pcol < 0.7:
+            return False, 0
+        else:
+            severity = np.linalg.norm(egoPose.vxUtm-oPose.vxUtm)
+            return True, severity
 
     def getComfortScore(self):
         sum_u = 0

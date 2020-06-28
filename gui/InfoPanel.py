@@ -66,7 +66,7 @@ class InfoPanel(QGroupBox):
         self.graphGrid = QGridLayout()
 
         self.pathName = QLineEdit()
-        self.pathName.setText('result/')
+        self.pathName.setText('result/it/')
         self.pathName.setMaximumWidth(400)
         self.graphGrid.addWidget(self.pathName, 0, 0)
 

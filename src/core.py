@@ -16,6 +16,23 @@ class Core(object):
         self.simulationTime = param._SIMULATION_TIME
         self.dT = param._dT
 
+        # self.addOtherVehicle(
+        #     length=param._CAR_LENGTH, width=param._CAR_WIDTH,
+        #     x_m=50, y_m=2, to_x_m=-20, to_y_m=2, cov_long=1, cov_lat=0.2,
+        #     vx_ms=8, startTime=0.0, isStop=False)
+        # self.addOtherVehicle(
+        #     length=param._CAR_LENGTH, width=param._CAR_WIDTH,
+        #     x_m=80, y_m=2, to_x_m=-20, to_y_m=2, cov_long=1, cov_lat=0.2,
+        #     vx_ms=8, startTime=0.0, isStop=False)
+        # self.addOtherVehicle(
+        #     length=param._CAR_LENGTH, width=param._CAR_WIDTH,
+        #     x_m=80, y_m=2, to_x_m=-20, to_y_m=2, cov_long=1, cov_lat=0.2,
+        #     vx_ms=8, startTime=3.0, isStop=False)
+        # self.addOtherVehicle(
+        #     length=param._CAR_LENGTH, width=param._CAR_WIDTH,
+        #     x_m=80, y_m=2, to_x_m=-20, to_y_m=2, cov_long=1, cov_lat=0.2,
+        #     vx_ms=8, startTime=9.0, isStop=False)
+
     """ Run functions """
 
     def move(self):
