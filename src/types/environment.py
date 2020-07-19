@@ -17,17 +17,22 @@ class Environment(object):
         Class define environment
     """
     def __init__(self):
+        # elements
         self._l_road = []
         self._l_staticObject = []
         self._l_vehicle = []
         self._l_pedestrian = []
         self._l_cross = []
+
+        # hypothesis
         self._l_hypoPedes = []
         self._l_hypoVehicle = []
-
+        
+        # output to ego car
         self._l_update = {}
         self._fov = []
         self._fovRange = 0
+
         self._isStarted = False
 
     def isStarted(self):
@@ -404,117 +409,31 @@ class Environment(object):
         # save FOV visibility
         l_fov_d = [fov_cross, fov_str_l, fov_str_r, D2MP_cross, D2MP_ll, D2MP_rl]
 
-        # if crossPedes:
-        #     return l_fov_d, hasHypo
-        # startPos = randVertex + p2r_norm * dThres
-        # d = np.linalg.norm(startPos - MP)
-        # if d < pDistanceThres:
-        #     heading = MP - startPos
-        #     heading /= np.linalg.norm(heading)
-        #     startPos -= heading
-        #     if not pfnc.inPolyPoint(startPos, fov_poly):
-        #         if objectVehicle:
-        #             hypoPedes = Pedestrian(
-        #                 idx=99, from_x_m=startPos[0], from_y_m=startPos[1],
-        #                 to_x_m=MP[0], to_y_m=MP[1],
-        #                 covLong=pCovLon, covLat=pCovLat, vx_ms=pVx,
-        #                 startTime=pose.timestamp_s, appearRate=pStreetRate,
-        #                 interactRate=interactRate)
-        #             self._l_hypoPedes.append(hypoPedes)
-        #         else:
-        #             hypoPedes = Pedestrian(
-        #                 idx=99, from_x_m=startPos[0], from_y_m=startPos[1],
-        #                 to_x_m=MP[0], to_y_m=MP[1],
-        #                 covLong=pCovLon, covLat=pCovLat, vx_ms=pVx,
-        #                 startTime=pose.timestamp_s, appearRate=pOtherRate,
-        #                 interactRate=interactRate)
-        #             self._l_hypoPedes.append(hypoPedes)
+        if crossPedes:
+            return l_fov_d, hasHypo
+        startPos = randVertex + p2r_norm * dThres
+        d = np.linalg.norm(startPos - MP)
+        if d < pDistanceThres:
+            heading = MP - startPos
+            heading /= np.linalg.norm(heading)
+            startPos -= heading
+            if not pfnc.inPolyPoint(startPos, fov_poly):
+                if objectVehicle:
+                    hypoPedes = Pedestrian(
+                        idx=99, from_x_m=startPos[0], from_y_m=startPos[1],
+                        to_x_m=MP[0], to_y_m=MP[1],
+                        covLong=pCovLon, covLat=pCovLat, vx_ms=pVx,
+                        startTime=pose.timestamp_s, appearRate=pStreetRate,
+                        interactRate=interactRate)
+                    self._l_hypoPedes.append(hypoPedes)
+                else:
+                    hypoPedes = Pedestrian(
+                        idx=99, from_x_m=startPos[0], from_y_m=startPos[1],
+                        to_x_m=MP[0], to_y_m=MP[1],
+                        covLong=pCovLon, covLat=pCovLat, vx_ms=pVx,
+                        startTime=pose.timestamp_s, appearRate=pOtherRate,
+                        interactRate=interactRate)
+                    self._l_hypoPedes.append(hypoPedes)
 
         return l_fov_d, hasHypo
 
-    def updateAt(self, pose, from_timestamp, radius, hypothesis):
-        """
-        Get environment around a given position
-        """
-        self._l_hypoPedes = []
-        self._l_hypoVehicle = []
-
-        l_vehicle = []
-        l_object = []
-        l_pedestrian = []
-        l_polys = []
-        currentPos = np.array([pose.x_m, pose.y_m])
-
-        # find static object
-        for sObj in self._l_staticObject:
-            objPoly = sObj._poly
-            d2ego = np.linalg.norm(objPoly - currentPos, axis=1)
-            if ((d2ego) < radius).any():
-                l_object.append(sObj)
-                l_polys.append(objPoly)
-
-        # find vehicle
-        for veh in self._l_vehicle:
-            vehPose = veh.getCurrentPose()
-            if vehPose.timestamp_s == from_timestamp:
-                vehPos = np.array([vehPose.x_m, vehPose.y_m])
-                if np.linalg.norm(vehPos - currentPos) < radius:
-                    vehPoly = veh.getPoly(from_timestamp)
-                    l_polys.append(vehPoly)
-
-        # generate field of view
-        fov, fov_range = pfnc.FOV(
-            pose=pose, polys=l_polys, angle=param._FOV_ANGLE,
-            radius=radius, nrRays=param._FOV_RAYS)
-        fov_poly = Polygon(fov)
-
-        # find static object
-        for sObj in self._l_staticObject:
-            objPoly = sObj._poly
-            if pfnc.inPolyPointList(objPoly, fov_poly) and hypothesis:
-                self._generateHypothesis(pose, objPoly, fov_poly, radius)
-
-        # check other moving vehicle in FOV
-        for veh in self._l_vehicle:
-            vehPose = veh.getPoseAt(from_timestamp)
-            if vehPose is None:
-                continue
-            vehPos = np.array([vehPose.x_m, vehPose.y_m])
-            if np.linalg.norm(vehPos - currentPos) < radius:
-                vehPoly = veh.getPoly(from_timestamp)
-                if hypothesis and vehPose.vdy.vx_ms == 0:
-                    self._generateHypothesis(pose, vehPoly, fov_poly, radius)
-                if pfnc.inPolyPointList(vehPoly, fov_poly):
-                    veh.setDetected(True)
-                    if vehPose.vdy.vx_ms > 0:
-                        l_vehicle.append(veh)
-                    continue
-                else:
-                    veh.setDetected(False)
-                    continue
-            veh.setDetected(False)
-
-        # check pedestrian in FOV
-        for pedes in self._l_pedestrian:
-            pedesPose = pedes.getPoseAt(from_timestamp)
-            if pedesPose is None:
-                continue
-            pedesPos = np.array([pedesPose.x_m, pedesPose.y_m])
-            if np.linalg.norm(pedesPos - currentPos) < radius:
-                if pfnc.inPolyPoint(pedesPos, fov_poly):
-                    pedes.setDetected(True)
-                    if pedesPose.vdy.vx_ms > 0:
-                        l_pedestrian.append(pedes)
-                    continue
-                else:
-                    pedes.setDetected(False)
-                    continue
-            pedes.setDetected(False)
-
-        l_update = {'vehicle': l_vehicle,
-                    'staticObject': l_object,
-                    'pedestrian': l_pedestrian,
-                    'hypoPedestrian': self._l_hypoPedes,
-                    'hypoVehicle': self._l_hypoVehicle}
-
-        return l_update, fov_range

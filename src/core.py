@@ -8,6 +8,9 @@ import _param as param
 
 
 class Core(object):
+    """
+        Interface to agorithm 
+    """
 
     def __init__(self):
         self._egoCar = None
@@ -16,25 +19,7 @@ class Core(object):
         self.simulationTime = param._SIMULATION_TIME
         self.dT = param._dT
 
-        # self.addOtherVehicle(
-        #     length=param._CAR_LENGTH, width=param._CAR_WIDTH,
-        #     x_m=50, y_m=2, to_x_m=-20, to_y_m=2, cov_long=1, cov_lat=0.2,
-        #     vx_ms=8, startTime=0.0, isStop=False)
-        # self.addOtherVehicle(
-        #     length=param._CAR_LENGTH, width=param._CAR_WIDTH,
-        #     x_m=80, y_m=2, to_x_m=-20, to_y_m=2, cov_long=1, cov_lat=0.2,
-        #     vx_ms=8, startTime=0.0, isStop=False)
-        # self.addOtherVehicle(
-        #     length=param._CAR_LENGTH, width=param._CAR_WIDTH,
-        #     x_m=80, y_m=2, to_x_m=-20, to_y_m=2, cov_long=1, cov_lat=0.2,
-        #     vx_ms=8, startTime=3.0, isStop=False)
-        # self.addOtherVehicle(
-        #     length=param._CAR_LENGTH, width=param._CAR_WIDTH,
-        #     x_m=80, y_m=2, to_x_m=-20, to_y_m=2, cov_long=1, cov_lat=0.2,
-        #     vx_ms=8, startTime=9.0, isStop=False)
-
     """ Run functions """
-
     def move(self):
         if (self._egoCar is not None and
            self.timestamp_s + self.dT <= self.simulationTime):
@@ -158,7 +143,6 @@ class Core(object):
         if self._egoCar is None:
             return None
         else:
-            # self._egoCar._searchEnvironment()
             return self._egoCar._fov
 
     def getCurrentVelocity(self):
@@ -211,6 +195,8 @@ class Core(object):
             p = vehicle.exportPredict()
             hypoList.append({'c': c, 'p': p})
         return hypoList
+
+    # plot and safe
 
     def plotDynamic(self, safeVelocity=False):
         if self._egoCar is None:

@@ -545,10 +545,10 @@ class AddPedestrianWindow(QMainWindow):
         self.pedestrianGrid.addWidget(
             QLabel("Covariance (\u03C3<sup>2</sup><sub>long</sub>, \u03C3<sup>2</sup><sub>lat</sub>) [m]"), 3, 0)
         self.pedestrianValue_covLong = QLineEdit()
-        self.pedestrianValue_covLong.setText(str(1.0))
+        self.pedestrianValue_covLong.setText(str(0.3))
         self.pedestrianValue_covLong.setMaximumWidth(100)
         self.pedestrianValue_covLat = QLineEdit()
-        self.pedestrianValue_covLat.setText(str(1.0))
+        self.pedestrianValue_covLat.setText(str(0.3))
         self.pedestrianValue_covLat.setMaximumWidth(100)
         self.pedestrianGrid.addWidget(self.pedestrianValue_covLong, 3, 1)
         self.pedestrianGrid.addWidget(self.pedestrianValue_covLat, 3, 2)
@@ -691,7 +691,7 @@ class HypothesisPedestrianWindow(QMainWindow):
 
         self.pedestrianGrid.addWidget(QLabel("Maximum distance [m]"), 2, 0)
         self.pedestrianDistanceValue = QLineEdit()
-        self.pedestrianDistanceValue.setText(str(5.0))
+        self.pedestrianDistanceValue.setText(str(3.0))
         self.pedestrianDistanceValue.setMaximumWidth(100)
         self.pedestrianGrid.addWidget(self.pedestrianDistanceValue, 2, 1)
 
@@ -709,7 +709,7 @@ class HypothesisPedestrianWindow(QMainWindow):
 
         self.pedestrianGrid.addWidget(QLabel("Other appear rate"), 5, 0)
         self.pedesMinAppearValue = QLineEdit()
-        self.pedesMinAppearValue.setText(str(0.2))
+        self.pedesMinAppearValue.setText(str(0.05))
         self.pedesMinAppearValue.setMaximumWidth(100)
         self.pedestrianGrid.addWidget(self.pedesMinAppearValue, 5, 1)
 
@@ -723,7 +723,7 @@ class HypothesisPedestrianWindow(QMainWindow):
 
         self.eventModelGrid.addWidget(QLabel("Max event rate"), 0, 0)
         self.maxEventValue = QLineEdit()
-        self.maxEventValue.setText(str(2.0))
+        self.maxEventValue.setText(str(1.0))
         self.maxEventValue.setMaximumWidth(100)
         self.eventModelGrid.addWidget(self.maxEventValue, 0, 1)
 
@@ -779,7 +779,7 @@ class HypothesisPedestrianWindow(QMainWindow):
         self.sigEventGrid.addWidget(QLabel("Beta"), 0, 0)
         self.sigEventBetaValue = QLineEdit()
         self.sigEventBetaValue.setMaximumWidth(100)
-        self.sigEventBetaValue.setText(str(10))
+        self.sigEventBetaValue.setText(str(1.3))
         self.sigEventGrid.addWidget(self.sigEventBetaValue, 0, 1)
         self.sigEventBox.setLayout(self.sigEventGrid)
 
@@ -796,7 +796,7 @@ class HypothesisPedestrianWindow(QMainWindow):
 
         self.severityModelGrid.addWidget(QLabel("Velocity threshold"), 1, 0)
         self.severityVelocityThresholdValue = QLineEdit()
-        self.severityVelocityThresholdValue.setText(str(5.0))
+        self.severityVelocityThresholdValue.setText(str(6.0))
         self.severityVelocityThresholdValue.setMaximumWidth(100)
         self.severityModelGrid.addWidget(self.severityVelocityThresholdValue, 1, 1)
 
@@ -843,12 +843,12 @@ class HypothesisPedestrianWindow(QMainWindow):
         self.gompertzSeverityGrid.addWidget(QLabel("Max severity"), 0, 0)
         self.gompertzSeverityMaxValue = QLineEdit()
         self.gompertzSeverityMaxValue.setMaximumWidth(100)
-        self.gompertzSeverityMaxValue.setText(str(5.0))
+        self.gompertzSeverityMaxValue.setText(str(2.0))
         self.gompertzSeverityGrid.addWidget(self.gompertzSeverityMaxValue, 0, 1)
         self.gompertzSeverityGrid.addWidget(QLabel("Beta"), 1, 0)
         self.gompertzSeverityBetaValue = QLineEdit()
         self.gompertzSeverityBetaValue.setMaximumWidth(100)
-        self.gompertzSeverityBetaValue.setText(str(4.0))
+        self.gompertzSeverityBetaValue.setText(str(5.0))
         self.gompertzSeverityGrid.addWidget(self.gompertzSeverityBetaValue, 1, 1)
         self.gompertzSeverityBox.setLayout(self.gompertzSeverityGrid)
 
@@ -857,7 +857,7 @@ class HypothesisPedestrianWindow(QMainWindow):
         self.sigSeverityGrid.addWidget(QLabel("Max severity"), 0, 0)
         self.sigSeverityMaxValue = QLineEdit()
         self.sigSeverityMaxValue.setMaximumWidth(100)
-        self.sigSeverityMaxValue.setText(str(5.0))
+        self.sigSeverityMaxValue.setText(str(2.0))
         self.sigSeverityGrid.addWidget(self.sigSeverityMaxValue, 0, 1)
         self.sigSeverityGrid.addWidget(QLabel("Beta"), 1, 0)
         self.sigSeverityBetaValue = QLineEdit()
@@ -919,17 +919,17 @@ class HypothesisVehicleWindow(QMainWindow):
 
         self.vehicleGrid.addWidget(QLabel("Longtitude velocity [m/s]"), 0, 0)
         self.vehicleVxValue = QLineEdit()
-        self.vehicleVxValue.setText(str(10.0))
+        self.vehicleVxValue.setText(str(8.0))
         self.vehicleVxValue.setMaximumWidth(100)
         self.vehicleGrid.addWidget(self.vehicleVxValue, 0, 1)
 
         self.vehicleGrid.addWidget(
             QLabel("Covariance (\u03C3<sup>2</sup><sub>long</sub>, \u03C3<sup>2</sup><sub>lat</sub>) [m]"), 1, 0)
         self.vehicleValue_covLong = QLineEdit()
-        self.vehicleValue_covLong.setText(str(1.0))
+        self.vehicleValue_covLong.setText(str(4.0))
         self.vehicleValue_covLong.setMaximumWidth(100)
         self.vehicleValue_covLat = QLineEdit()
-        self.vehicleValue_covLat.setText(str(0.5))
+        self.vehicleValue_covLat.setText(str(1.0))
         self.vehicleValue_covLat.setMaximumWidth(100)
         self.vehicleGrid.addWidget(self.vehicleValue_covLong, 1, 1)
         self.vehicleGrid.addWidget(self.vehicleValue_covLat, 1, 2)
@@ -1006,7 +1006,7 @@ class HypothesisVehicleWindow(QMainWindow):
         self.sigEventGrid.addWidget(QLabel("Beta"), 0, 0)
         self.sigEventBetaValue = QLineEdit()
         self.sigEventBetaValue.setMaximumWidth(100)
-        self.sigEventBetaValue.setText(str(10.0))
+        self.sigEventBetaValue.setText(str(1.0))
         self.sigEventGrid.addWidget(self.sigEventBetaValue, 0, 1)
         self.sigEventBox.setLayout(self.sigEventGrid)
 
@@ -1023,7 +1023,7 @@ class HypothesisVehicleWindow(QMainWindow):
 
         self.severityModelGrid.addWidget(QLabel("Velocity threshold"), 1, 0)
         self.severityVelocityThresholdValue = QLineEdit()
-        self.severityVelocityThresholdValue.setText(str(10.0))
+        self.severityVelocityThresholdValue.setText(str(8.0))
         self.severityVelocityThresholdValue.setMaximumWidth(100)
         self.severityModelGrid.addWidget(self.severityVelocityThresholdValue, 1, 1)
 
@@ -1063,12 +1063,12 @@ class HypothesisVehicleWindow(QMainWindow):
         self.sigSeverityGrid.addWidget(QLabel("Max severity"), 0, 0)
         self.sigSeverityMaxValue = QLineEdit()
         self.sigSeverityMaxValue.setMaximumWidth(100)
-        self.sigSeverityMaxValue.setText(str(5.0))
+        self.sigSeverityMaxValue.setText(str(2.0))
         self.sigSeverityGrid.addWidget(self.sigSeverityMaxValue, 0, 1)
         self.sigSeverityGrid.addWidget(QLabel("Beta"), 1, 0)
         self.sigSeverityBetaValue = QLineEdit()
         self.sigSeverityBetaValue.setMaximumWidth(100)
-        self.sigSeverityBetaValue.setText(str(3.0))
+        self.sigSeverityBetaValue.setText(str(1.0))
         self.sigSeverityGrid.addWidget(self.sigSeverityBetaValue, 1, 1)
         self.sigSeverityBox.setLayout(self.sigSeverityGrid)
 
@@ -1119,13 +1119,13 @@ class RiskModelWindow(QMainWindow):
 
         self.eventModelGrid.addWidget(QLabel("Max event rate"), 0, 0)
         self.maxEventValue = QLineEdit()
-        self.maxEventValue.setText(str(10.0))
+        self.maxEventValue.setText(str(3.0))
         self.maxEventValue.setMaximumWidth(100)
         self.eventModelGrid.addWidget(self.maxEventValue, 0, 1)
 
         self.eventModelGrid.addWidget(QLabel("Minimum event rate for brake"), 1, 0)
         self.minEventBreakValue = QLineEdit()
-        self.minEventBreakValue.setText(str(5.0))
+        self.minEventBreakValue.setText(str(2.0))
         self.minEventBreakValue.setMaximumWidth(100)
         self.eventModelGrid.addWidget(self.minEventBreakValue, 1, 1)
 
@@ -1178,7 +1178,7 @@ class RiskModelWindow(QMainWindow):
         self.expEventGrid.addWidget(QLabel("Beta"), 0, 0)
         self.expEventBetaValue = QLineEdit()
         self.expEventBetaValue.setMaximumWidth(100)
-        self.expEventBetaValue.setText(str(3.0))
+        self.expEventBetaValue.setText(str(7.0))
         self.expEventGrid.addWidget(self.expEventBetaValue, 0, 1)
         self.expEventBox.setLayout(self.expEventGrid)
 
@@ -1198,7 +1198,7 @@ class RiskModelWindow(QMainWindow):
 
         self.severityModelGrid.addWidget(QLabel("Minimum weight"), 0, 0)
         self.minSeverityValue = QLineEdit()
-        self.minSeverityValue.setText(str(5.0))
+        self.minSeverityValue.setText(str(10.0))
         self.minSeverityValue.setMaximumWidth(100)
         self.severityModelGrid.addWidget(self.minSeverityValue, 0, 1)
 
@@ -1244,7 +1244,7 @@ class RiskModelWindow(QMainWindow):
         self.sigSeverityGrid.addWidget(QLabel("Max severity"), 0, 0)
         self.sigSeverityMaxValue = QLineEdit()
         self.sigSeverityMaxValue.setMaximumWidth(100)
-        self.sigSeverityMaxValue.setText(str(5.0))
+        self.sigSeverityMaxValue.setText(str(10.0))
         self.sigSeverityGrid.addWidget(self.sigSeverityMaxValue, 0, 1)
         self.sigSeverityGrid.addWidget(QLabel("Beta"), 1, 0)
         self.sigSeverityBetaValue = QLineEdit()
@@ -1312,7 +1312,7 @@ class FovUtilityModelWindow(QMainWindow):
         self.utilityParameterGrid.addWidget(QLabel("Comfort weight"), 2, 0)
         self.comfortWeightValue = QLineEdit()
         self.comfortWeightValue.setMaximumWidth(100)
-        self.comfortWeightValue.setText(str(0.005))
+        self.comfortWeightValue.setText(str(0.001))
         self.utilityParameterGrid.addWidget(self.comfortWeightValue, 2, 1)
 
         self.utilityParameterGrid.addWidget(QLabel("Jerk weight [s]"), 3, 0)
@@ -1333,7 +1333,7 @@ class FovUtilityModelWindow(QMainWindow):
         self.fovGrid.addWidget(QLabel("Maximum event rate"), 0, 0)
         self.maxEventValue = QLineEdit()
         self.maxEventValue .setMaximumWidth(100)
-        self.maxEventValue .setText(str(1.0))
+        self.maxEventValue .setText(str(0.1))
         self.fovGrid.addWidget(self.maxEventValue, 0, 1)
 
         self.fovGrid.addWidget(QLabel("Event rate beta"), 1, 0)
@@ -1345,13 +1345,13 @@ class FovUtilityModelWindow(QMainWindow):
         self.fovGrid.addWidget(QLabel("Minimum severity"), 2, 0)
         self.severityValue = QLineEdit()
         self.severityValue.setMaximumWidth(100)
-        self.severityValue.setText(str(1.0))
+        self.severityValue.setText(str(0.5))
         self.fovGrid.addWidget(self.severityValue, 2, 1)
 
         self.fovGrid.addWidget(QLabel("Quadratic severity weight"), 3, 0)
         self.severityWeightValue = QLineEdit()
         self.severityWeightValue.setMaximumWidth(100)
-        self.severityWeightValue.setText(str(0.5))
+        self.severityWeightValue.setText(str(0.05))
         self.fovGrid.addWidget(self.severityWeightValue, 3, 1)
 
         self.fovBox.setLayout(self.fovGrid)
@@ -1365,7 +1365,7 @@ class FovUtilityModelWindow(QMainWindow):
         self.brakeParameterGrid.addWidget(QLabel("Minimum distance [m]"), 0, 0)
         self.dBrakeValue = QLineEdit()
         self.dBrakeValue.setMaximumWidth(100)
-        self.dBrakeValue.setText(str(1.0))
+        self.dBrakeValue.setText(str(1.5))
         self.brakeParameterGrid.addWidget(self.dBrakeValue, 0, 1)
 
         self.brakeParameterGrid.addWidget(QLabel("Time brake delay [s]"), 1, 0)
@@ -1383,7 +1383,7 @@ class FovUtilityModelWindow(QMainWindow):
         self.brakeParameterGrid.addWidget(QLabel("Minimum vehicle collision to brake [%]"), 3, 0)
         self.minBrakeVehicleValue = QLineEdit()
         self.minBrakeVehicleValue.setMaximumWidth(100)
-        self.minBrakeVehicleValue.setText(str(0.5))
+        self.minBrakeVehicleValue.setText(str(0.3))
         self.brakeParameterGrid.addWidget(self.minBrakeVehicleValue, 3, 1)
 
         self.brakeParameterGrid.addWidget(QLabel("Minimum pedestrian collision to brake [%]"), 4, 0)

@@ -140,34 +140,6 @@ def minFOVAngle(pose, poly):
     return poly[min_vertex], min_angle
 
 
-def distanceToMergePoint(pose, poly, dThres=1):
-    """
-    EGO ------------------------ MP
-         `  alpha/               ^
-            `   /                |
-                `                |
-     o-------------`o <--dThres->| visibleDistance
-     |   obstacle   |  `         |
-     |   polygon    |      `     |
-     o--------------o          ` V
-    """
-    randVertex, alpha = minFOVAngle(
-        x_m=pose.x_m,
-        y_m=pose.y_m,
-        yaw_rad=pose.yaw_rad,
-        poly=poly
-        )
-    if alpha is None:
-        return None, None, None, None
-    else:
-        dS = np.sqrt((randVertex[0]-pose.x_m)**2 + (randVertex[1]-pose.y_m)**2)
-        heading = np.array([math.cos(pose.yaw_rad), math.sin(pose.yaw_rad)])
-        dToMergePoint = dS * math.cos(alpha) + dThres
-        MP = heading * dToMergePoint + np.array([pose.x_m, pose.y_m])
-        visibleDistance = dToMergePoint * np.tan(alpha)
-    return dToMergePoint, MP, visibleDistance, randVertex
-
-
 def perp(a):
     b = np.empty_like(a)
     b[0] = -a[1]
@@ -301,57 +273,3 @@ def doIntersect(p1, q1, p2, q2):
     # If none of the cases
     return False
 
-
-# ---------------------- BACK UP FUNCTIONS -----------------------------
-
-
-def computeAccToStop(from_x_m, from_y_m, to_x_m, to_y_m, vx_ms):
-    s = np.sqrt((from_x_m-to_x_m)**2 + (from_y_m-to_y_m)**2)
-    return - 0.5 * vx_ms**2 / s
-
-
-def updatePoseTurn(lastPose, u_in, nextTimestamp_s, _dT=param._dT):
-    """
-    Update vehicle pose with given longtitude acceleration and timestamp
-    Args:
-        lastPose: current pose
-        u_in: acceleration as model input
-        nextTimestamp_s: next timestamp
-    Return:
-        l_pose(timestamp, pose): discreted pose list to given timestamp
-        l_u(timestamp, u): input list to given timestamp
-    """
-    assert nextTimestamp_s > lastPose.timestamp_s
-
-    step = int((nextTimestamp_s - lastPose.timestamp_s)/_dT)
-    vx = lastPose.vdy.vx_ms
-    dyaw = lastPose.vdy.dyaw_rads
-    l_pose = {}
-    for i in range(1, step+1, 1):
-        dT = i * _dT
-        current_vx = vx + u_in * (dT - _dT)
-        current_yaw_rad = lastPose.yaw_rad + (dT - _dT) * dyaw
-        if abs(dyaw) < 0.0001:
-            dX = current_vx * dT * math.cos(current_yaw_rad)
-            dY = current_vx * dT * math.sin(current_yaw_rad)
-        else:
-            dX = (current_vx / dyaw) * math.sin(dyaw*dT + current_yaw_rad) \
-                - (current_vx / dyaw) * math.sin(current_yaw_rad)
-            dY = (-current_vx / dyaw) * math.cos(dyaw*dT + current_yaw_rad) \
-                + (current_vx / dyaw) * math.cos(current_yaw_rad)
-        next_vdy = VehicleDynamic(current_vx, dyaw)
-        # update covariance matrix from the nearest pose
-        next_covLatLong = 0
-        if not l_pose:
-            next_covLatLong = updateCovLatlong(lastPose.covLatLong,
-                                               _dT, current_vx * dT, 0)
-        else:
-            nearestPose = l_pose[max(l_pose)]
-            next_covLatLong = updateCovLatlong(nearestPose.covLatLong,
-                                               _dT, current_vx * dT, 0)
-        nextPose = Pose(x_m=lastPose.x_m + dX, y_m=lastPose.y_m + dY,
-                        yaw_rad=lastPose.yaw_rad + dyaw*dT, vdy=next_vdy,
-                        covLatLong=next_covLatLong,
-                        timestamp_s=lastPose.timestamp_s + dT)
-        l_pose[lastPose.timestamp_s + dT] = nextPose
-    return l_pose

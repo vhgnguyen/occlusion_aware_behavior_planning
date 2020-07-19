@@ -4,7 +4,7 @@
 _ENABLE_HYPOTHESIS = True
 _ENABLE_AWARENESS_RATE = True
 _ENABLE_FOV_AWARE = True
-_AWARENESS_DISTANCE = 3
+_AWARENESS_DISTANCE = 2
 
 # ------------------------------
 # Discreted time interval
@@ -32,16 +32,16 @@ _A_MAX = 3
 _A_MIN = -3
 _A_MAX_BRAKE = -8.0
 # safe brake
-_D_BRAKE_MIN = 2.5
+_D_BRAKE_MIN = 1.5
 _T_BRAKE = 1
 _T_BRAKE_DELAY = 0.5
 _MIN_COL_BRAKE_VEHICLE = 0.3
 _MIN_COL_BRAKE_PEDESTRIAN = 0.3
 # jerk
 _J_MAX_BRAKE_S = 20
-_J_MAX_BRAKE = _J_MAX_BRAKE_S * _PREDICT_STEP
-_J_MAX_S = 3
-_J_MAX = _J_MAX_S * _PREDICT_STEP
+_J_MAX_BRAKE = _J_MAX_BRAKE_S * _PREDICT_STEP  # pro step
+_J_MAX_S = 4
+_J_MAX = _J_MAX_S * _PREDICT_STEP # pro step
 # velocity uncertainty
 _ALPHA_V_LONG = 0.5
 _ALPHA_V_LAT = 0.05
@@ -59,7 +59,7 @@ _COLLISION_SEVERITY_MODEL = 'sigmoid'
 _SEVERITY_QUAD_WEIGHT = 0.10
 # sigmoid model
 _SEVERITY_SIG_MAX = 10.
-_SEVERITY_SIG_AVG_VX = 5.
+_SEVERITY_SIG_AVG_VX = 8.
 _SEVERITY_SIG_AVG_VX_PEDES = 5.
 _SEVERITY_SIG_B = 1.
 # gompertz model
@@ -72,7 +72,7 @@ _SEVERITY_GOM_BETA = 4.
 _COLLISION_RATE_MAX = 3.
 _COLLISION_EVENT_RATE_MODEL = 'exponential'
 # exponential model
-_COLLISION_RATE_EXP_BETA = 3.
+_COLLISION_RATE_EXP_BETA = 7.
 _COLLISION_RATE_EXP_BETA_PEDES = 3.
 # sigmoid model
 _COLLISION_RATE_SIG_BETA = 10.
@@ -82,9 +82,9 @@ _ESCAPE_RATE = 1
 
 # --- Utility weight -----------
 _C_CRUISE = 0.001
-_C_V_CRUISE = 15
+_C_V_CRUISE = 8
 _C_COMFORT = 0.001
-_C_JERK = 0.01
+_C_JERK = 0.005
 
 # ------------------------------
 # Hypothesis pedestrian model
@@ -101,7 +101,7 @@ _HYPOPEDES_VX = 2.0
 _PEDES_APPEAR_RATE_CROSS = 1
 _PEDES_APPEAR_RATE_STREET = 0.2
 _PEDES_APPEAR_RATE_OTHER = 0.05
-_PEDES_OTHER_MIN_THRESHOLD = 3
+_PEDES_OTHER_MIN_THRESHOLD = 3  # meter
 # --- Event rate model ---------
 _EVENT_RATE_HYPOPEDES_MODEL = 'sigmoid'
 _EVENT_RATE_HYPOPEDES_EXP_BETA = 1.0

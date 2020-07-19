@@ -11,32 +11,23 @@ import _param as param
 
 class EgoVehicle:
     """
-    Class define vehicle properties
-    Params:
-        _idx: vehicle index
-        _u: current acceleration [m/s2] as input
-        _p_pose(timestamp: pose): future path along the prediction horizon
-        _p_u: predicted acceleration input along the prediction horizon
-        _p_col_cost(timestamp, col_rate, col_risk): along prediction
-        _l_pose(timestamp: pose): traveled poses list
-        _l_u(timestamp: u): recorded input during travel
-        _is_moving: if vehicle is started or not
+    Class define ego vehicle
     """
 
     def __init__(self, length, width, env, startPose, u_in):
         self._length = length
         self._width = width
-        self._lw_std = np.array([self._length/2, self._width/2])
+        self._lw_std = np.array([self._length/2, self._width/2])  # std + vehicle shape
         self._isStarted = False
 
         # prediction params
         self._p_u = None
-        self._p_pose = {}
-        self._p_eventRate = {}
+        self._p_pose = {}  # predicted poses in each step
+        self._p_eventRate = {}  # predicted event rate in each step
 
         # current state
         self._currentPose = startPose
-        self._u = u_in
+        self._u = u_in  # control input - acceleration
 
         # optimization state machine
         self._stopState = False
@@ -45,17 +36,16 @@ class EgoVehicle:
         self._emergencyState = False
 
         # emergency brake
-        self._minColValue = 0
-        self._TTB = 0
-        self._brake = False
-        self._brakeAcc = []
-        self._safeV = startPose.vdy.vx_ms
+        self._minColValue = 0  # max collision probability in prediction
+        self._TTB = 0  # time to brake
+        self._brake = False  # brake signal
+        self._safeV = startPose.vdy.vx_ms  # current safe velocity
 
         # environment information
-        self._env = env
-        self._fov = None
-        self._fovRange = None
-        self._l_currentObject = {}
+        self._env = env  # environment 
+        self._fov = None  # FOV polygon
+        self._fovRange = None  # FOV range
+        self._l_currentObject = {}  # feedback from environment
 
         # record
         self._l_u = {startPose.timestamp_s: u_in}
@@ -126,7 +116,7 @@ class EgoVehicle:
         self._l_currentObject = self._env.getCurrentObjectList()
         self._fov, self._fovRange = self._env.getFOV()
 
-        # get FOV distance of obstacle
+        # for portget FOV distance of obstacle
         fovDistance = self._l_currentObject['fovDistance']
         minD = self._fovRange
         for k in fovDistance:
@@ -444,6 +434,7 @@ class EgoVehicle:
         return np.sqrt(-2*aBrake*d) + aBrake*delay
 
     def _move(self, dT=param._dT):
+        # move to new pose
         lastPose = self.getCurrentPose()
         nextTimestamp_s = round(lastPose.timestamp_s + dT, 2)
         if self._p_u is None:
@@ -451,6 +442,7 @@ class EgoVehicle:
         nextPose = pfnc.updatePose(
             lastPose=lastPose, u_in=self._p_u, dT=dT)
 
+        # store data
         jerk = (self._p_u - self._u) / dT
         self._u = self._p_u
         self._currentPose = nextPose
@@ -459,6 +451,7 @@ class EgoVehicle:
         self._l_u.update({nextTimestamp_s: self._u})
         self._l_jerk.update({nextTimestamp_s: jerk})
 
+        # update state machine
         if self.getCurrentPose().vdy.vx_ms == 0:
             self._toStopState()
             self._u = 0
@@ -479,6 +472,8 @@ class EgoVehicle:
                 bounds=(-param._J_MAX, param._J_MAX), method='bounded',
                 options={"maxiter": 5}
                 ).x
+
+            # check for collision
             self._brake, self._minColValue = self._l_opt[round(val, 3)]
             if self._brake or self._minColValue > 0.1:
                 self._p_u = 0
@@ -502,6 +497,7 @@ class EgoVehicle:
                 options={"maxiter": 5}
                 ).x
 
+            # check for collision
             self._brake, self._minColValue = self._l_opt[round(val, 3)]
             if self._brake or self._minColValue > 0.1:
                 self._toEmergencyState()
@@ -523,6 +519,7 @@ class EgoVehicle:
                 options={"maxiter": 5}
                 ).x
 
+            # check for collision
             self._brake, self._minColValue = self._l_opt[round(val, 3)]
             if self._brake:
                 self._toEmergencyState()
@@ -604,25 +601,6 @@ class EgoVehicle:
         return l_p
 
     # ------------------- Export function ---------------------
-
-    def collision(self, obj):
-        k = self.getCurrentTimestamp()
-        egoPose = self.getCurrentPose()
-        egoPoly = self.getCurrentPoly()
-        if obj.getCurrentTimestamp() != k:
-            return False, 0
-        if egoPose.vdy.vx_ms < 1:
-            return False, 0
-        oPose = obj.getCurrentPose()
-        oPoly = obj.getCurrentPoly()
-        pcol = rfnc.collisionIndicator(
-            egoPose=egoPose, egoPoly=egoPoly,
-            objPose=oPose, objPoly=oPoly)
-        if pcol < 0.7:
-            return False, 0
-        else:
-            severity = np.linalg.norm(egoPose.vxUtm-oPose.vxUtm)
-            return True, severity
 
     def getComfortScore(self):
         sum_u = 0
@@ -723,79 +701,6 @@ class EgoVehicle:
             ax.set_ylabel("Jerk [$m/s^3$]")
             ax.set_ylim(-10, 10)
         ax.legend()
-
+    
     def plotPassedCost(self):
-        l_cost = self._getPassedCost()
-        survival = np.exp(- np.cumsum(l_cost[:, 2]) * param._PREDICT_STEP)
-        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(21, 6))
-        ax[0].plot(l_cost[:, 0], l_cost[:, 1], 'k-', label='collision risk')
-        ax[1].plot(l_cost[:, 0], l_cost[:, 2], 'b-', label='collision rate')
-        ax[2].set_ylim(-0.2, 1.2)
-        ax[2].plot(l_cost[:, 0], survival, 'r-', label='survival rate')
-        for a in ax:
-            a.legend()
-        plt.show()
-
-    def _getPassedCost(self):
-        l_cost = np.empty((0, 3))
-
-        """
-        Compute cost for all passed trajectory to recorded environment
-        Return:
-            l_cost(timestamp: cost)
-        """
-        for k in self._l_pose:
-            total_risk = 0
-            total_rate = 0
-
-            egoPose = self._l_pose[k]
-            egoPoly = self.getPoly(k)
-            l_obj = self._env.updateAt(egoPose, k, self._l_u[k],
-                                       radius=param._SCAN_RADIUS,
-                                       hypothesis=param._ENABLE_HYPOTHESIS)
-
-            for veh in l_obj['vehicle']:
-                vehPose = veh.getPoseAt(k)
-                vehPoly = veh.getPoly(k)
-                vcol_indicator = rfnc.collisionIndicator(
-                    egoPose=egoPose, egoPoly=egoPoly,
-                    objPose=vehPose, objPoly=vehPoly)
-
-                vcol_rate = rfnc.collisionEventRate(
-                    collisionIndicator=vcol_indicator)
-
-                vcol_severity = rfnc.collisionEventSeverity(
-                    ego_vx=egoPose.vdy.vx_ms, obj_vx=vehPose.vdy.vx_ms)
-
-                vcol_risk = rfnc.collisionRisk(
-                    col_severity=vcol_severity,
-                    col_rate=vcol_rate)
-
-                total_rate += vcol_rate
-                total_risk += vcol_risk
-
-            for veh in l_obj['pedestrian']:
-                vehPose = veh.getPoseAt(k)
-                vehPoly = veh.getPoly(k)
-                vcol_indicator = rfnc.collisionIndicator(
-                    egoPose=egoPose, egoPoly=egoPoly,
-                    objPose=vehPose, objPoly=vehPoly)
-
-                vcol_rate = rfnc.collisionEventRate(
-                    collisionIndicator=vcol_indicator)
-
-                vcol_severity = rfnc.collisionEventSeverity(
-                    ego_vx=egoPose.vdy.vx_ms, obj_vx=vehPose.vdy.vx_ms)
-
-                vcol_risk = rfnc.collisionRisk(
-                    col_severity=vcol_severity,
-                    col_rate=vcol_rate)
-
-                total_rate += vcol_rate
-                total_risk += vcol_risk
-
-            l_cost = np.append(
-                l_cost, np.array([[k, total_risk, total_rate]]), axis=0)
-        return l_cost
-
-    # ------------------- Backup function ---------------------
+        return
