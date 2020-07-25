@@ -409,31 +409,31 @@ class Environment(object):
         # save FOV visibility
         l_fov_d = [fov_cross, fov_str_l, fov_str_r, D2MP_cross, D2MP_ll, D2MP_rl]
 
-        if crossPedes:
-            return l_fov_d, hasHypo
-        startPos = randVertex + p2r_norm * dThres
-        d = np.linalg.norm(startPos - MP)
-        if d < pDistanceThres:
-            heading = MP - startPos
-            heading /= np.linalg.norm(heading)
-            startPos -= heading
-            if not pfnc.inPolyPoint(startPos, fov_poly):
-                if objectVehicle:
-                    hypoPedes = Pedestrian(
-                        idx=99, from_x_m=startPos[0], from_y_m=startPos[1],
-                        to_x_m=MP[0], to_y_m=MP[1],
-                        covLong=pCovLon, covLat=pCovLat, vx_ms=pVx,
-                        startTime=pose.timestamp_s, appearRate=pStreetRate,
-                        interactRate=interactRate)
-                    self._l_hypoPedes.append(hypoPedes)
-                else:
-                    hypoPedes = Pedestrian(
-                        idx=99, from_x_m=startPos[0], from_y_m=startPos[1],
-                        to_x_m=MP[0], to_y_m=MP[1],
-                        covLong=pCovLon, covLat=pCovLat, vx_ms=pVx,
-                        startTime=pose.timestamp_s, appearRate=pOtherRate,
-                        interactRate=interactRate)
-                    self._l_hypoPedes.append(hypoPedes)
+        # if crossPedes:
+        #     return l_fov_d, hasHypo
+        # startPos = randVertex + p2r_norm * dThres
+        # d = np.linalg.norm(startPos - MP)
+        # if d < pDistanceThres:
+        #     heading = MP - startPos
+        #     heading /= np.linalg.norm(heading)
+        #     startPos -= heading
+        #     if not pfnc.inPolyPoint(startPos, fov_poly):
+        #         if objectVehicle:
+        #             hypoPedes = Pedestrian(
+        #                 idx=99, from_x_m=startPos[0], from_y_m=startPos[1],
+        #                 to_x_m=MP[0], to_y_m=MP[1],
+        #                 covLong=pCovLon, covLat=pCovLat, vx_ms=pVx,
+        #                 startTime=pose.timestamp_s, appearRate=pStreetRate,
+        #                 interactRate=interactRate)
+        #             self._l_hypoPedes.append(hypoPedes)
+        #         else:
+        #             hypoPedes = Pedestrian(
+        #                 idx=99, from_x_m=startPos[0], from_y_m=startPos[1],
+        #                 to_x_m=MP[0], to_y_m=MP[1],
+        #                 covLong=pCovLon, covLat=pCovLat, vx_ms=pVx,
+        #                 startTime=pose.timestamp_s, appearRate=pOtherRate,
+        #                 interactRate=interactRate)
+        #             self._l_hypoPedes.append(hypoPedes)
 
         return l_fov_d, hasHypo
 

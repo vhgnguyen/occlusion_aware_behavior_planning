@@ -3,11 +3,12 @@ import math
 from shapely.geometry import Polygon, Point
 from scipy.spatial import Delaunay
 
+from path import Path
 from pose import Pose, VehicleDynamic
 import _param as param
 
 
-def updatePose(lastPose, u_in, dT, updateCov=False):
+def updatePose(lastPose, u_in, dT, updateCov=False, path=None):
     vx = lastPose.vdy.vx_ms
     nextVDY = VehicleDynamic(vx + u_in * dT, 0)
     nextTimestamp_s = round(lastPose.timestamp_s + dT, 2)
@@ -25,14 +26,21 @@ def updatePose(lastPose, u_in, dT, updateCov=False):
     else:
         next_covLatLong = lastPose.covLatLong
 
-    nextPose = Pose(x_m=lastPose.x_m + dX, y_m=lastPose.y_m + dY,
-                    yaw_rad=lastPose.yaw_rad, vdy=nextVDY,
-                    covLatLong=next_covLatLong, timestamp_s=nextTimestamp_s)
+    if not param._TEST or path is None:
+        nextPose = Pose(x_m=lastPose.x_m + dX, y_m=lastPose.y_m + dY,
+                        yaw_rad=lastPose.yaw_rad, vdy=nextVDY,
+                        covLatLong=next_covLatLong, timestamp_s=nextTimestamp_s)
+    else:
+        ix, iy, iyaw = path.getDs(dP)
+        nextPose = Pose(x_m=ix, y_m=iy,
+                        yaw_rad=iyaw, vdy=nextVDY,
+                        covLatLong=next_covLatLong, timestamp_s=nextTimestamp_s)
+        path.updateDs(dP)
 
     return nextPose
 
 
-def updatePoseList(lastPose, u_in, nextTimestamp_s, dT):
+def updatePoseList(lastPose, u_in, nextTimestamp_s, dT, path=None):
     """
     Update vehicle pose with given longtitude acceleration and timestamp
     Args:
@@ -72,11 +80,17 @@ def updatePoseList(lastPose, u_in, nextTimestamp_s, dT):
                                         lastPose.y_m+dY-nearestPose.y_m])
             next_covLatLong = updateCovLatlong(nearestPose.covLatLong,
                                                dT, dPNearest, 0)
-
-        nextPose = Pose(x_m=lastPose.x_m + dX, y_m=lastPose.y_m + dY,
-                        yaw_rad=lastPose.yaw_rad, vdy=next_vdy,
-                        covLatLong=next_covLatLong,
-                        timestamp_s=nextT)
+        
+        if param._TEST and path is not None:
+            ix, iy, iyaw = path.getDs(dP)
+            nextPose = Pose(x_m=ix, y_m=iy, yaw_rad=iyaw, vdy=next_vdy,
+                            covLatLong=next_covLatLong,
+                            timestamp_s=nextT)
+        else:
+            nextPose = Pose(x_m=lastPose.x_m + dX, y_m=lastPose.y_m + dY,
+                            yaw_rad=lastPose.yaw_rad, vdy=next_vdy,
+                            covLatLong=next_covLatLong,
+                            timestamp_s=nextT)
         l_pose[nextT] = nextPose
 
     return l_pose
@@ -106,6 +120,11 @@ def updateCovLatlong(lastCovLatLong, dT, dX, dY,
     covY = max(lastCovLatLong[1, 1] + y, 0)
 
     return np.diag([covX, covY])
+
+
+def computeAccToStop(from_x_m, from_y_m, to_x_m, to_y_m, vx_ms):
+    s = np.sqrt((from_x_m-to_x_m)**2 + (from_y_m-to_y_m)**2)
+    return - 0.5 * vx_ms**2 / s
 
 
 def rectangle(pose, length, width):

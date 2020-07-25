@@ -1,6 +1,7 @@
 from matplotlib.patches import Ellipse, Polygon
 from scipy import optimize
 from shapely.geometry import Polygon
+from path import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -24,6 +25,15 @@ class EgoVehicle:
         self._p_u = None
         self._p_pose = {}  # predicted poses in each step
         self._p_eventRate = {}  # predicted event rate in each step
+
+        self._path = Path()
+        self._path.setS(scenario=31)
+        self._path.setDs(ds=50)
+        if param._TEST:
+            ix, iy, iyaw = self._path.getCurrentDs()
+            startPose.x_m = ix
+            startPose.y_m = iy
+            startPose.yaw_rad = iyaw
 
         # current state
         self._currentPose = startPose
@@ -149,7 +159,7 @@ class EgoVehicle:
             lastPose=lastPose,
             u_in=u_in,
             nextTimestamp_s=lastPose.timestamp_s + predictTime,
-            dT=dT
+            dT=dT, path=self._path
             )
         self._p_u = u_in
 
@@ -440,7 +450,7 @@ class EgoVehicle:
         if self._p_u is None:
             self._p_u = self._u
         nextPose = pfnc.updatePose(
-            lastPose=lastPose, u_in=self._p_u, dT=dT)
+            lastPose=lastPose, u_in=self._p_u, dT=dT, path=self._path)
 
         # store data
         jerk = (self._p_u - self._u) / dT
@@ -542,8 +552,8 @@ class EgoVehicle:
             ).x
 
             self._p_u = self._u + (val - self._u) * dT / predictStep
-            if self._p_u < 0:
-                self._brakeAcc.append(abs(self._p_u))
+            # if self._p_u < 0:
+            #     self._brakeAcc.append(abs(self._p_u))
             self._move()
             return
 
@@ -584,6 +594,7 @@ class EgoVehicle:
         self._currentPose = firstPose
         self._toDefaultState()
         self._isStarted = False
+        self._path.setDs(ds=50)
 
     def exportPredictState(self):
         l_p = []
