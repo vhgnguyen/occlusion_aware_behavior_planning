@@ -1,3 +1,16 @@
+plotThesis/
+result/
+simulation/
+.vscode/
+test.py
+todo.txt
+/plotThesis
+interpolation.py
+/result
+src/test_triangle.py
+src/testcollision.py
+src/main.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -127,15 +140,3 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-plotThesis/
-result/
-simulation/
-.vscode/
-test.py
-todo.txt
-/plotThesis
-interpolation.py
-/result
-/src/test_triangle.py
-/src/testcollision.py
-src/main.py
