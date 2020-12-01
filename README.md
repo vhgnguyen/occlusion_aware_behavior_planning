@@ -7,7 +7,7 @@ This is my master thesis project `Risk-based behavior planning for occluded scen
 
 ## Demo
 <p align="left">
-  <img src="doc/videos/pedes.gif" width=200>
-  <img src="doc/videos/merge.gif" width=200>
-  <img src="doc/videos/cross.gif" width=200>
+  <img src="doc/videos/pedes.gif" width=200 />
+  <img src="doc/videos/merge.gif" width=200 />
+  <img src="doc/videos/cross.gif" width=200 />
 </p>
