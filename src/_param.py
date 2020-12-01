@@ -5,7 +5,7 @@ _ENABLE_HYPOTHESIS = True
 _ENABLE_AWARENESS_RATE = True
 _ENABLE_FOV_AWARE = False
 _AWARENESS_DISTANCE = 4
-_TEST = True
+_TEST = False
 
 # ------------------------------
 # Discreted time interval
