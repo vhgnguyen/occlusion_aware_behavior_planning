@@ -126,17 +126,16 @@ venv.bak/
 dmypy.json
 
 # Pyre type checker
-
 .pyre/
 plotThesis/
 result/
 simulation/
 .vscode/
 test.py
-.todo.txt
+todo.txt
 /plotThesis
 interpolation.py
 /result
-./src/test_triangle.py
-./src/testcollision.py
+/src/test_triangle.py
+/src/testcollision.py
 src/main.py
