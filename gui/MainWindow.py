@@ -20,7 +20,7 @@ class MainWindow(QMainWindow):
         self.plots_refresh_timer = None
 
         self.setMaximumSize(2000, 1100)
-        self.setMinimumSize(1800, 900)
+        self.setMinimumSize(2000, 1100)
         self.setWindowTitle("Risk Estimation GUI")
         self.widget = QWidget(self)
         self.setCentralWidget(self.widget)

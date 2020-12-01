@@ -43,7 +43,10 @@ def drawPoly(poly, color, alpha, fill=True):
     if fill:
         gl.glPolygonMode(gl.GL_FRONT, gl.GL_FILL)
     else:
+        gl.glLineStipple(1, 0xAAAA)
+        gl.glEnable(gl.GL_LINE_STIPPLE)
         gl.glPolygonMode(gl.GL_FRONT, gl.GL_LINE)
+        gl.glDisable(gl.GL_LINE_STIPPLE)
 
     if poly.shape[0] == 4:
         gl.glBegin(gl.GL_QUADS)
@@ -56,6 +59,7 @@ def drawPoly(poly, color, alpha, fill=True):
             gl.glVertex3f(p[0], p[1], 0)
         gl.glEnd()
     gl.glPolygonMode(gl.GL_FRONT, gl.GL_FILL)
+
 
 def drawHeading(poly, color, alpha, fill=True):
     if poly is None:
@@ -88,6 +92,16 @@ def drawLine(line, color, alpha, lineWidth, strip=False):
         gl.glEnd()
 
 
+def drawPoint(pt, color):
+    if pt is None or len(pt) == 0:
+        return
+    setColor(color=color, alpha=1)
+    gl.glBegin(gl.GL_POINTS)
+    for p in pt:
+        gl.glVertex2f(p[0], p[1])
+    gl.glEnd()
+
+
 """
     Matplotlib plot functions
 """
@@ -113,7 +127,7 @@ def plotPolygon(poly, facecolor, edgecolor, alpha, label=None, ax=plt,
 
 def plotEllipse(x, y, a, l, w,
                 facecolor, edgecolor, alpha, label=None, ax=plt):
-    e = Ellipse(xy=(x, y), width=l, height=w, angle=np.rad2deg(a), linewidth=0.5,
+    e = Ellipse(xy=(x, y), width=l, height=w, angle=np.rad2deg(a), linewidth=2,
                 edgecolor=edgecolor, facecolor=facecolor, alpha=alpha)
     ax.add_patch(e)
 
@@ -167,7 +181,7 @@ class PlotScene(object):
         self.plotEgoVehicle(ax=ax)
         self.plotPedestrian(ax=ax)
         self.plotVehicle(ax=ax)
-        self.plotTextBox(ax=ax)
+        # self.plotTextBox(ax=ax)
 
         # self.plotPriorSign(x=-20, y=-8, ax=ax, size=3)
         # self.plotPriorSign(x=20, y=8, ax=ax, size=3)
@@ -307,12 +321,12 @@ class PlotScene(object):
 
             if c['visible']:
                 plotPolygon(
-                    c['poly'], facecolor='gold', edgecolor='lime',
+                    c['poly'], facecolor='gold', edgecolor='k',
                     alpha=1, label="detected vehicle", ax=ax,
                     heading=True, hcolor='lime')
             else:
                 plotPolygon(
-                    c['poly'], facecolor='gold', edgecolor='r',
+                    c['poly'], facecolor='gold', edgecolor='k',
                     alpha=1, label="undetected vehicle", ax=ax,
                     heading=True, hcolor='r')
 
@@ -373,22 +387,29 @@ class PlotScene(object):
         if self.core._egoCar is None:
             return
         # plot ego vehicle 
+        path = np.asarray(self.core.getCurrentPath())
+        plotLine(path, ax=ax, color='cyan', linestyle='-', linewidth=20, alpha=0.2)
         if self.core._egoCar.isStarted():
             p = self.core.getPredictEgo()
             b = len(p)
             a = 0.7
             for i in range(0, b, int(b/6)):
                 pp = p[i]
-                a = max(a-self._dAlpha, 0.1)
+                a = max(a-self._dAlpha/2, 0.1)
                 pose = pp['pos']
                 lw = pp['std']
                 plotEllipse(
                     x=pose[0], y=pose[1], a=pose[2], l=lw[0]*2, w=lw[1]*2,
                     facecolor='cornflowerblue', edgecolor='b', alpha=a, ax=ax)
+        c = 'k'
+        if self.core.getCurrentAcceleration() > 0.3:
+            c = 'g'
+        if self.core.getCurrentAcceleration() < -0.3:
+            c = 'r'
         plotPolygon(
-            self.core.getCurrentEgoPoly(), facecolor='b', edgecolor='b',
+            self.core.getCurrentEgoPoly(), facecolor='b', edgecolor='k',
             alpha=1, label='ego vehicle', ax=ax,
-            heading=True, hcolor='k')
+            heading=True, hcolor=c)
 
     def plotPriorSign(self, x, y, ax, size=3):
         r1 = rectangle(x, y, size, size, np.pi/4)

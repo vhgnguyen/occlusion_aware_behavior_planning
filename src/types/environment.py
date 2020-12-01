@@ -365,7 +365,10 @@ class Environment(object):
             if ip_l is not None and ip_m is not None:
                 endPos = (ip_l + ip_m) / 2
                 startPos = endPos + lane_heading * 2 * dThres
-                # if not pfnc.inPolyPoint(startPos, fov_poly):
+                if objectVehicle:
+                    d = np.linalg.norm(l1_1 - endPos)
+                    if d < 5:
+                        continue
                 # checkCross1 = pfnc.seg_intersect(l1_1, l_vx, startPos, startPos-lane_heading1)
                 if pfnc.doIntersect(l1_1, l_vx, startPos, endPos-lane_heading1):
                     # FOV visibility
@@ -387,7 +390,10 @@ class Environment(object):
             if ip_r is not None and ip_m is not None:
                 endPos = (ip_r + ip_m) / 2
                 startPos = endPos - lane_heading * 2 * dThres
-                # if not pfnc.inPolyPoint(startPos, fov_poly):
+                if objectVehicle:
+                    d = np.linalg.norm(l1_1 - endPos)
+                    if d < 5:
+                        continue
                 # checkCross2 = pfnc.seg_intersect(l1_1, l_vx, startPos, startPos+lane_heading1)
                 if pfnc.doIntersect(l1_1, l_vx, startPos, endPos+lane_heading1):
                     # FOV visibility

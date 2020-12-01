@@ -122,6 +122,10 @@ def updateCovLatlong(lastCovLatLong, dT, dX, dY,
     return np.diag([covX, covY])
 
 
+def checkDistance(p1, p2, d):
+    return np.sqrt((p1.x_m-p2.x_m)**2+(p1.y_m-p2.y_m)**2) > d
+
+
 def computeAccToStop(from_x_m, from_y_m, to_x_m, to_y_m, vx_ms):
     s = np.sqrt((from_x_m-to_x_m)**2 + (from_y_m-to_y_m)**2)
     return - 0.5 * vx_ms**2 / s
@@ -154,7 +158,7 @@ def minFOVAngle(pose, poly):
         if angle < min_angle:
             min_angle = angle
             min_vertex = i
-    if min_angle >= np.pi:
+    if min_angle >= 2*np.pi:
         min_angle = None
     return poly[min_vertex], min_angle
 

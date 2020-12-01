@@ -122,6 +122,11 @@ class Core(object):
             return None
         return self._egoCar.getCurrentPoly()
 
+    def getCurrentPath(self):
+        if self._egoCar is None:
+            return None
+        return self._egoCar._path._pt
+
     def getPredictEgo(self):
         if self._egoCar is None:
             return None
@@ -148,17 +153,22 @@ class Core(object):
     def getCurrentVelocity(self):
         if self._egoCar is None:
             return None
-        return self._egoCar.getCurrentLongtitudeVelocity()
+        return round(self._egoCar.getCurrentLongtitudeVelocity(), 3)
 
     def getCurrentAcceleration(self):
         if self._egoCar is None:
             return None
-        return self._egoCar.getCurrentLongtitudeAcceleration()
+        return round(self._egoCar.getCurrentLongtitudeAcceleration(), 3)
 
     def getTravelDistance(self):
         if self._egoCar is None:
             return None
         return self._egoCar.getTravelDistance()
+    
+    def getCurrentState(self):
+        if self._egoCar is None:
+            return None
+        return self._egoCar.getCurrentState()
 
     # environment
 

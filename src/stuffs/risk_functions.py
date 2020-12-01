@@ -137,7 +137,7 @@ def collisionIndicatorComputeSimple(bound, dMean, dCov):
     # assert dCov.shape == (2, 2)
 
     # quick check for long distance
-    if (abs(dMean) > (abs(bound['max']) + np.diag(dCov))).all():
+    if (dMean > 10).all():
         return 0
     else:
         prob, _ = mvn.mvnun(bound['min'], bound['max'], dMean, dCov)
@@ -161,7 +161,7 @@ def collisionIndicatorCompute(poly, bound, dMean, dCov):
     # assert dCov.shape == (2, 2)
 
     # quick check for long distance
-    if (abs(dMean) > (abs(bound['max']) + np.diag(dCov))).all():
+    if (dMean > 10).all():
         return 0
     else:
         return gaussian.polyIntegratePdf(poly, dMean, dCov)

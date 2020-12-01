@@ -27,13 +27,16 @@ class EgoVehicle:
         self._p_eventRate = {}  # predicted event rate in each step
 
         self._path = Path()
-        self._path.setS(scenario=31)
-        self._path.setDs(ds=50)
+
         if param._TEST:
+            self._path.setS(scenario=31)
+            self._path.setDs(ds=50)
             ix, iy, iyaw = self._path.getCurrentDs()
             startPose.x_m = ix
             startPose.y_m = iy
             startPose.yaw_rad = iyaw
+        else:
+            self._path.setStraightPath(startPose)
 
         # current state
         self._currentPose = startPose
@@ -135,6 +138,8 @@ class EgoVehicle:
             if len(d) > 0:
                 tmp_D = min(d)
                 minD = min(tmp_D, minD, self._fovRange)
+        if len(self._l_currentObject['hypoVehicle']) == 0:
+            minD = 50
         self._l_fov.update({self.getCurrentTimestamp(): fovDistance})
         safeV = self._computeSafeVelocity(
             d=minD, aBrake=param._A_MAX_BRAKE,
@@ -235,6 +240,8 @@ class EgoVehicle:
             vehPose, vehPoly = veh.getPredictAt(timestamp_s)
             if vehPose is None:
                 continue
+            if pfnc.checkDistance(egoPose, vehPose, 10):
+                continue
             vcol_indicator = rfnc.collisionIndicator(
                 egoPose=egoPose, egoPoly=egoPoly,
                 objPose=vehPose, objPoly=vehPoly)
@@ -265,6 +272,8 @@ class EgoVehicle:
         for pedes in l_obj['pedestrian']:
             pPose, pPoly = pedes.getPredictAt(timestamp_s)
             if pPose is None:
+                continue
+            if pfnc.checkDistance(egoPose, pPose, 10):
                 continue
             pcol_indicator = rfnc.collisionIndicator(
                 egoPose=egoPose, egoPoly=egoPoly,
@@ -298,6 +307,8 @@ class EgoVehicle:
             for hypoPedes in l_obj['hypoPedestrian']:
                 hPose, hPoly = hypoPedes.getPredictAt(timestamp_s)
                 if hPose is None:
+                    continue
+                if pfnc.checkDistance(egoPose, hPose, 10):
                     continue
                 hpcol_indicator = rfnc.collisionIndicator(
                     egoPose=egoPose, egoPoly=egoPoly,
@@ -333,7 +344,8 @@ class EgoVehicle:
                 hvPose, hvPoly = hypoVeh.getPredictAt(timestamp_s)
                 if hvPose is None:
                     continue
-
+                if pfnc.checkDistance(egoPose, hvPose, 10):
+                    continue
                 hvcol_indicator = rfnc.collisionIndicator(
                     egoPose=egoPose, egoPoly=egoPoly,
                     objPose=hvPose, objPoly=hvPoly)
@@ -509,7 +521,7 @@ class EgoVehicle:
 
             # check for collision
             self._brake, self._minColValue = self._l_opt[round(val, 3)]
-            if self._brake or self._minColValue > 0.1:
+            if self._brake or self._minColValue > 0.3:
                 self._toEmergencyState()
             else:
                 self._p_u = self._u + (val - self._u) * dT / predictStep
@@ -612,6 +624,15 @@ class EgoVehicle:
         return l_p
 
     # ------------------- Export function ---------------------
+    def getCurrentState(self):
+        if self._stopState:
+            return "Stop"
+        if self._driveOffState:
+            return "Drive off"
+        if self._defaultState:
+            return "Normal driving"
+        if self._emergencyState:
+            return "Emergency"
 
     def getComfortScore(self):
         sum_u = 0
@@ -628,14 +649,14 @@ class EgoVehicle:
         return l_d
 
     def plotDynamicDistance(self, safeV=False):
-        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(18, 6))
+        fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(18, 6))
         self._plotVelocity(ax=ax[0], xDistance=True, safeV=safeV)
         self._plotAcceleration(ax=ax[1], xDistance=True)
         self._plotJerk(ax=ax[2], xDistance=True)
         plt.show()
 
     def plotDynamic(self, safeV=False):
-        fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(18, 6))
+        fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(18, 6))
         self._plotVelocity(ax=ax[0], safeV=safeV)
         self._plotAcceleration(ax=ax[1])
         self._plotJerk(ax=ax[2])
@@ -702,15 +723,15 @@ class EgoVehicle:
     def _plotJerk(self, ax=plt, xDistance=False):
         l_vdy = self.exportDynamic()
         if xDistance:
-            ax.plot(l_vdy[:, 1], l_vdy[:, 4], 'r-', 'r-', label='jerk')
+            ax.plot(l_vdy[:, 1], l_vdy[:, 4], 'g-', label='jerk')
             ax.set_xlabel("Travel distance [s]")
             ax.set_ylabel("Jerk [$m/s^3$]")
-            ax.set_ylim(-10, 10)
+            # ax.set_ylim(-10, 10)
         else:
-            ax.plot(l_vdy[:, 0], l_vdy[:, 4], label='jerk')
+            ax.plot(l_vdy[:, 0], l_vdy[:, 4], 'g-',label='jerk')
             ax.set_xlabel("Time [s]")
             ax.set_ylabel("Jerk [$m/s^3$]")
-            ax.set_ylim(-10, 10)
+            # ax.set_ylim(-10, 10)
         ax.legend()
     
     def plotPassedCost(self):

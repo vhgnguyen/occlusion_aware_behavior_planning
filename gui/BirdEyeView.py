@@ -1,8 +1,8 @@
 from PyQt5.QtWidgets import (QVBoxLayout, QGroupBox, QTextEdit,
                              QLineEdit, QGridLayout, QOpenGLWidget,
                              QLabel, QPushButton)
-from PyQt5.QtGui import QColor, QPainter, QPen
-from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtGui import QColor, QPainter, QPen, QBrush, QPolygon
+from PyQt5.QtCore import QSize, Qt, QPoint
 
 import OpenGL.GL as gl
 import numpy as np
@@ -23,6 +23,7 @@ class BirdEyeView(QOpenGLWidget):
         # draw prediction
         self._drawPredict = False
         self._drawPredictHypo = False
+        self._drawPredictObject = False
 
         # world coordinate
         self._rulerScale = 5
@@ -30,6 +31,9 @@ class BirdEyeView(QOpenGLWidget):
         self._size_y = 100
         self._x_center = -10
         self._y_center = 0
+        self.center = False
+        self._x_center_fix = 0
+        self._y_center_fix = 0
 
         # background color
         self.trolltechPurple = QColor.fromCmykF(0.29, 0.29, 0.0, 0.0)
@@ -78,13 +82,13 @@ class BirdEyeView(QOpenGLWidget):
     def keyPressEvent(self, event):
         key = event.key()
         if key == Qt.Key_A:
-            self._x_center -= 10
+            self._x_center_fix -= 10
         elif key == Qt.Key_W:
-            self._y_center += 10
+            self._y_center_fix += 10
         elif key == Qt.Key_D:
-            self._x_center += 10
+            self._x_center_fix += 10
         elif key == Qt.Key_S:
-            self._y_center -= 10
+            self._y_center_fix -= 10
         self.update()
 
     def minimumSizeHint(self):
@@ -96,10 +100,17 @@ class BirdEyeView(QOpenGLWidget):
     def paintGL(self):
         gl.glMatrixMode(gl.GL_PROJECTION)
         gl.glLoadIdentity()
-        gl.glOrtho(
-            self._x_center - self._size_x // 2, self._x_center + self._size_x // 2, 
-            self._y_center - self._size_y // 2, self._y_center + self._size_y // 2,
-            -1.0, 1.0)
+        if self.center:
+            gl.glOrtho(
+                self._x_center - self._size_x // 2, self._x_center + self._size_x // 2, 
+                self._y_center - self._size_y // 2, self._y_center + self._size_y // 2,
+                -1.0, 1.0)
+        else:
+            gl.glOrtho(
+                self._x_center_fix - self._size_x // 2, self._x_center_fix + self._size_x // 2, 
+                self._y_center_fix - self._size_y // 2, self._y_center_fix + self._size_y // 2,
+                -1.0, 1.0)
+
         gl.glMatrixMode(gl.GL_MODELVIEW)
         gl.glLoadIdentity()
         self.setClearColor(self.trolltechPurple.darker())
@@ -108,6 +119,7 @@ class BirdEyeView(QOpenGLWidget):
         gl.glLoadIdentity()
         self.makeObject()
         self.drawAxis()
+        self.drawLegend()
 
     def resizeGL(self, width, height):
         side = min(width, height)
@@ -116,10 +128,17 @@ class BirdEyeView(QOpenGLWidget):
         gl.glViewport((width - side) // 2, (height - side) // 2, side, side)
         gl.glMatrixMode(gl.GL_PROJECTION)
         gl.glLoadIdentity()
-        gl.glOrtho(
-            self._x_center - self._size_x // 2, self._x_center + self._size_x // 2, 
-            self._y_center - self._size_y // 2, self._y_center + self._size_y // 2,
-            -1.0, 1.0)
+        if self.center:
+            gl.glOrtho(
+                self._x_center - self._size_x // 2, self._x_center + self._size_x // 2, 
+                self._y_center - self._size_y // 2, self._y_center + self._size_y // 2,
+                -1.0, 1.0)
+        else:
+            gl.glOrtho(
+                self._x_center_fix - self._size_x // 2, self._x_center_fix + self._size_x // 2, 
+                self._y_center_fix - self._size_y // 2, self._y_center_fix + self._size_y // 2,
+                -1.0, 1.0)
+
         gl.glMatrixMode(gl.GL_MODELVIEW)
         gl.glLoadIdentity()
         self._width = self.size().width()
@@ -203,7 +222,7 @@ class BirdEyeView(QOpenGLWidget):
                 helper.drawPoly(c['poly'], color=c_color, alpha=0.5)
                 helper.drawHeading(c['poly'], color='black', alpha=0.5)
 
-            if self._drawPredict:
+            if self._drawPredictObject:
                 p = pedes['p']
                 for i in range(0, len(p), ):
                     pp = p[i]
@@ -235,7 +254,7 @@ class BirdEyeView(QOpenGLWidget):
                 helper.drawPoly(c['poly'], color='red', alpha=0.5)
                 helper.drawHeading(c['poly'], color='black', alpha=0.5)
 
-            if self._drawPredict:
+            if self._drawPredictObject:
                 p = vehicle['p']
                 for i in range(0, len(p), 2):
                     pp = p[i]
@@ -245,8 +264,15 @@ class BirdEyeView(QOpenGLWidget):
         egoPoly = self.core.getCurrentEgoPoly()
         pos = self.core.getCurrentEgoPos()
         if pos is not None:
+            c = 'black'
+            if self.core.getCurrentAcceleration() > 0.3:
+                c = 'green'
+            if self.core.getCurrentAcceleration() < -0.3:
+                c = 'red'
+            helper.drawPoint(self.core.getCurrentPath(), color='lightRed')
+
             helper.drawPoly(egoPoly, color='blue', alpha=1)
-            helper.drawHeading(egoPoly, color='black', alpha=1)
+            helper.drawHeading(egoPoly, color=c, alpha=1)
 
             self._x_center = pos[0]
             self._y_center = pos[1]
@@ -257,19 +283,24 @@ class BirdEyeView(QOpenGLWidget):
                     pp = p_pose[i]
                     helper.drawPoly(pp['poly'], color='blue', alpha=0.1, fill=False)  
 
-
     def drawFOV(self):
         l_FOV = self.core.getCurrentFOV()
-        helper.drawPoly(l_FOV, color='lightBlue', alpha=1, fill=False)
+        helper.drawPoly(l_FOV, color='lightBlue', alpha=0.3, fill=False)
 
     def drawAxis(self):
-        xAxisMin = self._x_center - self._size_x // 2
-        xAxisMax = self._x_center + self._size_x // 2
+        if self.center:
+            xc = self._x_center
+            yc = self._y_center
+        else:
+            xc = self._x_center_fix
+            yc = self._y_center_fix
+        xAxisMin = xc - self._size_x // 2
+        xAxisMax = xc + self._size_x // 2
         startX = int(xAxisMin / self._rulerScale)
         endX = int(xAxisMax / self._rulerScale)
 
-        yAxisMin = self._y_center - self._size_y // 2
-        yAxisMax = self._y_center + self._size_y // 2
+        yAxisMin = yc - self._size_y // 2
+        yAxisMax = yc + self._size_y // 2
         startY = int(yAxisMin / self._rulerScale)
         endY = int(yAxisMax / self._rulerScale)
 
@@ -293,6 +324,64 @@ class BirdEyeView(QOpenGLWidget):
             painter.drawText(10, y, str(posY))
             painter.drawLine(0, y, 5, y)
         painter.end()
+
+    def drawLegend(self):
+        self.drawObject(40, 10, QColor(Qt.blue), "Ego vehicle")
+        self.drawObject(40, 40, QColor(Qt.yellow), "Hypothetical vehicle")
+        self.drawObject(40, 70, QColor(255, 140, 140), "Hypothetical pedestrian")
+        self.drawInfo(400, 30, name1="v=  ", name2=str(self.core.getCurrentVelocity())+ " m/s")
+        a = self.core.getCurrentAcceleration()
+        c = QColor(Qt.red)
+        if a is not None and a > 0:
+            c = QColor(Qt.green)
+        self.drawInfo(400, 60, name1="a=  ", name2=str(a)+ " m/s2", color2=c)
+        state = self.core.getCurrentState()
+        if state == "Emergency":
+            textColor = QColor(Qt.red)
+        else:
+            textColor = QColor(Qt.green)
+        self.drawInfo(400, 90, name1=state, textColor=textColor)
+
+    def drawObject(self, x, y, color, name):
+        textColor = QColor(Qt.white)
+        textColor.setAlpha(200)
+        # draw polygon
+        painter = QPainter()
+        painter.begin(self)
+        painter.setBrush(QBrush(color))
+        points = QPolygon([QPoint(x, y), QPoint(x+50, y), QPoint(x+50, y+20), QPoint(x, y+20)])
+        painter.drawPolygon(points)
+        painter.end()
+        # draw text
+        painter.begin(self)
+        painter.setPen(QPen(textColor))
+        font = painter.font()
+        font.setPointSize(font.pointSize())
+        painter.setFont(font)
+        painter.drawText(x+70, y+20, name)
+        painter.end()
+    
+    def drawInfo(self, x, y, name1, name2=None, textColor=QColor(Qt.white), color2=QColor(Qt.white)):
+        textColor.setAlpha(200)
+        painter = QPainter()
+
+        painter.begin(self)
+        painter.setPen(QPen(textColor))
+        font = painter.font()
+        font.setPointSize(font.pointSize())
+        painter.setFont(font)
+        painter.drawText(x, y, name1)
+        painter.end()
+
+        if name2 is not None:
+            painter.begin(self)
+            color2.setAlpha(200)
+            painter.setPen(QPen(color2))
+            font = painter.font()
+            font.setPointSize(font.pointSize())
+            painter.setFont(font)
+            painter.drawText(x+30, y, name2)
+            painter.end()
 
     def setClearColor(self, c):
         gl.glClearColor(c.redF(), c.greenF(), c.blueF(), 0)
