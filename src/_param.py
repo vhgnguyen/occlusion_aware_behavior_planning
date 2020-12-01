@@ -42,7 +42,7 @@ _MIN_COL_BRAKE_PEDESTRIAN = 0.3
 _J_MAX_BRAKE_S = 40
 _J_MAX_BRAKE = _J_MAX_BRAKE_S * _PREDICT_STEP  # pro step
 _J_MAX_S = 4
-_J_MAX = _J_MAX_S * _PREDICT_STEP # pro step
+_J_MAX = _J_MAX_S * _PREDICT_STEP  # pro step
 # velocity uncertainty
 _ALPHA_V_LONG = 0.5
 _ALPHA_V_LAT = 0.05
